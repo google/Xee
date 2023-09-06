@@ -1,0 +1,11 @@
+*.egg-info
+.DS_Store
+build
+dist
+docs/.ipynb_checkpoints
+docs/_build
+docs/source/_autosummary
+docs/source/.ipynb_checkpoints
+docs/*.zarr
+__pycache__
+.pytest_cache
