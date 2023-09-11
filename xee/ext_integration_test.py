@@ -21,6 +21,7 @@ import numpy as np
 import xarray as xr
 from xarray.core import indexing
 import xee
+
 import ee
 
 
@@ -255,7 +256,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         n_images=3,
     )
     self.assertEqual(
-        dict(ds.dims), {'index': 3, 'width': 41, 'height': 41}
+        dict(ds.dims), {'time': 3, 'X': 41, 'Y': 41}
     )
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
@@ -275,7 +276,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=1_000_000,  # in meters
     )
 
-    self.assertLen(ds.index, 1)
+    self.assertLen(ds.time, 1)
 
   def test_can_chunk__opened_dataset(self):
     ds = xr.open_dataset(
@@ -283,7 +284,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         crs='EPSG:4326',
         scale=0.25,
         engine=xee.EarthEngineBackendEntrypoint,
-    ).isel(index=slice(0, 1))
+    ).isel(time=slice(0, 1))
 
     try:
       ds.chunk().compute()
