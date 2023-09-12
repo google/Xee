@@ -1,7 +1,7 @@
 
 # Xee: Xarray + Google Earth Engine
 
-![Xee Logo](docs/xee-logo.png)
+![Xee Logo](g3docs/xee-logo.png)
 
 _A Google Earth Engine backend for Xarray | An Xarray Client for Google Earth Engine._
 

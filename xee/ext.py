@@ -86,13 +86,6 @@ class EarthEngineStore(common.AbstractDataStore):
       n_images: int = -1,
       **ee_kwargs: ...,
   ):
-    self.chunks = self.PREFERRED_CHUNKS.copy()
-    if chunks == -1:
-      self.chunks = -1
-    # TODO(b/291851322): Consider support for laziness when chunks=None.
-    elif chunks is not None and chunks != 'auto':
-      self.chunks.update(chunks)
-
     self.image_collection = image_collection
     if n_images != -1:
       self.image_collection = image_collection.limit(n_images)
@@ -137,6 +130,50 @@ class EarthEngineStore(common.AbstractDataStore):
     self.ee_kwargs = ee_kwargs
     self._props.update(crs=self.crs_arg)
 
+    self.chunks = self.PREFERRED_CHUNKS.copy()
+    if chunks == -1:
+      self.chunks = -1
+    # TODO(b/291851322): Consider support for laziness when chunks=None.
+    elif chunks is not None and chunks != 'auto':
+      self.chunks = self._assign_index_chunks(chunks)
+
+    self.preferred_chunks = self._assign_preferred_chunks()
+
+  def _assign_index_chunks(
+      self, input_chunk_store: dict[Any, Any]
+  ) -> dict[Any, Any]:
+    """Assigns values of 'index', 'width', and 'height' to `self.chunks`.
+
+    This method first attempts to retrieve values for 'index', 'width',
+    and 'height' from the 'input_chunk_store' dictionary. If the values are not
+    found in 'input_chunk_store', it falls back to default values stored in
+    'self.PREFERRED_CHUNKS'.
+    Args:
+      input_chunk_store (dict): how to break up the data into chunks.
+    Returns:
+      dict: A dictionary containing 'index', 'width', and 'height' values.
+    """
+    chunks = {}
+    y_dim_name, x_dim_name = self.dimension_names
+    chunks['index'] = (input_chunk_store.get(self.primary_dim_name)
+                       or input_chunk_store.get('index')
+                       or self.PREFERRED_CHUNKS['index'])
+    chunks['width'] = (input_chunk_store.get(y_dim_name)
+                       or input_chunk_store.get('width')
+                       or self.PREFERRED_CHUNKS['width'])
+    chunks['height'] = (input_chunk_store.get(x_dim_name)
+                        or input_chunk_store.get('height')
+                        or self.PREFERRED_CHUNKS['height'])
+    return chunks
+
+  def _assign_preferred_chunks(self) -> Chunks:
+    chunks = {}
+    y_dim_name, x_dim_name = self.dimension_names
+    chunks[self.primary_dim_name] = self.chunks['index']
+    chunks[y_dim_name] = self.chunks['width']
+    chunks[x_dim_name] = self.chunks['height']
+    return chunks
+
   def project(self, xs: float, ys: float) -> tuple[float, float]:
     transformer = pyproj.Transformer.from_crs(
         self.crs.geodetic_crs, self.crs, always_xy=True
@@ -166,7 +203,7 @@ class EarthEngineStore(common.AbstractDataStore):
         'scale_factor': arr.scale,
         'scale_units': self.scale_units,
         'dtype': data.dtype,
-        'preferred_chunks': self.PREFERRED_CHUNKS,
+        'preferred_chunks': self.preferred_chunks,
         'bounds': arr.bounds,
     }
 
