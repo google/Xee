@@ -21,6 +21,7 @@ import functools
 import math
 import os
 from typing import Any, Iterable, Literal, Optional, Union
+import warnings
 
 import numpy as np
 import pyproj
@@ -112,10 +113,23 @@ class EarthEngineStore(common.AbstractDataStore):
     # Scale in the projection's units. Typically, either meters or degrees.
     # If we use the default CRS i.e. EPSG:3857, the units is in meters.
     default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
+    # TODO(alxr): Calculate the default scale based on the transformation val
+    # from ee
     self.scale = ee_kwargs.get('scale', default_scale)
-    x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
-    x_min, y_min = self.project(x_min_0, y_min_0)
-    x_max, y_max = self.project(x_max_0, y_max_0)
+    try:
+      x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
+    except AttributeError:
+      x_min_0, y_min_0, x_max_0, y_max_0 = _geom_to_bounds(
+          self.image_collection.first().geometry()
+      )
+    # We add and subtract the scale to solve an off-by-one error. With this
+    # adjustment, we achieve parity with a pure `computePixels()` call.
+    x_min, y_min = self.project(x_min_0 - self.scale, y_min_0)
+    if _bounds_are_invalid(x_min, y_min):
+      x_min, y_min = self.project(x_min_0, y_min_0)
+    x_max, y_max = self.project(x_max_0, y_max_0 + self.scale)
+    if _bounds_are_invalid(x_max, y_max):
+      x_max, y_max = self.project(x_max_0, y_max_0)
     self.bounds = x_min, y_min, x_max, y_max
     # Get the dimensions name based on the CRS (scale units).
     self.dimension_names = self.DIMENSION_NAMES.get(
@@ -241,11 +255,12 @@ class EarthEngineStore(common.AbstractDataStore):
     try:
       primary_coord = self._get_primary_dim_values()
     except (ee.EEException, ValueError) as e:
-      print(
-          f'Error while fetching {self.primary_dim_property!r} values from an '
+      warnings.warn(
+          f'Could not fetch {self.primary_dim_property!r} values from an '
           f'ImageCollection due to {e}.'
       )
       primary_coord = np.arange(v0.shape[0])
+
     coords = [
         (
             self.primary_dim_name,
@@ -260,6 +275,10 @@ class EarthEngineStore(common.AbstractDataStore):
   def close(self) -> None:
     # TODO(alxr): Do I want to do this?
     del self.image_collection
+
+
+def _bounds_are_invalid(x: float, y: float) -> bool:
+  return math.isnan(x) or math.isnan(y) or math.isinf(x) or math.isinf(y)
 
 
 def _parse_dtype(data_type: types.DataType):
@@ -288,6 +307,19 @@ def _parse_dtype(data_type: types.DataType):
     dt = getattr(np, type_)
 
   return np.dtype(dt)
+
+
+def _geom_to_bounds(geom: ee.Geometry) -> tuple[float, float, float, float]:
+  """Finds the bounding box from a ee.Geometry polygon."""
+  bounds = geom.bounds().getInfo()
+  coords = np.array(bounds['coordinates'], dtype=np.float32)[0]
+  x_min, y_min, x_max, y_max = (
+      min(coords[:, 0]),
+      min(coords[:, 1]),
+      max(coords[:, 0]),
+      max(coords[:, 1]),
+  )
+  return x_min, y_min, x_max, y_max
 
 
 class _GetComputedPixels:
