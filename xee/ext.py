@@ -183,9 +183,14 @@ class EarthEngineStore(common.AbstractDataStore):
   def _assign_preferred_chunks(self) -> Chunks:
     chunks = {}
     y_dim_name, x_dim_name = self.dimension_names
-    chunks[self.primary_dim_name] = self.chunks['index']
-    chunks[y_dim_name] = self.chunks['width']
-    chunks[x_dim_name] = self.chunks['height']
+    if self.chunks == -1:
+      chunks[self.primary_dim_name] = self.PREFERRED_CHUNKS['index']
+      chunks[y_dim_name] = self.PREFERRED_CHUNKS['width']
+      chunks[x_dim_name] = self.PREFERRED_CHUNKS['height']
+    else:
+      chunks[self.primary_dim_name] = self.chunks['index']
+      chunks[y_dim_name] = self.chunks['width']
+      chunks[x_dim_name] = self.chunks['height']
     return chunks
 
   def project(self, xs: float, ys: float) -> tuple[float, float]:
@@ -236,6 +241,9 @@ class EarthEngineStore(common.AbstractDataStore):
             ee.Reducer.toList(), [self.primary_dim_property]
         ).get('list')
     ).getInfo()
+    if not primary_dim_list:
+      raise ValueError(f"No {self.primary_dim_property!r} values found "
+                       "in the 'ImageCollection'")
     if self.primary_dim_property in ['system:time_start', 'system:time_end']:
       # Convert elements in primary_dim_list to np.datetime64
       primary_dim_list = [
@@ -252,14 +260,15 @@ class EarthEngineStore(common.AbstractDataStore):
     width_coord = np.linspace(x_min_0, x_max_0, v0.shape[1])
     height_coord = np.linspace(y_max_0, y_min_0, v0.shape[2])
     y_dim_name, x_dim_name = self.dimension_names
+
+    primary_coord = np.arange(v0.shape[0])
     try:
       primary_coord = self._get_primary_dim_values()
     except (ee.EEException, ValueError) as e:
       warnings.warn(
-          f'Could not fetch {self.primary_dim_property!r} values from an '
-          f'ImageCollection due to {e}.'
+          f'Unable to retrieve {self.primary_dim_property!r} values from an '
+          f'ImageCollection due to: {e}.'
       )
-      primary_coord = np.arange(v0.shape[0])
 
     coords = [
         (
