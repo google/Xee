@@ -62,10 +62,10 @@ def open_and_write() -> None:
         'NASA/GPM_L3/IMERG_V06',
         crs='EPSG:4326',
         scale=0.25,
-        chunks={'index': 24, 'width': 512, 'height': 512},
+        chunks={'time': 24, 'lon': 1440, 'lat': 720},
         engine=xee.EarthEngineBackendEntrypoint,
     )
-    ds = ds.isel(index=slice(0, 24))
+    ds = ds.isel(time=slice(0, 24))
     ds.to_zarr(os.path.join(tmpdir, 'imerg.zarr'))
 
 

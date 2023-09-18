@@ -16,6 +16,8 @@
 from typing import Union, TypedDict
 
 TileIndex = tuple[int, int, int]
+# x_min, y_min, x_max, y_max
+Bounds = tuple[float, float, float, float]
 # x_start, y_start, x_stop, y_stop
 BBox = tuple[int, int, int, int]
 # index_start, index_stop, x_start, y_start, x_stop, y_stop
