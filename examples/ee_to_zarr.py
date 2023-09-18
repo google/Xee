@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-r"""Exports NASA/GPM_L3/IMERG_V06 to Zarr using Xarray-Beam."""
+r"""Exports EE ImageCollections to Zarr using Xarray-Beam."""
 from absl import app
 from absl import flags
 import apache_beam as beam
@@ -22,7 +22,17 @@ import xee
 
 import ee
 
-
+_INPUT = flags.DEFINE_string(
+    'input', '', help='The input Earth Engine ImageCollection.', required=True
+)
+_CRS = flags.DEFINE_string(
+    'crs',
+    'EPSG:4326',
+    help='Coordinate Reference System for output Zarr.',
+)
+_SCALE = flags.DEFINE_float(
+    'scale', 0.25, help='Scale factor for output Zarr.'
+)
 _TARGET_CHUNKS = flags.DEFINE_string(
     'target_chunks',
     '',
@@ -59,9 +69,9 @@ def main(argv: list[str]) -> None:
   ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
 
   ds = xr.open_dataset(
-      'NASA/GPM_L3/IMERG_V06',
-      crs='EPSG:4326',
-      scale=0.25,
+      _INPUT.value,
+      crs=_CRS.value,
+      scale=_SCALE.value,
       engine=xee.EarthEngineBackendEntrypoint,
   )
   template = xbeam.make_template(ds)
