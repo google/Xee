@@ -59,14 +59,14 @@ class EEBackendArrayTest(absltest.TestCase):
 
   def test_creates_lat_long_array(self):
     arr = xee.EarthEngineBackendArray('longitude', self.lnglat_store)
-    self.assertEqual((1, 4008, 4010), arr.shape)
+    self.assertEqual((1, 360, 180), arr.shape)
 
   def test_can_create_object(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
 
     self.assertIsNotNone(arr)
 
-    self.assertEqual((64, 4008, 4010), arr.shape)
+    self.assertEqual((64, 360, 180), arr.shape)
     self.assertEqual(np.int32, arr.dtype)
     self.assertEqual('B4', arr.variable_name)
 
@@ -79,10 +79,10 @@ class EEBackendArrayTest(absltest.TestCase):
     arr = xee.EarthEngineBackendArray('longitude', self.lnglat_store)
 
     zero_idx = arr[indexing.BasicIndexer((0, 0, 0))]
-    self.assertTrue(np.allclose(zero_idx, -179.95508424), f'Actual: {zero_idx}')
+    self.assertTrue(np.allclose(zero_idx, -179.5), f'Actual: {zero_idx}')
 
     last_idx = arr[indexing.BasicIndexer((-1, -1, -1))]
-    self.assertTrue(np.allclose(last_idx, 179.999850110), f'Actual: {last_idx}')
+    self.assertTrue(np.allclose(last_idx, 179.5), f'Actual: {last_idx}')
 
   def test_basic_indexing_multiple_images(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
@@ -252,11 +252,11 @@ class EEBackendEntrypointTest(absltest.TestCase):
     ds = self.entry.open_dataset(
         pathlib.Path('LANDSAT') / 'LC08' / 'C01' / 'T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
-        scale=1_000_000,  # in meters
+        scale=25.0,  # in degrees
         n_images=3,
     )
     self.assertEqual(
-        dict(ds.dims), {'time': 3, 'X': 41, 'Y': 41}
+        dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8}
     )
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
@@ -266,14 +266,14 @@ class EEBackendEntrypointTest(absltest.TestCase):
     for v in ds.values():
       self.assertIsNotNone(v.data)
       self.assertFalse(v.isnull().all(), 'All values are null!')
-      self.assertEqual(v.shape, (3, 41, 41))
+      self.assertEqual(v.shape, (3, 15, 8))
 
   def test_open_dataset__n_images(self):
     ds = self.entry.open_dataset(
         pathlib.Path('LANDSAT') / 'LC08' / 'C01' / 'T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         n_images=1,
-        scale=1_000_000,  # in meters
+        scale=25.0,  # in degrees
     )
 
     self.assertLen(ds.time, 1)

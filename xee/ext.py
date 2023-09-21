@@ -14,6 +14,8 @@
 # ==============================================================================
 """Implementation of the Google Earth Engine extension for Xarray."""
 
+# pylint: disable=g-bad-todo
+
 from __future__ import annotations
 
 import concurrent.futures
@@ -45,10 +47,17 @@ import ee
 Chunks = Union[int, dict[Any, Any], Literal['auto'], None]
 
 
+_BUILTIN_DTYPES = {
+    'int': np.int32,
+    'float': np.float32,
+    'double': np.float64,
+}
+
+
 class EarthEngineStore(common.AbstractDataStore):
   """Read-only Data Store for Google Earth Engine."""
 
-  # TODO(alxr): Do these chunks make sense for the high volume API?
+  # "Safe" default chunks that won't exceed the request limit.
   PREFERRED_CHUNKS: dict[str, int] = {
       'index': 24,
       'width': 512,
@@ -58,10 +67,13 @@ class EarthEngineStore(common.AbstractDataStore):
   SCALE_UNITS: dict[str, int] = {
       'degree': 1,
       'metre': 10_000,
+      'meter': 10_000,
   }
 
   DIMENSION_NAMES: dict[str, tuple[str, str]] = {
       'degree': ('lon', 'lat'),
+      'metre': ('X', 'Y'),
+      'meter': ('X', 'Y'),
   }
 
   @classmethod
@@ -91,6 +103,11 @@ class EarthEngineStore(common.AbstractDataStore):
     if n_images != -1:
       self.image_collection = image_collection.limit(n_images)
 
+    self.primary_dim_name = ee_kwargs.get('primary_dim_name', 'time')
+    self.primary_dim_property = ee_kwargs.get(
+        'primary_dim_property', 'system:time_start'
+    )
+
     n_images, props, img_info = ee.List([
         self.image_collection.size(),
         self.image_collection.toDictionary(),
@@ -98,51 +115,53 @@ class EarthEngineStore(common.AbstractDataStore):
     ]).getInfo()
 
     self.n_images = n_images
-    # TODO(alxr): Opportunity for strict image collections. Metadata should
-    #  apply to all imgs.
+    self._props = props
+    #  Metadata should apply to all imgs.
     self._img_info: types.ImageInfo = img_info
 
-    self.primary_dim_name = ee_kwargs.get('primary_dim_name', 'time')
-    self.primary_dim_property = ee_kwargs.get(
-        'primary_dim_property', 'system:time_start'
-    )
-    self.crs_arg = ee_kwargs.get('crs', 'EPSG:3857')
+    self.crs_arg = ee_kwargs.get('crs', 'EPSG:4326')
     self.crs = CRS(self.crs_arg)
     # Gets the unit i.e. meter, degree etc.
     self.scale_units = self.crs.axis_info[0].unit_name
+    # Get the dimensions name based on the CRS (scale units).
+    self.dimension_names = self.DIMENSION_NAMES.get(
+        self.scale_units, ('X', 'Y')
+    )
+    x_dim_name, y_dim_name = self.dimension_names
+    self._props.update(
+        coordinates=f'{self.primary_dim_name} {x_dim_name} {y_dim_name}',
+        crs=self.crs_arg,
+    )
+
     # Scale in the projection's units. Typically, either meters or degrees.
     # If we use the default CRS i.e. EPSG:3857, the units is in meters.
-    default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
-    # TODO(alxr): Calculate the default scale based on the transformation val
+    # TODO(#14): Calculate the default scale based on the transformation val
     # from ee
+    default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
     self.scale = ee_kwargs.get('scale', default_scale)
+
+    # Parse the dataset bounds from the native projection (either from the CRS
+    # or the image geometry) and translate it to the representation that will be
+    # used for all internal `computePixels()` calls.
     try:
       x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
     except AttributeError:
-      x_min_0, y_min_0, x_max_0, y_max_0 = _geom_to_bounds(
+      # `area_of_use` is probable `None`. Parse the geometry instead.
+      # TODO(#7): Let users pass in an `ee.Geometry()` object here.
+      x_min_0, y_min_0, x_max_0, y_max_0 = geometry_to_bounds(
           self.image_collection.first().geometry()
       )
     # We add and subtract the scale to solve an off-by-one error. With this
     # adjustment, we achieve parity with a pure `computePixels()` call.
     x_min, y_min = self.project(x_min_0 - self.scale, y_min_0)
-    if _bounds_are_invalid(x_min, y_min):
+    if _bounds_are_invalid(x_min, y_min, self.scale_units == 'degree'):
       x_min, y_min = self.project(x_min_0, y_min_0)
     x_max, y_max = self.project(x_max_0, y_max_0 + self.scale)
-    if _bounds_are_invalid(x_max, y_max):
+    if _bounds_are_invalid(x_max, y_max, self.scale_units == 'degree'):
       x_max, y_max = self.project(x_max_0, y_max_0)
     self.bounds = x_min, y_min, x_max, y_max
-    # Get the dimensions name based on the CRS (scale units).
-    self.dimension_names = self.DIMENSION_NAMES.get(
-        self.scale_units, ('Y', 'X')
-    )
-    self._props = props
-    y_dim_name, x_dim_name = self.dimension_names
-    self._props.update(
-        coordinates=f'{self.primary_dim_name} {y_dim_name} {x_dim_name}'
-    )
 
     self.ee_kwargs = ee_kwargs
-    self._props.update(crs=self.crs_arg)
 
     self.chunks = self.PREFERRED_CHUNKS.copy()
     if chunks == -1:
@@ -162,35 +181,38 @@ class EarthEngineStore(common.AbstractDataStore):
     and 'height' from the 'input_chunk_store' dictionary. If the values are not
     found in 'input_chunk_store', it falls back to default values stored in
     'self.PREFERRED_CHUNKS'.
+
     Args:
       input_chunk_store (dict): how to break up the data into chunks.
+
     Returns:
       dict: A dictionary containing 'index', 'width', and 'height' values.
     """
     chunks = {}
-    y_dim_name, x_dim_name = self.dimension_names
-    chunks['index'] = (input_chunk_store.get(self.primary_dim_name)
-                       or input_chunk_store.get('index')
-                       or self.PREFERRED_CHUNKS['index'])
-    chunks['width'] = (input_chunk_store.get(y_dim_name)
-                       or input_chunk_store.get('width')
-                       or self.PREFERRED_CHUNKS['width'])
-    chunks['height'] = (input_chunk_store.get(x_dim_name)
-                        or input_chunk_store.get('height')
-                        or self.PREFERRED_CHUNKS['height'])
+    x_dim_name, y_dim_name = self.dimension_names
+    for key, dim_name in [
+        ('index', self.primary_dim_name),
+        ('width', x_dim_name),
+        ('height', y_dim_name),
+    ]:
+      chunks[key] = (
+          input_chunk_store.get(dim_name)
+          or input_chunk_store.get(key)
+          or self.PREFERRED_CHUNKS[key]
+      )
     return chunks
 
   def _assign_preferred_chunks(self) -> Chunks:
     chunks = {}
-    y_dim_name, x_dim_name = self.dimension_names
+    x_dim_name, y_dim_name = self.dimension_names
     if self.chunks == -1:
       chunks[self.primary_dim_name] = self.PREFERRED_CHUNKS['index']
-      chunks[y_dim_name] = self.PREFERRED_CHUNKS['width']
-      chunks[x_dim_name] = self.PREFERRED_CHUNKS['height']
+      chunks[x_dim_name] = self.PREFERRED_CHUNKS['width']
+      chunks[y_dim_name] = self.PREFERRED_CHUNKS['height']
     else:
       chunks[self.primary_dim_name] = self.chunks['index']
-      chunks[y_dim_name] = self.chunks['width']
-      chunks[x_dim_name] = self.chunks['height']
+      chunks[x_dim_name] = self.chunks['width']
+      chunks[y_dim_name] = self.chunks['height']
     return chunks
 
   def project(self, xs: float, ys: float) -> tuple[float, float]:
@@ -214,8 +236,8 @@ class EarthEngineStore(common.AbstractDataStore):
     arr = EarthEngineBackendArray(name, self)
     data = indexing.LazilyIndexedArray(arr)
 
-    y_dim_name, x_dim_name = self.dimension_names
-    dimensions = [self.primary_dim_name, y_dim_name, x_dim_name]
+    x_dim_name, y_dim_name = self.dimension_names
+    dimensions = [self.primary_dim_name, x_dim_name, y_dim_name]
     attrs = self._band_attrs(name)
     encoding = {
         'source': attrs['id'],
@@ -234,60 +256,79 @@ class EarthEngineStore(common.AbstractDataStore):
   def get_attrs(self) -> utils.Frozen[Any, Any]:
     return utils.FrozenDict(self._props)
 
-  def _get_primary_dim_values(self) -> list[Any]:
-    """Gets the values from an ImageCollection."""
-    primary_dim_list = (
-        self.image_collection.reduceColumns(
-            ee.Reducer.toList(), [self.primary_dim_property]
-        ).get('list')
-    ).getInfo()
-    if not primary_dim_list:
-      raise ValueError(f"No {self.primary_dim_property!r} values found "
-                       "in the 'ImageCollection'")
+  def _get_primary_coordinates(self) -> list[Any]:
+    """Gets the primary dimension coordinate values from an ImageCollection."""
+    coods_list = (
+        self.image_collection
+        .reduceColumns(ee.Reducer.toList(), [self.primary_dim_property])
+        .get('list')
+    )
+
+    coords = coods_list.getInfo()
+
+    if not coords:
+      raise ValueError(
+          f'No {self.primary_dim_property!r} values found in the'
+          " 'ImageCollection'"
+      )
     if self.primary_dim_property in ['system:time_start', 'system:time_end']:
       # Convert elements in primary_dim_list to np.datetime64
-      primary_dim_list = [
-          np.datetime64(time, 'ms') for time in primary_dim_list
-      ]
-    return primary_dim_list
+      coords = [np.datetime64(time, 'ms') for time in coords]
+    return coords
 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
     vars_ = [(name, self.open_store_variable(name)) for name in self._bands()]
 
-    # Make an assumption that all vars will have the same bounds...
+    # Assume all vars will have the same bounds...
     v0 = vars_[0][1]
-    x_min_0, y_min_0, x_max_0, y_max_0 = self.bounds
-    width_coord = np.linspace(x_min_0, x_max_0, v0.shape[1])
-    height_coord = np.linspace(y_max_0, y_min_0, v0.shape[2])
-    y_dim_name, x_dim_name = self.dimension_names
 
     primary_coord = np.arange(v0.shape[0])
     try:
-      primary_coord = self._get_primary_dim_values()
+      primary_coord = self._get_primary_coordinates()
     except (ee.EEException, ValueError) as e:
       warnings.warn(
           f'Unable to retrieve {self.primary_dim_property!r} values from an '
           f'ImageCollection due to: {e}.'
       )
 
+    x_min_0, y_min_0, x_max_0, y_max_0 = self.bounds
+    width_coord = np.linspace(x_min_0, x_max_0, v0.shape[1])
+    height_coord = np.linspace(y_max_0, y_min_0, v0.shape[2])
+
+    x_dim_name, y_dim_name = self.dimension_names
+
     coords = [
         (
             self.primary_dim_name,
             xarray.Variable(self.primary_dim_name, primary_coord),
         ),
-        (y_dim_name, xarray.Variable(y_dim_name, width_coord)),
-        (x_dim_name, xarray.Variable(x_dim_name, height_coord)),
+        (x_dim_name, xarray.Variable(x_dim_name, width_coord)),
+        (y_dim_name, xarray.Variable(y_dim_name, height_coord)),
     ]
 
     return utils.FrozenDict(vars_ + coords)
 
   def close(self) -> None:
-    # TODO(alxr): Do I want to do this?
     del self.image_collection
 
 
-def _bounds_are_invalid(x: float, y: float) -> bool:
-  return math.isnan(x) or math.isnan(y) or math.isinf(x) or math.isinf(y)
+def _bounds_are_invalid(x: float, y: float, is_degrees=False) -> bool:
+  """Check for obviously bad x and y projection values."""
+  bad_num = (
+      math.isnan(x)
+      or math.isnan(y)
+      or math.isinf(x)
+      or math.isinf(y)
+  )
+
+  invalid_degree = (
+      y < -90.0
+      or y > 90.0
+      or x < -180.0
+      or x > 360.0  # degrees could be from 0 to 360...
+  )
+
+  return bad_num or (is_degrees and invalid_degree)
 
 
 def _parse_dtype(data_type: types.DataType):
@@ -301,25 +342,20 @@ def _parse_dtype(data_type: types.DataType):
   Returns:
     A numpy.dtype object that best corresponds to the Band data type.
   """
-  build_ins = {
-      'int': np.int32,
-      'float': np.float32,
-      'double': np.float64,
-  }
   type_ = data_type['type']
   if type_ == 'PixelType':
     type_ = data_type['precision']
 
-  if type_ in build_ins:
-    dt = build_ins[type_]
+  if type_ in _BUILTIN_DTYPES:
+    dt = _BUILTIN_DTYPES[type_]
   else:
     dt = getattr(np, type_)
 
   return np.dtype(dt)
 
 
-def _geom_to_bounds(geom: ee.Geometry) -> tuple[float, float, float, float]:
-  """Finds the bounding box from a ee.Geometry polygon."""
+def geometry_to_bounds(geom: ee.Geometry) -> types.Bounds:
+  """Finds the CRS bounds from a ee.Geometry polygon."""
   bounds = geom.bounds().getInfo()
   coords = np.array(bounds['coordinates'], dtype=np.float32)[0]
   x_min, y_min, x_max, y_max = (
@@ -344,16 +380,17 @@ class EarthEngineBackendArray(backends.BackendArray):
   def __init__(self, variable_name: str, ee_store: EarthEngineStore):
     self.variable_name = variable_name
     self.store = ee_store
-    # It looks like different bands have different dimensions & transforms!
-    # Can we get this into consistent dimensions?
-    self._info = ee_store._band_attrs(variable_name)
-
-    self.dtype = _parse_dtype(self._info['data_type'])
 
     self.scale = ee_store.scale
     self.crs_arg = ee_store.crs_arg
     self.crs = ee_store.crs
     self.bounds = ee_store.bounds
+
+    # It looks like different bands have different dimensions & transforms!
+    # Can we get this into consistent dimensions?
+    self._info = ee_store._band_attrs(variable_name)
+    self.dtype = _parse_dtype(self._info['data_type'])
+
     x_min, y_min, x_max, y_max = self.bounds
 
     x_size = int(np.ceil((x_max - x_min) / self.scale))
@@ -376,7 +413,8 @@ class EarthEngineBackendArray(backends.BackendArray):
       image: An EE image.
       pixels_getter: An object whose `__getitem__()` method calls
         `computePixels()`.
-      **kwargs: Additional settings for `params` in `computePixels(params)`.
+      **kwargs: Additional settings for `params` in `computePixels(params)`. For
+        example, a `grid` dictionary.
 
     Returns:
       An numpy array containing the pixels computed based on the given image.
@@ -390,8 +428,8 @@ class EarthEngineBackendArray(backends.BackendArray):
         pixels_getter, params, catch=ee.ee_exception.EEException
     )
 
-    # TODO(alxr): Find a way to make this more efficient. This is needed because
-    # `raw` is a 2d array of tuples (which is the size of the number of images).
+    # TODO(#9): Find a way to make this more efficient. This is needed because
+    # `raw` is a structured array of all the same dtype (i.e. number of images).
     arr = np.array(raw.tolist(), dtype=self.dtype)
     data = arr.T
 
@@ -506,15 +544,14 @@ class EarthEngineBackendArray(backends.BackendArray):
   ) -> np.typing.ArrayLike:
     key, squeeze_axes = self._key_to_slices(key)
 
-    # Break up large EE request into chunked requests.
-    # TODO(alxr): honor step increments
+    # TODO(#13): honor step increments
     strt, stop, _ = key[0].indices(self.shape[0])
     wmin, wmax, _ = key[1].indices(self.shape[1])
     hmin, hmax, _ = key[2].indices(self.shape[2])
     bbox = wmin, hmin, wmax, hmax
-    irange = stop - strt
-    height = hmax - hmin
-    width = wmax - wmin
+    i_range = stop - strt
+    h_range = hmax - hmin
+    w_range = wmax - wmin
 
     # User does not want to use any chunks...
     if self.store.chunks == -1:
@@ -526,10 +563,10 @@ class EarthEngineBackendArray(backends.BackendArray):
 
       return out
 
-    # Last, we break up the requested bounding box into smaller bounding boxes
-    # that are at most as big as the chunk size. We will divide up the requests
-    # for pixels across a thread pool. We then need to combine all the arrays
-    # into one big array.
+    # Here, we break up the requested bounding box into smaller bounding boxes
+    # that are at most the chunk size. We will divide up the requests for
+    # pixels across a thread pool. We then need to combine all the arrays into
+    # one big array.
     #
     # Lucky for us, Numpy provides a specialized "concat"-like operation for
     # contiguous arrays organized in tiles: `np.block()`. If we have arrays
@@ -540,18 +577,18 @@ class EarthEngineBackendArray(backends.BackendArray):
     #   cccDD
 
     # Create an empty 3d list of lists to store arrays to be combined.
-    # TODO(alxr): can this be a np.array of objects?
+    # TODO(#10): can this be a np.array of objects?
     shape = (
-        math.ceil(irange / self._apparent_chunks['index']),
-        math.ceil(width / self._apparent_chunks['width']),
-        math.ceil(height / self._apparent_chunks['height']),
+        math.ceil(i_range / self._apparent_chunks['index']),
+        math.ceil(w_range / self._apparent_chunks['width']),
+        math.ceil(h_range / self._apparent_chunks['height']),
     )
     tiles = [
         [[None for _ in range(shape[2])] for _ in range(shape[1])]
         for _ in range(shape[0])
     ]
 
-    # TODO(alxr): Allow users to configure this via kwargs.
+    # TODO(#11): Allow users to configure this via kwargs.
     with concurrent.futures.ThreadPoolExecutor() as pool:
       for (i, j, k), arr in pool.map(
           self._make_tile, self._tile_indexes(key[0], bbox)
@@ -561,7 +598,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     out = np.block(tiles)
 
     if squeeze_axes:
-      out = np.squeeze(out, tuple(squeeze_axes))
+      out = np.squeeze(out, squeeze_axes)
 
     return out
 
@@ -579,20 +616,21 @@ class EarthEngineBackendArray(backends.BackendArray):
       self, index_range: slice, bbox: types.BBox
   ) -> Iterable[tuple[types.TileIndex, types.BBox3d]]:
     """Calculate indexes to break up a (3D) bounding box into chunks."""
-    istep = self._apparent_chunks['index']
+    tstep = self._apparent_chunks['index']
     wstep = self._apparent_chunks['width']
     hstep = self._apparent_chunks['height']
+
     start, stop, _ = index_range.indices(self.shape[0])
     wmin, hmin, wmax, hmax = bbox
 
-    for i, istart in enumerate(range(start, stop + 1, istep)):
-      for j, w in enumerate(range(wmin, wmax + 1, wstep)):
-        for k, h in enumerate(range(hmin, hmax + 1, hstep)):
-          iend = min(istart + istep, stop)
-          wend = min(w + wstep, wmax)
-          hend = min(h + hstep, hmax)
-          if iend != istart and wend != w and hend != h:
-            yield (i, j, k), (istart, iend, w, h, wend, hend)
+    for i, t0 in enumerate(range(start, stop + 1, tstep)):
+      for j, w0 in enumerate(range(wmin, wmax + 1, wstep)):
+        for k, h0 in enumerate(range(hmin, hmax + 1, hstep)):
+          t1 = min(t0 + tstep, stop)
+          w1 = min(w0 + wstep, wmax)
+          h1 = min(h0 + hstep, hmax)
+          if t1 != t0 and w1 != w0 and h1 != h0:
+            yield (i, j, k), (t0, t1, w0, h0, w1, h1)
 
 
 class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
@@ -608,7 +646,6 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
     # check if an image collection is in the earth engine catalog:
     try:
       ee.data.listAssets({'parent': str(filename_or_obj), 'pageSize': 1})
-      # TODO(alxr): Maybe only support "strict" image collections?
       return True
     except ee.EEException:
       return False
