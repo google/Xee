@@ -114,6 +114,12 @@ class EarthEngineStore(common.AbstractDataStore):
         self.image_collection.first(),
     ]).getInfo()
 
+    self._images_list = (
+        self.image_collection
+        .reduceColumns(ee.Reducer.toList(), ['system:id'])
+        .get('list')
+        .getInfo()
+    )
     self.n_images = n_images
     self._props = props
     #  Metadata should apply to all imgs.
@@ -307,6 +313,9 @@ class EarthEngineStore(common.AbstractDataStore):
     ]
 
     return utils.FrozenDict(vars_ + coords)
+
+  def get_images_list(self):
+    return self._images_list
 
   def close(self) -> None:
     del self.image_collection
@@ -514,16 +523,10 @@ class EarthEngineBackendArray(backends.BackendArray):
 
   def _slice_collection(self, image_slice: slice) -> ee.Image:
     """Reduce the ImageCollection into an Image with bands as index slices."""
-    col = self.store.image_collection
     # Get the right range of Images in the collection, either a single image or
     # a range of images...
     start, stop, stride = image_slice.indices(self.shape[0])
-    list_range = stop - start
-    # Warning: When the `list_range` and `stride` values are large, this could
-    # break, even if it only returns few images. `toList()` will force all the
-    # images to be loaded into memory, which isn't mitigated if we `slice()` it
-    # after.
-    imgs = col.toList(list_range, offset=start).slice(0, list_range, stride)
+    imgs = self.store.get_images_list()[start:stop:stride]
     col = ee.ImageCollection(imgs)
 
     # For a more efficient slice of the series of images, we reduce each
