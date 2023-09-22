@@ -40,7 +40,7 @@ setuptools.setup(
     license='Apache 2.0',
     author='Google LLC',
     author_email='noreply@google.com',
-    install_requires=['xarray', 'earthengine-api', 'pyproj'],
+    install_requires=['xarray', 'earthengine-api', 'pyproj', 'affine'],
     extras_require={
         'tests': tests_requires,
         'examples': examples_require,
