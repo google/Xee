@@ -19,17 +19,21 @@ Then, authenticate Earth Engine:
 earthengine authenticate --quiet
 ```
 
+Next, initialize the EE client with the high volume API:
+
+```python
+ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
+```
+
 Open any Earth Engine ImageCollection by specifying the Xarray engine as `'ee'`:
 
 ```python
-ee.Initialize()
 ds = xarray.open_dataset('ECMWF/ERA5_LAND/HOURLY', engine='ee')
 ```
 
 Open all bands in a specific projection (not the Xee default):
 
 ```python
-ee.Initialize()
 ds = xarray.open_dataset('ECMWF/ERA5_LAND/HOURLY', engine='ee',
                          crs='EPSG:4326', scale=0.25)
 ```
@@ -37,7 +41,6 @@ ds = xarray.open_dataset('ECMWF/ERA5_LAND/HOURLY', engine='ee',
 Open an ImageCollection (maybe, with EE-side filtering or processing):
 
 ```python
-ee.Initialize()
 ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
 ds = xarray.open_dataset(ic, engine='ee', crs='EPSG:4326', scale=0.25)
 ```
@@ -45,7 +48,6 @@ ds = xarray.open_dataset(ic, engine='ee', crs='EPSG:4326', scale=0.25)
 Open multiple ImageCollections into one `xarray.Dataset`, all with the same projection:
 
 ```python
-ee.Initialize()
 ds = xarray.open_mfdataset(['ECMWF/ERA5_LAND/HOURLY', 'NASA/GDDP-CMIP6'],
                            engine='ee', crs='EPSG:4326', scale=0.25)
 ```
