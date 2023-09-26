@@ -430,7 +430,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     """
     params = {
         'expression': image,
-        'fileFormat': 'NPY_DATA',
+        'fileFormat': 'NUMPY_NDARRAY',
         **kwargs,
     }
     raw = common.robust_getitem(
