@@ -25,6 +25,7 @@ import os
 from typing import Any, Iterable, Literal, Optional, Union
 import warnings
 
+import affine
 import numpy as np
 import pyproj
 from pyproj.crs import CRS
@@ -125,7 +126,15 @@ class EarthEngineStore(common.AbstractDataStore):
     #  Metadata should apply to all imgs.
     self._img_info: types.ImageInfo = img_info
 
-    self.crs_arg = ee_kwargs.get('crs', 'EPSG:4326')
+    projection = ee_kwargs.get('projection')
+    proj = {}
+    # TODO(alxr): See if we can factor this into the above getInfo() call.
+    if isinstance(projection, ee.Projection):
+      proj = projection.getInfo()
+
+    self.crs_arg = ee_kwargs.get(
+        'crs', proj.get('crs', proj.get('wkt', 'EPSG:4326'))
+    )
     self.crs = CRS(self.crs_arg)
     # Gets the unit i.e. meter, degree etc.
     self.scale_units = self.crs.axis_info[0].unit_name
@@ -141,28 +150,35 @@ class EarthEngineStore(common.AbstractDataStore):
 
     # Scale in the projection's units. Typically, either meters or degrees.
     # If we use the default CRS i.e. EPSG:3857, the units is in meters.
-    # TODO(#14): Calculate the default scale based on the transformation val
-    # from ee
     default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
-    self.scale = ee_kwargs.get('scale', default_scale)
+    scale = ee_kwargs.get('scale', default_scale)
+    default_transform = affine.Affine.scale(scale)
+
+    transform = affine.Affine(*proj.get('transform', default_transform)[:6])
+    self.scale_x, self.scale_y = transform.a, transform.e
+    self.scale = np.sqrt(np.abs(transform.determinant))
 
     # Parse the dataset bounds from the native projection (either from the CRS
     # or the image geometry) and translate it to the representation that will be
     # used for all internal `computePixels()` calls.
     try:
-      x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
+      geomentry = ee_kwargs.get('geometry')
+      if isinstance(geomentry, ee.Geometry):
+        x_min_0, y_min_0, x_max_0, y_max_0 = geometry_to_bounds(geomentry)
+      else:
+        x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
     except AttributeError:
-      # `area_of_use` is probable `None`. Parse the geometry instead.
-      # TODO(#7): Let users pass in an `ee.Geometry()` object here.
+      # `area_of_use` is probable `None`. Parse the geometry from the first
+      # image instead.
       x_min_0, y_min_0, x_max_0, y_max_0 = geometry_to_bounds(
           self.image_collection.first().geometry()
       )
     # We add and subtract the scale to solve an off-by-one error. With this
     # adjustment, we achieve parity with a pure `computePixels()` call.
-    x_min, y_min = self.project(x_min_0 - self.scale, y_min_0)
+    x_min, y_min = self.project(x_min_0 - self.scale_x, y_min_0)
     if _bounds_are_invalid(x_min, y_min, self.scale_units == 'degree'):
       x_min, y_min = self.project(x_min_0, y_min_0)
-    x_max, y_max = self.project(x_max_0, y_max_0 + self.scale)
+    x_max, y_max = self.project(x_max_0, y_max_0 + self.scale_y)
     if _bounds_are_invalid(x_max, y_max, self.scale_units == 'degree'):
       x_max, y_max = self.project(x_max_0, y_max_0)
     self.bounds = x_min, y_min, x_max, y_max
@@ -390,6 +406,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     self.variable_name = variable_name
     self.store = ee_store
 
+    self.scale_x = ee_store.scale_x
+    self.scale_y = ee_store.scale_y
     self.scale = ee_store.scale
     self.crs_arg = ee_store.crs_arg
     self.crs = ee_store.crs
@@ -402,8 +420,8 @@ class EarthEngineBackendArray(backends.BackendArray):
 
     x_min, y_min, x_max, y_max = self.bounds
 
-    x_size = int(np.ceil((x_max - x_min) / self.scale))
-    y_size = int(np.ceil((y_max - y_min) / self.scale))
+    x_size = int(np.ceil((x_max - x_min) / np.abs(self.scale_x)))
+    y_size = int(np.ceil((y_max - y_min) / np.abs(self.scale_y)))
 
     self.shape = (ee_store.n_images, x_size, y_size)
     self._apparent_chunks = {k: 1 for k in self.store.PREFERRED_CHUNKS.keys()}
@@ -484,12 +502,12 @@ class EarthEngineBackendArray(backends.BackendArray):
             # Since the origin is in the top left corner, we want to translate
             # the start of the grid to the positive direction for X and the
             # negative direction for Y.
-            'translateX': x_origin + self.scale * x_start,
-            'translateY': y_origin - self.scale * y_start,
+            'translateX': x_origin + self.scale_x * x_start,
+            'translateY': y_origin + self.scale_y * y_start,
             # Define the scale for each pixel (e.g. the number of meters between
             # each value).
-            'scaleX': self.scale,
-            'scaleY': -1 * self.scale,
+            'scaleX': self.scale_x,
+            'scaleY': self.scale_y,
         },
         'crsCode': self.crs_arg,
     }
@@ -705,13 +723,14 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         referred to in  ``'grid_mapping'``, ``'bounds'`` and other attributes as
         coordinate variables.
       **kwargs: Arguments to pass into the EarthEngine array backend, such as:
-        crs, scale, primary_dim_name or primary_dim_property (i.e. ee.Image
-        property on the basis of which primary dimension is defined). By
-        default, crs is EPSG:3857 & scale is 10,000 when the scale unit (i.e.
-        CRS's UoM) is in meters, or scale is 1 when the scale unit (i.e. CRS's
-        UoM) is in degrees, or scale is 1 for any other units. And
-        primary_dim_name is 'time' & primary_dim_property is
-        system:time_start'.
+        crs, scale, projection, geometry, primary_dim_name or
+        primary_dim_property (i.e. ee.Image property on the basis of which
+        primary dimension is defined). We recommend passing an `ee.Projection`
+        via projection or manually specifying crs and scale, but not both. By
+        default, crs is EPSG:4326 & scale is 1° when the scale unit (i.e. CRS's
+        UoM) is in degrees, or scale is 10,000 when the scale unit (i.e. CRS's 
+        UoM) is in meters, or scale is 1 for any other units. By default, 
+        primary_dim_name is 'time' & primary_dim_property is system:time_start'.
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.

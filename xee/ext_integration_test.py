@@ -291,6 +291,41 @@ class EEBackendEntrypointTest(absltest.TestCase):
     except ValueError:
       self.fail('Chunking failed.')
 
+  def test_honors_geometry(self):
+    ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
+        '1992-10-05', '1993-03-31'
+    )
+    leg1 = ee.Geometry.Rectangle(113.33, -43.63, 153.56, -10.66)
+    ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+        geometry=leg1,
+    )
+    standard_ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+    )
+
+    self.assertEqual(ds.dims, {'time': 4248, 'lon': 42, 'lat': 34})
+    self.assertNotEqual(ds.dims, standard_ds.dims)
+
+  def test_honors_projection(self):
+    ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
+        '1992-10-05', '1993-03-31'
+    )
+    ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+        projection=ic.first().select(0).projection(),
+    )
+    standard_ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+    )
+
+    self.assertEqual(ds.dims, {'time': 4248, 'lon': 3600, 'lat': 1799})
+    self.assertNotEqual(ds.dims, standard_ds.dims)
+
 
 if __name__ == '__main__':
   absltest.main()

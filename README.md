@@ -1,4 +1,3 @@
-
 # Xee: Xarray + Google Earth Engine
 
 ![Xee Logo](docs/xee-logo.png)
@@ -13,7 +12,7 @@ Install with pip (distributions on PyPi will come soon):
 pip install git+https://github.com/googlestaging/xee.git
 ```
 
-Then, authenticate Earth Engine: 
+Then, authenticate Earth Engine:
 
 ```shell
 earthengine authenticate --quiet
@@ -43,6 +42,15 @@ Open an ImageCollection (maybe, with EE-side filtering or processing):
 ```python
 ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
 ds = xarray.open_dataset(ic, engine='ee', crs='EPSG:4326', scale=0.25)
+```
+
+Open an ImageCollection with a specific EE projection or geometry:
+
+```python
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
+leg1 = ee.Geometry.Rectangle(113.33, -43.63, 153.56, -10.66)
+ds = xarray.open_dataset(ic, engine='ee',
+                         projection=ic.first().select(0).projection(), geometry=leg1)
 ```
 
 Open multiple ImageCollections into one `xarray.Dataset`, all with the same projection:
