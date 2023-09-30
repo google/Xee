@@ -13,6 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 r"""Exports EE ImageCollections to Zarr using Xarray-Beam."""
+
+import logging
+
 from absl import app
 from absl import flags
 import apache_beam as beam
@@ -22,8 +25,13 @@ import xee
 
 import ee
 
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
 _INPUT = flags.DEFINE_string(
-    'input', '', help='The input Earth Engine ImageCollection.', required=True
+    'input', '', help='The input Earth Engine ImageCollection.'
 )
 _CRS = flags.DEFINE_string(
     'crs',
@@ -44,7 +52,7 @@ _TARGET_CHUNKS = flags.DEFINE_string(
     ),
 )
 _OUTPUT = flags.DEFINE_string(
-    'output', '', help='The output zarr path.', required=True
+    'output', '', help='The output zarr path.'
 )
 _RUNNER = flags.DEFINE_string(
     'runner', None, help='beam.runners.Runner'
@@ -63,7 +71,10 @@ def _parse_chunks_str(chunks_str: str) -> dict[str, int]:
 
 
 def main(argv: list[str]) -> None:
-  source_chunks = {'index': 24}
+  assert _INPUT.value, 'Must specify --input'
+  assert _OUTPUT.value, 'Must specify --output'
+
+  source_chunks = {'time': 24}
   target_chunks = dict(source_chunks, **_parse_chunks_str(_TARGET_CHUNKS.value))
 
   ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
