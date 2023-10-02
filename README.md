@@ -27,13 +27,13 @@ ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
 Open any Earth Engine ImageCollection by specifying the Xarray engine as `'ee'`:
 
 ```python
-ds = xarray.open_dataset('ECMWF/ERA5_LAND/HOURLY', engine='ee')
+ds = xarray.open_dataset('ee://ECMWF/ERA5_LAND/HOURLY', engine='ee')
 ```
 
 Open all bands in a specific projection (not the Xee default):
 
 ```python
-ds = xarray.open_dataset('ECMWF/ERA5_LAND/HOURLY', engine='ee',
+ds = xarray.open_dataset('ee://ECMWF/ERA5_LAND/HOURLY', engine='ee',
                          crs='EPSG:4326', scale=0.25)
 ```
 
@@ -47,16 +47,20 @@ ds = xarray.open_dataset(ic, engine='ee', crs='EPSG:4326', scale=0.25)
 Open an ImageCollection with a specific EE projection or geometry:
 
 ```python
-ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
+ic = ee.ImageCollection('ee://ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
 leg1 = ee.Geometry.Rectangle(113.33, -43.63, 153.56, -10.66)
-ds = xarray.open_dataset(ic, engine='ee',
-                         projection=ic.first().select(0).projection(), geometry=leg1)
+ds = xarray.open_dataset(
+    ic,
+    engine='ee',
+    projection=ic.first().select(0).projection(),
+    geometry=leg1
+)
 ```
 
 Open multiple ImageCollections into one `xarray.Dataset`, all with the same projection:
 
 ```python
-ds = xarray.open_mfdataset(['ECMWF/ERA5_LAND/HOURLY', 'NASA/GDDP-CMIP6'],
+ds = xarray.open_mfdataset(['ee://ECMWF/ERA5_LAND/HOURLY', 'ee://NASA/GDDP-CMIP6'],
                            engine='ee', crs='EPSG:4326', scale=0.25)
 ```
 

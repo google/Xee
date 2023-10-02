@@ -23,6 +23,7 @@ import functools
 import math
 import os
 from typing import Any, Iterable, Literal, Optional, Union
+from urllib import parse
 import warnings
 
 import affine
@@ -664,6 +665,16 @@ class EarthEngineBackendArray(backends.BackendArray):
 class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
   """Backend for Earth Engine."""
 
+  def _parse(self, filename_or_obj: Union[str, os.PathLike[Any]]) -> str:
+    input_ = str(filename_or_obj).removeprefix('ee::')
+    parsed = parse.urlparse(input_)
+    if parsed.scheme and parsed.scheme != 'ee':
+      raise ValueError(
+          'uri must follow the format `ee://<image/collection/path>` or '
+          '`ee::<image/collection/path>`.'
+      )
+    return f'{parsed.netloc}{parsed.path}'
+
   def guess_can_open(
       self,
       filename_or_obj: Union[str, os.PathLike[Any], ee.ImageCollection]
@@ -671,9 +682,10 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
     """Returns True if the candidate is a valid ImageCollection."""
     if isinstance(filename_or_obj, ee.ImageCollection):
       return True
+    uri = self._parse(filename_or_obj)
     # check if an image collection is in the earth engine catalog:
     try:
-      ee.data.listAssets({'parent': str(filename_or_obj), 'pageSize': 1})
+      ee.data.listAssets({'parent': uri, 'pageSize': 1})
       return True
     except ee.EEException:
       return False
@@ -745,7 +757,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
 
     collection = (
         filename_or_obj if isinstance(filename_or_obj, ee.ImageCollection)
-        else ee.ImageCollection(str(filename_or_obj))
+        else ee.ImageCollection(self._parse(filename_or_obj))
     )
 
     store = EarthEngineStore.open(

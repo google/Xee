@@ -238,6 +238,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertFalse(
         self.entry.guess_can_open('LANDSAT/SomeRandomCollection/C01/T1')
     )
+    self.assertTrue(self.entry.guess_can_open('ee://LANDSAT/LC08/C01/T1'))
+    self.assertTrue(self.entry.guess_can_open('ee::LANDSAT/LC08/C01/T1'))
 
   def test_guess_can_open__image_collection(self):
     ic = ee.ImageCollection('LANDSAT/LC08/C01/T1').filterDate(
@@ -325,6 +327,26 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
     self.assertEqual(ds.dims, {'time': 4248, 'lon': 3600, 'lat': 1799})
     self.assertNotEqual(ds.dims, standard_ds.dims)
+
+  def test_parses_ee_url(self):
+    ds = self.entry.open_dataset(
+        'ee://LANDSAT/LC08/C01/T1',
+        drop_variables=tuple(f'B{i}' for i in range(3, 12)),
+        scale=25.0,  # in degrees
+        n_images=3,
+    )
+    self.assertEqual(
+        dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8}
+    )
+    ds = self.entry.open_dataset(
+        'ee::LANDSAT/LC08/C01/T1',
+        drop_variables=tuple(f'B{i}' for i in range(3, 12)),
+        scale=25.0,  # in degrees
+        n_images=3,
+    )
+    self.assertEqual(
+        dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8}
+    )
 
 
 if __name__ == '__main__':
