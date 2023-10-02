@@ -239,7 +239,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
         self.entry.guess_can_open('LANDSAT/SomeRandomCollection/C01/T1')
     )
     self.assertTrue(self.entry.guess_can_open('ee://LANDSAT/LC08/C01/T1'))
-    self.assertTrue(self.entry.guess_can_open('ee::LANDSAT/LC08/C01/T1'))
+    self.assertTrue(self.entry.guess_can_open('ee:LANDSAT/LC08/C01/T1'))
+    self.assertFalse(self.entry.guess_can_open('ee::LANDSAT/LC08/C01/T1'))
 
   def test_guess_can_open__image_collection(self):
     ic = ee.ImageCollection('LANDSAT/LC08/C01/T1').filterDate(
@@ -339,7 +340,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8}
     )
     ds = self.entry.open_dataset(
-        'ee::LANDSAT/LC08/C01/T1',
+        'ee:LANDSAT/LC08/C01/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=25.0,  # in degrees
         n_images=3,

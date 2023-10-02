@@ -679,12 +679,11 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
   """Backend for Earth Engine."""
 
   def _parse(self, filename_or_obj: Union[str, os.PathLike[Any]]) -> str:
-    input_ = str(filename_or_obj).removeprefix('ee::')
-    parsed = parse.urlparse(input_)
+    parsed = parse.urlparse(str(filename_or_obj))
     if parsed.scheme and parsed.scheme != 'ee':
       raise ValueError(
           'uri must follow the format `ee://<image/collection/path>` or '
-          '`ee::<image/collection/path>`.'
+          '`ee:<image/collection/path>`.'
       )
     return f'{parsed.netloc}{parsed.path}'
 
