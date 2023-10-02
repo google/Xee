@@ -109,22 +109,22 @@ class EarthEngineStore(common.AbstractDataStore):
         'primary_dim_property', 'system:time_start'
     )
 
-    n_images, props, img_info = ee.List([
+    n_images, props, img_info, imgs_list = ee.List([
         self.image_collection.size(),
         self.image_collection.toDictionary(),
         self.image_collection.first(),
+        (
+            self.image_collection.reduceColumns(
+                ee.Reducer.toList(), ['system:id']
+            ).get('list')
+        ),
     ]).getInfo()
 
-    self._images_list = (
-        self.image_collection
-        .reduceColumns(ee.Reducer.toList(), ['system:id'])
-        .get('list')
-        .getInfo()
-    )
     self.n_images = n_images
     self._props = props
     #  Metadata should apply to all imgs.
     self._img_info: types.ImageInfo = img_info
+    self.image_ids = imgs_list
 
     projection = ee_kwargs.get('projection')
     proj = {}
@@ -329,9 +329,6 @@ class EarthEngineStore(common.AbstractDataStore):
     ]
 
     return utils.FrozenDict(vars_ + coords)
-
-  def get_images_list(self):
-    return self._images_list
 
   def close(self) -> None:
     del self.image_collection
@@ -544,7 +541,17 @@ class EarthEngineBackendArray(backends.BackendArray):
     # Get the right range of Images in the collection, either a single image or
     # a range of images...
     start, stop, stride = image_slice.indices(self.shape[0])
-    imgs = self.store.get_images_list()[start:stop:stride]
+
+    # If the input images have IDs, just slice them. Otherwise, we need to do
+    # an expensive `toList()` operation.
+    if self.store.image_ids:
+      imgs = self.store.image_ids[start:stop:stride]
+    else:
+      # TODO(alxr, mahrsee): Find a way to make this case more efficient.
+      list_range = stop - start
+      col0 = self.store.image_collection
+      imgs = col0.toList(list_range, offset=start).slice(0, list_range, stride)
+
     col = ee.ImageCollection(imgs)
 
     # For a more efficient slice of the series of images, we reduce each
