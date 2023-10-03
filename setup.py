@@ -23,6 +23,7 @@ import setuptools
 #     'sphinx_rtd_theme',
 #     'scipy',
 # ]
+
 tests_requires = [
     'absl-py',
     'pytest',
@@ -30,8 +31,10 @@ tests_requires = [
 ]
 
 examples_require = [
+    'apache_beam[gcp]',
     'xarray-beam',
     'absl-py',
+    'gcsfs',
 ]
 
 setuptools.setup(

@@ -1,0 +1,1 @@
+xee[examples] @ git+https://github.com/google/xee.git
