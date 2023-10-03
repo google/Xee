@@ -85,30 +85,48 @@ class EarthEngineStore(common.AbstractDataStore):
       mode: Literal['r'] = 'r',
       chunk_store: Chunks = None,
       n_images: int = -1,
-      **ee_kwargs: ...,
+      crs: Optional[str] = None,
+      scale: Optional[float] = None,
+      projection: Optional[ee.Projection] = None,
+      geometry: Optional[ee.Geometry] = None,
+      primary_dim_name: Optional[str] = None,
+      primary_dim_property: Optional[str] = None,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
           f'mode {mode!r} is invalid: data can only be read from Earth Engine.'
       )
 
-    return cls(image_collection, chunk_store, n_images, **ee_kwargs)
+    return cls(
+        image_collection,
+        chunks=chunk_store,
+        n_images=n_images,
+        crs=crs,
+        scale=scale,
+        projection=projection,
+        geometry=geometry,
+        primary_dim_name=primary_dim_name,
+        primary_dim_property=primary_dim_property,
+    )
 
   def __init__(
       self,
       image_collection: ee.ImageCollection,
       chunks: Chunks = None,
       n_images: int = -1,
-      **ee_kwargs: ...,
+      crs: Optional[str] = None,
+      scale: Union[float, int, None] = None,
+      projection: Optional[ee.Projection] = None,
+      geometry: Optional[ee.Geometry] = None,
+      primary_dim_name: Optional[str] = None,
+      primary_dim_property: Optional[str] = None,
   ):
     self.image_collection = image_collection
     if n_images != -1:
       self.image_collection = image_collection.limit(n_images)
 
-    self.primary_dim_name = ee_kwargs.get('primary_dim_name', 'time')
-    self.primary_dim_property = ee_kwargs.get(
-        'primary_dim_property', 'system:time_start'
-    )
+    self.primary_dim_name = primary_dim_name or 'time'
+    self.primary_dim_property = primary_dim_property or 'system:time_start'
 
     n_images, props, img_info, imgs_list = ee.List([
         self.image_collection.size(),
@@ -127,15 +145,12 @@ class EarthEngineStore(common.AbstractDataStore):
     self._img_info: types.ImageInfo = img_info
     self.image_ids = imgs_list
 
-    projection = ee_kwargs.get('projection')
     proj = {}
     # TODO(alxr): See if we can factor this into the above getInfo() call.
     if isinstance(projection, ee.Projection):
       proj = projection.getInfo()
 
-    self.crs_arg = ee_kwargs.get(
-        'crs', proj.get('crs', proj.get('wkt', 'EPSG:4326'))
-    )
+    self.crs_arg = crs or proj.get('crs', proj.get('wkt', 'EPSG:4326'))
     self.crs = CRS(self.crs_arg)
     # Gets the unit i.e. meter, degree etc.
     self.scale_units = self.crs.axis_info[0].unit_name
@@ -152,7 +167,8 @@ class EarthEngineStore(common.AbstractDataStore):
     # Scale in the projection's units. Typically, either meters or degrees.
     # If we use the default CRS i.e. EPSG:3857, the units is in meters.
     default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
-    scale = ee_kwargs.get('scale', default_scale)
+    if scale is None:
+      scale = default_scale
     default_transform = affine.Affine.scale(scale)
 
     transform = affine.Affine(*proj.get('transform', default_transform)[:6])
@@ -163,9 +179,8 @@ class EarthEngineStore(common.AbstractDataStore):
     # or the image geometry) and translate it to the representation that will be
     # used for all internal `computePixels()` calls.
     try:
-      geomentry = ee_kwargs.get('geometry')
-      if isinstance(geomentry, ee.Geometry):
-        x_min_0, y_min_0, x_max_0, y_max_0 = geometry_to_bounds(geomentry)
+      if isinstance(geometry, ee.Geometry):
+        x_min_0, y_min_0, x_max_0, y_max_0 = geometry_to_bounds(geometry)
       else:
         x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
     except AttributeError:
@@ -183,8 +198,6 @@ class EarthEngineStore(common.AbstractDataStore):
     if _bounds_are_invalid(x_max, y_max, self.scale_units == 'degree'):
       x_max, y_max = self.project(x_max_0, y_max_0)
     self.bounds = x_min, y_min, x_max, y_max
-
-    self.ee_kwargs = ee_kwargs
 
     self.chunks = self.PREFERRED_CHUNKS.copy()
     if chunks == -1:
@@ -702,7 +715,12 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       use_cftime: Optional[bool] = None,
       concat_characters: bool = True,
       decode_coords: bool = True,
-      **kwargs: Any,
+      crs: Optional[str] = None,
+      scale: Union[float, int, None] = None,
+      projection: Optional[ee.Projection] = None,
+      geometry: Optional[ee.Geometry] = None,
+      primary_dim_name: Optional[str] = None,
+      primary_dim_property: Optional[str] = None,
   ) -> xarray.Dataset:
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -741,15 +759,27 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         or individual variables as coordinate variables. - "all": Set variables
         referred to in  ``'grid_mapping'``, ``'bounds'`` and other attributes as
         coordinate variables.
-      **kwargs: Arguments to pass into the EarthEngine array backend, such as:
-        crs, scale, projection, geometry, primary_dim_name or
-        primary_dim_property (i.e. ee.Image property on the basis of which
-        primary dimension is defined). We recommend passing an `ee.Projection`
-        via projection or manually specifying crs and scale, but not both. By
-        default, crs is EPSG:4326 & scale is 1° when the scale unit (i.e. CRS's
-        UoM) is in degrees, or scale is 10,000 when the scale unit (i.e. CRS's 
-        UoM) is in meters, or scale is 1 for any other units. By default, 
-        primary_dim_name is 'time' & primary_dim_property is system:time_start'.
+      crs (optional): The coordinate reference system (a CRS code or WKT
+        string). This defines the frame of reference to coalesce all variables
+        upon opening. By default, data is opened with `EPSG:4326'.
+      scale (optional): The scale in the `crs` or `projection`'s units of
+        measure -- either meters or degrees. This defines the scale that all
+        data is represented in upon opening. By default, the scale is 1° when 
+        the CRS is in degrees or 10,000 when in meters.
+      projection (optional): Specify an `ee.Projection` object to define the
+        `scale` and `crs` (or other coordinate reference system) with which to
+        coalesce all variables upon opening. By default, the scale and reference
+        system is set by the the `crs` and `scale` arguments.
+      geometry (optional): Specify an `ee.Geometry` to define the regional
+        bounds when opening the data. When not set, the bounds are defined
+        by the CRS's 'area_of_use` boundaries. If those aren't present, the
+        bounds are derived from the geometry of the first image of the
+        collection.
+      primary_dim_name (optional): Override the name of the primary dimension of
+        the output Dataset. By default, the name is 'time'.
+      primary_dim_property (optional): Override the `ee.Image` property for
+        which to derive the values of the primary dimension. By default, this is
+        'system:time_start'.
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
@@ -764,7 +794,12 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         collection,
         chunk_store=chunk_store,
         n_images=n_images,
-        **kwargs,
+        crs=crs,
+        scale=scale,
+        projection=projection,
+        geometry=geometry,
+        primary_dim_name=primary_dim_name,
+        primary_dim_property=primary_dim_property,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
