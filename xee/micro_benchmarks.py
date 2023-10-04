@@ -18,6 +18,7 @@ These are intended to always be run manually since they are more expensive test
 to run.
 """
 
+import cProfile
 import os
 import tempfile
 import timeit
@@ -32,6 +33,7 @@ import ee
 
 REPEAT = 10
 LOOPS = 1
+PROFILE = False
 
 
 def init_ee_for_tests():
@@ -74,6 +76,8 @@ def main(_: list[str]) -> None:
   init_ee_for_tests()
   print(f'[{REPEAT} time(s) with {LOOPS} loop(s) each.]')
   for fn in ['open_dataset()', 'open_and_chunk()', 'open_and_write()']:
+    if PROFILE:
+      cProfile.run(fn)
     timer = timeit.Timer(fn, globals=globals())
     res = timer.repeat(REPEAT, number=LOOPS)
     avg, std, best, worst = np.mean(res), np.std(res), np.min(res), np.max(res)
