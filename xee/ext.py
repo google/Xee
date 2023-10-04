@@ -763,7 +763,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         upon opening. By default, data is opened with `EPSG:4326'.
       scale (optional): The scale in the `crs` or `projection`'s units of
         measure -- either meters or degrees. This defines the scale that all
-        data is represented in upon opening. By default, the scale is 1° when 
+        data is represented in upon opening. By default, the scale is 1° when
         the CRS is in degrees or 10,000 when in meters.
       projection (optional): Specify an `ee.Projection` object to define the
         `scale` and `crs` (or other coordinate reference system) with which to

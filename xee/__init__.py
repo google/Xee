@@ -34,4 +34,11 @@ Needs to be done:
 Contributions are welcome! Before committing your change, please check if there
 is an existing Github issue.
 """
+import importlib
+import sys
+
 from .ext import *
+
+
+assert sys.version_info >= (3, 8)
+__version__ = importlib.metadata.version('xee') or 'unknown'
