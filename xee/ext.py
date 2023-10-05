@@ -78,6 +78,8 @@ class EarthEngineStore(common.AbstractDataStore):
       'meter': ('X', 'Y'),
   }
 
+  DEFAULT_MASK_VALUE = np.iinfo(np.int32).max
+
   @classmethod
   def open(
       cls,
@@ -91,6 +93,7 @@ class EarthEngineStore(common.AbstractDataStore):
       geometry: Optional[ee.Geometry] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
+      mask_value: Optional[float] = None,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -107,6 +110,7 @@ class EarthEngineStore(common.AbstractDataStore):
         geometry=geometry,
         primary_dim_name=primary_dim_name,
         primary_dim_property=primary_dim_property,
+        mask_value=mask_value,
     )
 
   def __init__(
@@ -120,6 +124,7 @@ class EarthEngineStore(common.AbstractDataStore):
       geometry: Optional[ee.Geometry] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
+      mask_value: Optional[float] = None,
   ):
     self.image_collection = image_collection
     if n_images != -1:
@@ -196,6 +201,7 @@ class EarthEngineStore(common.AbstractDataStore):
       self.chunks = self._assign_index_chunks(chunks)
 
     self.preferred_chunks = self._assign_preferred_chunks()
+    self.mask_value = mask_value or self.DEFAULT_MASK_VALUE
 
   @functools.cached_property
   def get_info(self) -> dict[str, Any]:
@@ -496,6 +502,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     Returns:
       An numpy array containing the pixels computed based on the given image.
     """
+    image = image.unmask(self.store.mask_value)
     params = {
         'expression': image,
         'fileFormat': 'NUMPY_NDARRAY',
@@ -510,6 +517,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     arr = np.array(raw.tolist(), dtype=self.dtype)
     data = arr.T
 
+    # Sets EE nodata masked value to NaNs.
+    data = np.where(data == self.store.mask_value, np.nan, data)
     return data
 
   def __getitem__(self, key: indexing.ExplicitIndexer) -> np.typing.ArrayLike:
@@ -759,6 +768,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       geometry: Optional[ee.Geometry] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
+      ee_mask_value: Optional[float] = None,
   ) -> xarray.Dataset:
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -818,6 +828,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       primary_dim_property (optional): Override the `ee.Image` property for
         which to derive the values of the primary dimension. By default, this is
         'system:time_start'.
+      ee_mask_value (optional): Value to mask to EE nodata values. By default,
+        this is 'np.iinfo(np.int32).max' i.e. 2147483647.
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
@@ -838,6 +850,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         geometry=geometry,
         primary_dim_name=primary_dim_name,
         primary_dim_property=primary_dim_property,
+        mask_value=ee_mask_value,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
