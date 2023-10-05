@@ -20,8 +20,10 @@ from __future__ import annotations
 
 import concurrent.futures
 import functools
+import importlib
 import math
 import os
+import sys
 from typing import Any, Iterable, Literal, Optional, Union
 from urllib import parse
 import warnings
@@ -39,6 +41,13 @@ from xarray.core import utils
 from xee import types
 
 import ee
+
+
+assert sys.version_info >= (3, 8)
+try:
+  __version__ = importlib.metadata.version('xee') or 'unknown'
+except importlib.metadata.PackageNotFoundError:
+  __version__ = 'unknown'
 
 
 # Chunks type definition taken from Xarray
@@ -385,12 +394,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
 def _bounds_are_invalid(x: float, y: float, is_degrees=False) -> bool:
   """Check for obviously bad x and y projection values."""
-  bad_num = (
-      math.isnan(x)
-      or math.isnan(y)
-      or math.isinf(x)
-      or math.isinf(y)
-  )
+  bad_num = math.isnan(x) or math.isnan(y) or math.isinf(x) or math.isinf(y)
 
   invalid_degree = (
       y < -90.0
@@ -727,8 +731,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
     return f'{parsed.netloc}{parsed.path}'
 
   def guess_can_open(
-      self,
-      filename_or_obj: Union[str, os.PathLike[Any], ee.ImageCollection]
+      self, filename_or_obj: Union[str, os.PathLike[Any], ee.ImageCollection]
   ) -> bool:
     """Returns True if the candidate is a valid ImageCollection."""
     if isinstance(filename_or_obj, ee.ImageCollection):
@@ -809,10 +812,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         coalesce all variables upon opening. By default, the scale and reference
         system is set by the the `crs` and `scale` arguments.
       geometry (optional): Specify an `ee.Geometry` to define the regional
-        bounds when opening the data. When not set, the bounds are defined
-        by the CRS's 'area_of_use` boundaries. If those aren't present, the
-        bounds are derived from the geometry of the first image of the
-        collection.
+        bounds when opening the data. When not set, the bounds are defined by
+        the CRS's 'area_of_use` boundaries. If those aren't present, the bounds
+        are derived from the geometry of the first image of the collection.
       primary_dim_name (optional): Override the name of the primary dimension of
         the output Dataset. By default, the name is 'time'.
       primary_dim_property (optional): Override the `ee.Image` property for
@@ -824,7 +826,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
     """
 
     collection = (
-        filename_or_obj if isinstance(filename_or_obj, ee.ImageCollection)
+        filename_or_obj
+        if isinstance(filename_or_obj, ee.ImageCollection)
         else ee.ImageCollection(self._parse(filename_or_obj))
     )
 
