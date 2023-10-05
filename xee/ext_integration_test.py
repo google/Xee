@@ -336,18 +336,27 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(
-        dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8}
-    )
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
     ds = self.entry.open_dataset(
         'ee:LANDSAT/LC08/C01/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(
-        dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8}
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+
+  def test_data_sanity_check(self):
+    # This simple test uncovered a bug with the default definition of `scale`.
+    # The issue was that `scale_y` was not being set to a negative value by
+    # default. This lead to a junk projection calculation and zeroing all data.
+    era5 = xr.open_dataset(
+        'ECMWF/ERA5_LAND/HOURLY',
+        engine=xee.EarthEngineBackendEntrypoint,
+        n_images=1,
     )
+    temperature_2m = era5.isel(time=0).temperature_2m
+    self.assertNotEqual(temperature_2m.min(), 0.0)
+    self.assertNotEqual(temperature_2m.max(), 0.0)
 
 
 if __name__ == '__main__':
