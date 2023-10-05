@@ -156,7 +156,7 @@ class EarthEngineStore(common.AbstractDataStore):
     default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
     if scale is None:
       scale = default_scale
-    default_transform = affine.Affine.scale(scale)
+    default_transform = affine.Affine.scale(scale, -1 * scale)
 
     transform = affine.Affine(*proj.get('transform', default_transform)[:6])
     self.scale_x, self.scale_y = transform.a, transform.e
