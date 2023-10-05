@@ -53,8 +53,8 @@ except importlib.metadata.PackageNotFoundError:
 # Chunks type definition taken from Xarray
 # https://github.com/pydata/xarray/blob/f13da94db8ab4b564938a5e67435ac709698f1c9/xarray/core/types.py#L173
 #
-# The 'int' case let's users specify `chunks=-1`, which means to load the data
-# as a single chunk.
+# The 'int' case let's users specify `io_chunks=-1`, which means to load the
+# data as a single chunk.
 Chunks = Union[int, dict[Any, Any], Literal['auto'], None]
 
 
@@ -757,7 +757,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       self,
       filename_or_obj: Union[str, os.PathLike[Any], ee.ImageCollection],
       drop_variables: Optional[tuple[str, ...]] = None,
-      chunk_store: Optional[Any] = None,
+      io_chunks: Optional[Any] = None,
       n_images: int = -1,
       mask_and_scale: bool = True,
       decode_times: bool = True,
@@ -779,7 +779,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       filename_or_obj: An asset ID for an ImageCollection, or an
         ee.ImageCollection object.
       drop_variables (optional): Variables or bands to drop before opening.
-      chunk_store (optioanl): how to break up the data into chunks.
+      io_chunks (optional): Specifies the chunking strategy for loading data
+        from EE.
       n_images (optional): The max number of EE images in the collection to
         open. Useful when there are a large number of images in the collection
         since calculating collection size can be slow. -1 indicates that all
@@ -845,7 +846,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
 
     store = EarthEngineStore.open(
         collection,
-        chunk_store=chunk_store,
+        chunk_store=io_chunks,
         n_images=n_images,
         crs=crs,
         scale=scale,
