@@ -838,6 +838,10 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       An xarray.Dataset that streams in remote data from Earth Engine.
     """
 
+    user_agent = f'Xee/{__version__}'
+    if ee.data.getUserAgent() != user_agent:
+      ee.data.setUserAgent(user_agent)
+
     collection = (
         filename_or_obj
         if isinstance(filename_or_obj, ee.ImageCollection)
