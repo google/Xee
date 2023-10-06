@@ -2,14 +2,14 @@
 
 ![Xee Logo](docs/xee-logo.png)
 
-_A Google Earth Engine backend for Xarray | An Xarray Client for Google Earth Engine._
+_An Xarray extension for Google Earth Engine._
 
 ## How to use
 
 Install with pip (distributions on PyPi will come soon):
 
 ```shell
-pip install git+https://github.com/googlestaging/xee.git
+pip install git+https://github.com/google/xee.git
 ```
 
 Then, authenticate Earth Engine:
@@ -64,7 +64,7 @@ ds = xarray.open_mfdataset(['ee://ECMWF/ERA5_LAND/HOURLY', 'ee://NASA/GDDP-CMIP6
                            engine='ee', crs='EPSG:4326', scale=0.25)
 ```
 
-See [examples/](examples/) for more uses and integrations.
+See [examples/](examples/) or [docs](docs/) for more uses and integrations.
 
 ## License
 
