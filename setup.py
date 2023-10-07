@@ -50,7 +50,7 @@ setuptools.setup(
     },
     url='https://github.com/google/xee',
     packages=setuptools.find_packages(exclude=['examples']),
-    python_requires='>=3.8',
+    python_requires='>=3.9',
     entry_points={
         'xarray.backends': ['ee=xee:EarthEngineBackendEntrypoint'],
     }
