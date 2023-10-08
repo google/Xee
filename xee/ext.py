@@ -634,7 +634,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     return target_image
 
   def _raw_indexing_method(
-      self, key: tuple[Union[int, slice], ...]
+      self, key: tuple[Union[int, slice], ...], executor_kwargs: Optional[dict] = None
   ) -> np.typing.ArrayLike:
     key, squeeze_axes = self._key_to_slices(key)
 
@@ -682,8 +682,11 @@ class EarthEngineBackendArray(backends.BackendArray):
         for _ in range(shape[0])
     ]
 
-    # TODO(#11): Allow users to configure this via kwargs.
-    with concurrent.futures.ThreadPoolExecutor() as pool:
+     # If executor_kwargs is None, use an empty dictionary
+    if executor_kwargs is None:
+      executor_kwargs = {}
+    # Pass executor_kwargs to ThreadPoolExecutor
+    with concurrent.futures.ThreadPoolExecutor(**executor_kwargs) as pool:
       for (i, j, k), arr in pool.map(
           self._make_tile, self._tile_indexes(key[0], bbox)
       ):
