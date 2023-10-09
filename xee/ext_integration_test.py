@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 r"""Integration tests for the Google Earth Engine backend for Xarray."""
-
 import pathlib
 
 from absl.testing import absltest
@@ -358,6 +357,23 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertNotEqual(temperature_2m.min(), 0.0)
     self.assertNotEqual(temperature_2m.max(), 0.0)
 
+  def test_validate_band_attrs(self):
+    ds = self.entry.open_dataset(
+        'ee:LANDSAT/LC08/C01/T1',
+        drop_variables=tuple(f'B{i}' for i in range(3, 12)),
+        scale=25.0,  # in degrees
+        n_images=3,
+    )
+    valid_types = (str, int, float, complex, np.ndarray, np.number, list, tuple)
+
+    # Check attrs on the dataset itself
+    for _, value in ds.attrs.items():
+      self.assertIsInstance(value, valid_types)
+
+    # Check attrs on each variable within the dataset
+    for variable in ds.variables.values():
+      for _, value in variable.attrs.items():
+        self.assertIsInstance(value, valid_types)
 
 if __name__ == '__main__':
   absltest.main()

@@ -89,6 +89,17 @@ class EarthEngineStore(common.AbstractDataStore):
 
   DEFAULT_MASK_VALUE = np.iinfo(np.int32).max
 
+  ATTRS_VALID_TYPES = (
+      str,
+      int,
+      float,
+      complex,
+      np.ndarray,
+      np.number,
+      list,
+      tuple
+  )
+
   @classmethod
   def open(
       cls,
@@ -164,7 +175,7 @@ class EarthEngineStore(common.AbstractDataStore):
         coordinates=f'{self.primary_dim_name} {x_dim_name} {y_dim_name}',
         crs=self.crs_arg,
     )
-
+    self._props = self._make_attrs_valid(self._props)
     # Scale in the projection's units. Typically, either meters or degrees.
     # If we use the default CRS i.e. EPSG:3857, the units is in meters.
     default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
@@ -324,13 +335,28 @@ class EarthEngineStore(common.AbstractDataStore):
   def _bands(self) -> list[str]:
     return [b['id'] for b in self._img_info['bands']]
 
+  def _make_attrs_valid(
+      self, attrs: dict[str, Any]
+  ) -> dict[
+      str,
+      Union[
+          str, int, float, complex, np.ndarray, np.number, list[Any], tuple[Any]
+      ],
+  ]:
+    return {
+        key: (str(value)
+              if not isinstance(value, self.ATTRS_VALID_TYPES)
+              else value)
+        for key, value in attrs.items()
+    }
+
   def open_store_variable(self, name: str) -> xarray.Variable:
     arr = EarthEngineBackendArray(name, self)
     data = indexing.LazilyIndexedArray(arr)
 
     x_dim_name, y_dim_name = self.dimension_names
     dimensions = [self.primary_dim_name, x_dim_name, y_dim_name]
-    attrs = self._band_attrs(name)
+    attrs = self._make_attrs_valid(self._band_attrs(name))
     encoding = {
         'source': attrs['id'],
         'scale_factor': arr.scale,
