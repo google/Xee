@@ -43,14 +43,14 @@ setuptools.setup(
     license='Apache 2.0',
     author='Google LLC',
     author_email='noreply@google.com',
-    install_requires=['xarray', 'earthengine-api', 'pyproj', 'affine'],
+    install_requires=['xarray', 'earthengine-api>=0.1.374', 'pyproj', 'affine'],
     extras_require={
         'tests': tests_requires,
         'examples': examples_require,
     },
     url='https://github.com/google/xee',
     packages=setuptools.find_packages(exclude=['examples']),
-    python_requires='>=3.8',
+    python_requires='>=3.9',
     entry_points={
         'xarray.backends': ['ee=xee:EarthEngineBackendEntrypoint'],
     }
