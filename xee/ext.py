@@ -70,9 +70,9 @@ class EarthEngineStore(common.AbstractDataStore):
 
   # "Safe" default chunks that won't exceed the request limit.
   PREFERRED_CHUNKS: dict[str, int] = {
-      'index': 24,
+      'index': 48,
       'width': 512,
-      'height': 512,
+      'height': 256,
   }
 
   SCALE_UNITS: dict[str, int] = {
