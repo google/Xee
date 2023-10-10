@@ -216,10 +216,13 @@ class EEBackendArrayTest(absltest.TestCase):
         return ee.data.computePixels(params)
 
     arr = xee.EarthEngineBackendArray('B5', self.store)
-    grid = arr._project((0, 10, 0, 10))
+    grid = self.store.project((0, 10, 0, 10))
     getter = ErroneousPixelsGetter()
-    arr._to_array(
-        self.store.image_collection.first(), pixels_getter=getter, grid=grid
+    self.store.image_to_array(
+        self.store.image_collection.first(),
+        pixels_getter=getter,
+        grid=grid,
+        dtype=arr.dtype,
     )
 
     self.assertEqual(getter.count, 3)

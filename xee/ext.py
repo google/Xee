@@ -65,6 +65,13 @@ _BUILTIN_DTYPES = {
 }
 
 
+class _GetComputedPixels:
+  """Wrapper around `ee.data.computePixels()` to make retries simple."""
+
+  def __getitem__(self, params) -> np.ndarray:
+    return ee.data.computePixels(params)
+
+
 class EarthEngineStore(common.AbstractDataStore):
   """Read-only Data Store for Google Earth Engine."""
 
@@ -205,12 +212,12 @@ class EarthEngineStore(common.AbstractDataStore):
       )
     # We add and subtract the scale to solve an off-by-one error. With this
     # adjustment, we achieve parity with a pure `computePixels()` call.
-    x_min, y_min = self.project(x_min_0 - self.scale_x, y_min_0)
+    x_min, y_min = self.transform(x_min_0 - self.scale_x, y_min_0)
     if _bounds_are_invalid(x_min, y_min, self.scale_units == 'degree'):
-      x_min, y_min = self.project(x_min_0, y_min_0)
-    x_max, y_max = self.project(x_max_0, y_max_0 + self.scale_y)
+      x_min, y_min = self.transform(x_min_0, y_min_0)
+    x_max, y_max = self.transform(x_max_0, y_max_0 + self.scale_y)
     if _bounds_are_invalid(x_max, y_max, self.scale_units == 'degree'):
-      x_max, y_max = self.project(x_max_0, y_max_0)
+      x_max, y_max = self.transform(x_max_0, y_max_0)
     self.bounds = x_min, y_min, x_max, y_max
 
     self.chunks = self.PREFERRED_CHUNKS.copy()
@@ -318,11 +325,95 @@ class EarthEngineStore(common.AbstractDataStore):
       chunks[y_dim_name] = self.chunks['height']
     return chunks
 
-  def project(self, xs: float, ys: float) -> tuple[float, float]:
+  def transform(self, xs: float, ys: float) -> tuple[float, float]:
     transformer = pyproj.Transformer.from_crs(
         self.crs.geodetic_crs, self.crs, always_xy=True
     )
     return transformer.transform(xs, ys)
+
+  def project(self, bbox: types.BBox) -> types.Grid:
+    """Translate a bounding box (pixel space) to a grid (projection space).
+
+    Here, we calculate a simple affine transformation to get a specific region
+    when computing pixels.
+
+    Args:
+      bbox: Bounding box in pixel space.
+
+    Returns:
+      A Grid, to be passed into `computePixels()`'s "grid" keyword. Defines the
+        appropriate region of data to return according to the Array's configured
+        projection and scale.
+    """
+    # The origin of the image is in the top left corner. X is the minimum value
+    # and Y is the maximum value.
+    x_origin, _, _, y_origin = self.bounds  # x_min, x_max, y_min, y_max
+    x_start, y_start, x_end, y_end = bbox
+    width = x_end - x_start
+    height = y_end - y_start
+
+    return {
+        # The size of the bounding box. The affine transform and project will be
+        # applied, so we can think in terms of pixels.
+        'dimensions': {
+            'width': width,
+            'height': height,
+        },
+        'affineTransform': {
+            # Since the origin is in the top left corner, we want to translate
+            # the start of the grid to the positive direction for X and the
+            # negative direction for Y.
+            'translateX': x_origin + self.scale_x * x_start,
+            'translateY': y_origin + self.scale_y * y_start,
+            # Define the scale for each pixel (e.g. the number of meters between
+            # each value).
+            'scaleX': self.scale_x,
+            'scaleY': self.scale_y,
+        },
+        'crsCode': self.crs_arg,
+    }
+
+  def image_to_array(
+      self,
+      image: ee.Image,
+      pixels_getter=_GetComputedPixels(),
+      dtype=np.float32,
+      **kwargs,
+  ) -> np.ndarray:
+    """Gets the pixels for a given image as a numpy array.
+
+    This method includes exponential backoff (with jitter) when trying to get
+    pixel data.
+
+    Args:
+      image: An EE image.
+      pixels_getter: An object whose `__getitem__()` method calls
+        `computePixels()`.
+      dtype: a np.dtype. The returned array will be in this dtype.
+      **kwargs: Additional settings for `params` in `computePixels(params)`. For
+        example, a `grid` dictionary.
+
+    Returns:
+      An numpy array containing the pixels computed based on the given image.
+    """
+    image = image.unmask(self.mask_value)
+    params = {
+        'expression': image,
+        'fileFormat': 'NUMPY_NDARRAY',
+        **kwargs,
+    }
+    raw = common.robust_getitem(
+        pixels_getter, params, catch=ee.ee_exception.EEException
+    )
+
+    # TODO(#9): Find a way to make this more efficient. This is needed because
+    # `raw` is a structured array of all the same dtype (i.e. number of images).
+    arr = np.array(raw.tolist(), dtype=dtype)
+    data = arr.T
+
+    # Sets EE nodata masked value to NaNs.
+    data = np.where(data == self.mask_value, np.nan, data)
+    return data
 
   @functools.lru_cache()
   def _band_attrs(self, band_name: str) -> types.BandInfo:
@@ -403,9 +494,17 @@ class EarthEngineStore(common.AbstractDataStore):
           f'ImageCollection due to: {e}.'
       )
 
-    x_min_0, y_min_0, x_max_0, y_max_0 = self.bounds
-    width_coord = np.linspace(x_min_0, x_max_0, v0.shape[1])
-    height_coord = np.linspace(y_max_0, y_min_0, v0.shape[2])
+    lnglat_img = ee.Image.pixelLonLat()
+    lon_grid = self.project((0, 0, v0.shape[1], 1))
+    lat_grid = self.project((0, 0, 1, v0.shape[2]))
+    lon = self.image_to_array(
+        lnglat_img, grid=lon_grid, dtype=np.float32, bandIds=['longitude']
+    )
+    lat = self.image_to_array(
+        lnglat_img, grid=lat_grid, dtype=np.float32, bandIds=['latitude']
+    )
+    width_coord = np.squeeze(lon)
+    height_coord = np.squeeze(lat)
 
     x_dim_name, y_dim_name = self.dimension_names
 
@@ -478,13 +577,6 @@ def geometry_to_bounds(geom: ee.Geometry) -> types.Bounds:
   return _ee_bounds_to_bounds(bounds)
 
 
-class _GetComputedPixels:
-  """Wrapper around `ee.data.computePixels()` to make retries simple."""
-
-  def __getitem__(self, params) -> np.ndarray:
-    return ee.data.computePixels(params)
-
-
 class EarthEngineBackendArray(backends.BackendArray):
   """Array backend for Earth Engine."""
 
@@ -492,11 +584,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     self.variable_name = variable_name
     self.store = ee_store
 
-    self.scale_x = ee_store.scale_x
-    self.scale_y = ee_store.scale_y
     self.scale = ee_store.scale
-    self.crs_arg = ee_store.crs_arg
-    self.crs = ee_store.crs
     self.bounds = ee_store.bounds
 
     # It looks like different bands have different dimensions & transforms!
@@ -506,50 +594,13 @@ class EarthEngineBackendArray(backends.BackendArray):
 
     x_min, y_min, x_max, y_max = self.bounds
 
-    x_size = int(np.ceil((x_max - x_min) / np.abs(self.scale_x)))
-    y_size = int(np.ceil((y_max - y_min) / np.abs(self.scale_y)))
+    x_size = int(np.ceil((x_max - x_min) / np.abs(self.store.scale_x)))
+    y_size = int(np.ceil((y_max - y_min) / np.abs(self.store.scale_y)))
 
     self.shape = (ee_store.n_images, x_size, y_size)
     self._apparent_chunks = {k: 1 for k in self.store.PREFERRED_CHUNKS.keys()}
     if isinstance(self.store.chunks, dict):
       self._apparent_chunks = self.store.chunks.copy()
-
-  def _to_array(
-      self, image: ee.Image, pixels_getter=_GetComputedPixels(), **kwargs
-  ) -> np.ndarray:
-    """Gets the pixels for a given image as a numpy array.
-
-    This method includes exponential backoff (with jitter) when trying to get
-    pixel data.
-
-    Args:
-      image: An EE image.
-      pixels_getter: An object whose `__getitem__()` method calls
-        `computePixels()`.
-      **kwargs: Additional settings for `params` in `computePixels(params)`. For
-        example, a `grid` dictionary.
-
-    Returns:
-      An numpy array containing the pixels computed based on the given image.
-    """
-    image = image.unmask(self.store.mask_value)
-    params = {
-        'expression': image,
-        'fileFormat': 'NUMPY_NDARRAY',
-        **kwargs,
-    }
-    raw = common.robust_getitem(
-        pixels_getter, params, catch=ee.ee_exception.EEException
-    )
-
-    # TODO(#9): Find a way to make this more efficient. This is needed because
-    # `raw` is a structured array of all the same dtype (i.e. number of images).
-    arr = np.array(raw.tolist(), dtype=self.dtype)
-    data = arr.T
-
-    # Sets EE nodata masked value to NaNs.
-    data = np.where(data == self.store.mask_value, np.nan, data)
-    return data
 
   def __getitem__(self, key: indexing.ExplicitIndexer) -> np.typing.ArrayLike:
     return indexing.explicit_indexing_adapter(
@@ -558,48 +609,6 @@ class EarthEngineBackendArray(backends.BackendArray):
         indexing.IndexingSupport.BASIC,
         self._raw_indexing_method,
     )
-
-  def _project(self, bbox: types.BBox) -> types.Grid:
-    """Translate a bounding box (pixel space) to a grid (projection space).
-
-    Here, we calculate a simple affine transformation to get a specific region
-    when computing pixels.
-
-    Args:
-      bbox: Bounding box in pixel space.
-
-    Returns:
-      A Grid, to be passed into `computePixels()`'s "grid" keyword. Defines the
-        appropriate region of data to return according to the Array's configured
-        projection and scale.
-    """
-    # The origin of the image is in the top left corner. X is the minimum value
-    # and Y is the maximum value.
-    x_origin, _, _, y_origin = self.bounds  # x_min, x_max, y_min, y_max
-    x_start, y_start, x_end, y_end = bbox
-    width = x_end - x_start
-    height = y_end - y_start
-
-    return {
-        # The size of the bounding box. The affine transform and project will be
-        # applied, so we can think in terms of pixels.
-        'dimensions': {
-            'width': width,
-            'height': height,
-        },
-        'affineTransform': {
-            # Since the origin is in the top left corner, we want to translate
-            # the start of the grid to the positive direction for X and the
-            # negative direction for Y.
-            'translateX': x_origin + self.scale_x * x_start,
-            'translateY': y_origin + self.scale_y * y_start,
-            # Define the scale for each pixel (e.g. the number of meters between
-            # each value).
-            'scaleX': self.scale_x,
-            'scaleY': self.scale_y,
-        },
-        'crsCode': self.crs_arg,
-    }
 
   def _key_to_slices(
       self, key: tuple[Union[int, slice], ...]
@@ -676,7 +685,9 @@ class EarthEngineBackendArray(backends.BackendArray):
     # User does not want to use any chunks...
     if self.store.chunks == -1:
       target_image = self._slice_collection(key[0])
-      out = self._to_array(target_image, grid=self._project(bbox))
+      out = self.store.image_to_array(
+          target_image, grid=self.store.project(bbox), dtype=self.dtype
+      )
 
       if squeeze_axes:
         out = np.squeeze(out, squeeze_axes)
@@ -728,9 +739,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     """Get a numpy array from EE for a specific 3D bounding box (a 'tile')."""
     tile_idx, (istart, iend, *bbox) = tile_index
     target_image = self._slice_collection(slice(istart, iend))
-    return tile_idx, self._to_array(
-        target_image, grid=self._project(tuple(bbox))
-    )
+    return tile_idx, self.store.image_to_array(
+        target_image, grid=self.store.project(tuple(bbox)), dtype=self.dtype)
 
   def _tile_indexes(
       self, index_range: slice, bbox: types.BBox
