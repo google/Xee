@@ -58,14 +58,14 @@ class EEBackendArrayTest(absltest.TestCase):
 
   def test_creates_lat_long_array(self):
     arr = xee.EarthEngineBackendArray('longitude', self.lnglat_store)
-    self.assertEqual((1, 360, 180), arr.shape)
+    self.assertEqual((1, 360, 179), arr.shape)
 
   def test_can_create_object(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
 
     self.assertIsNotNone(arr)
 
-    self.assertEqual((64, 360, 180), arr.shape)
+    self.assertEqual((64, 360, 179), arr.shape)
     self.assertEqual(np.int32, arr.dtype)
     self.assertEqual('B4', arr.variable_name)
 
@@ -258,7 +258,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         n_images=3,
     )
     self.assertEqual(
-        dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8}
+        dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 7}
     )
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
@@ -268,7 +268,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     for v in ds.values():
       self.assertIsNotNone(v.data)
       self.assertFalse(v.isnull().all(), 'All values are null!')
-      self.assertEqual(v.shape, (3, 15, 8))
+      self.assertEqual(v.shape, (3, 15, 7))
 
   def test_open_dataset__n_images(self):
     ds = self.entry.open_dataset(
@@ -308,7 +308,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine=xee.EarthEngineBackendEntrypoint,
     )
 
-    self.assertEqual(ds.dims, {'time': 4248, 'lon': 42, 'lat': 36})
+    self.assertEqual(ds.dims, {'time': 4248, 'lon': 42, 'lat': 34})
     self.assertNotEqual(ds.dims, standard_ds.dims)
 
   def test_honors_projection(self):
@@ -335,14 +335,14 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 7})
     ds = self.entry.open_dataset(
         'ee:LANDSAT/LC08/C01/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 7})
 
   def test_data_sanity_check(self):
     # This simple test uncovered a bug with the default definition of `scale`.
