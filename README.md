@@ -8,16 +8,23 @@ _An Xarray extension for Google Earth Engine._
 
 ## How to use
 
-Install with pip (distributions on PyPi will come soon):
+Install with pip:
 
 ```shell
-pip install git+https://github.com/google/xee.git
+pip install --upgrade xee
 ```
 
 Then, authenticate Earth Engine:
 
 ```shell
 earthengine authenticate --quiet
+```
+
+Now, in your Python environment, make the following imports:
+
+```python
+import ee
+import xarray
 ```
 
 Next, initialize the EE client with the high volume API:
