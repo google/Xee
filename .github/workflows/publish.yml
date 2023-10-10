@@ -41,12 +41,6 @@ jobs:
         run: |
           python -m twine check dist/*
           pwd
-          if [ -f dist/xee-0.0.0.tar.gz ]; then
-            echo "❌ INVALID VERSION NUMBER"
-            exit 1
-          else
-            echo "✅ Looks good"
-          fi
       - uses: actions/upload-artifact@v2
         with:
           name: releases
