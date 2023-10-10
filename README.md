@@ -1,6 +1,8 @@
 # Xee: Xarray + Google Earth Engine
 
-![Xee Logo](docs/xee-logo.png)
+[![image](https://img.shields.io/pypi/v/xee.svg)](https://pypi.python.org/pypi/xee)
+
+![Xee Logo](https://raw.githubusercontent.com/google/Xee/main/docs/xee-logo.png)
 
 _An Xarray extension for Google Earth Engine._
 
