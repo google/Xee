@@ -1,14 +1,14 @@
 # Xee: Xarray + Google Earth Engine
 
+![Xee Logo](https://raw.githubusercontent.com/google/Xee/main/docs/xee-logo.png)
+
+_An Xarray extension for Google Earth Engine._
+
 [![image](https://img.shields.io/pypi/v/xee.svg)](https://pypi.python.org/pypi/xee)
 [![image](https://static.pepy.tech/badge/xee)](https://pepy.tech/project/xee)
 [![Conda Recipe](https://img.shields.io/badge/recipe-xee-green.svg)](https://github.com/conda-forge/xee-feedstock)
 [![image](https://img.shields.io/conda/vn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
 [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
-
-![Xee Logo](https://raw.githubusercontent.com/google/Xee/main/docs/xee-logo.png)
-
-_An Xarray extension for Google Earth Engine._
 
 ## How to use
 
