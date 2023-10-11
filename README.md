@@ -56,7 +56,7 @@ ds = xarray.open_dataset(ic, engine='ee', crs='EPSG:4326', scale=0.25)
 Open an ImageCollection with a specific EE projection or geometry:
 
 ```python
-ic = ee.ImageCollection('ee://ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
 leg1 = ee.Geometry.Rectangle(113.33, -43.63, 153.56, -10.66)
 ds = xarray.open_dataset(
     ic,
