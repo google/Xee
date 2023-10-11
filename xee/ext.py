@@ -231,14 +231,9 @@ class EarthEngineStore(common.AbstractDataStore):
       x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
           self.get_info['bounds']
       )
-    # We add and subtract the scale to solve an off-by-one error. With this
-    # adjustment, we achieve parity with a pure `computePixels()` call.
-    x_min, y_min = self.transform(x_min_0 - self.scale_x, y_min_0)
-    if _bounds_are_invalid(x_min, y_min, self.scale_units == 'degree'):
-      x_min, y_min = self.transform(x_min_0, y_min_0)
-    x_max, y_max = self.transform(x_max_0, y_max_0 + self.scale_y)
-    if _bounds_are_invalid(x_max, y_max, self.scale_units == 'degree'):
-      x_max, y_max = self.transform(x_max_0, y_max_0)
+    # TODO(#40): Investigate data discrepancy (off-by-one) issue.
+    x_min, y_min = self.transform(x_min_0, y_min_0)
+    x_max, y_max = self.transform(x_max_0, y_max_0)
     self.bounds = x_min, y_min, x_max, y_max
 
     max_dtype = self._max_itemsize()
@@ -577,20 +572,6 @@ class EarthEngineStore(common.AbstractDataStore):
 
   def close(self) -> None:
     del self.image_collection
-
-
-def _bounds_are_invalid(x: float, y: float, is_degrees=False) -> bool:
-  """Check for obviously bad x and y projection values."""
-  bad_num = math.isnan(x) or math.isnan(y) or math.isinf(x) or math.isinf(y)
-
-  invalid_degree = (
-      y < -90.0
-      or y > 90.0
-      or x < -180.0
-      or x > 360.0  # degrees could be from 0 to 360...
-  )
-
-  return bad_num or (is_degrees and invalid_degree)
 
 
 def _parse_dtype(data_type: types.DataType):
