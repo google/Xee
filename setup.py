@@ -39,7 +39,7 @@ examples_require = [
 
 setuptools.setup(
     name='xee',
-    version='0.0.0',
+    version='0.0.1',
     license='Apache 2.0',
     author='Google LLC',
     author_email='noreply@google.com',
