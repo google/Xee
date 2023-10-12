@@ -358,6 +358,18 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertNotEqual(temperature_2m.min(), 0.0)
     self.assertNotEqual(temperature_2m.max(), 0.0)
 
+  def test_open_dataset_with_executor_kwargs(self):
+    executor_kwargs = {'max_workers': 2}
+    ds = self.entry.open_dataset(
+        'ee://LANDSAT/LC08/C01/T1',
+        drop_variables=tuple(f'B{i}' for i in range(3, 12)),
+        scale=25.0,  
+        n_images=3,
+        executor_kwargs=executor_kwargs,
+    )
+    
+    self.assertEqual(ds.thread_pool.max_workers, executor_kwargs['max_workers'])
+
 
 if __name__ == '__main__':
   absltest.main()

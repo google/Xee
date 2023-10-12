@@ -89,6 +89,12 @@ class EarthEngineStore(common.AbstractDataStore):
 
   DEFAULT_MASK_VALUE = np.iinfo(np.int32).max
 
+  def __init__(self, executor_kwargs=None):
+    if executor_kwargs is None:
+      self.executor_kwargs = {}
+    else:
+      self.executor_kwargs = executor_kwargs
+
   @classmethod
   def open(
       cls,
@@ -634,7 +640,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     return target_image
 
   def _raw_indexing_method(
-      self, key: tuple[Union[int, slice], ...], executor_kwargs: Optional[dict] = None
+      self, key: tuple[Union[int, slice], ...] 
   ) -> np.typing.ArrayLike:
     key, squeeze_axes = self._key_to_slices(key)
 
@@ -682,11 +688,9 @@ class EarthEngineBackendArray(backends.BackendArray):
         for _ in range(shape[0])
     ]
 
-     # If executor_kwargs is None, use an empty dictionary
-    if executor_kwargs is None:
-      executor_kwargs = {}
+    
     # Pass executor_kwargs to ThreadPoolExecutor
-    with concurrent.futures.ThreadPoolExecutor(**executor_kwargs) as pool:
+    with concurrent.futures.ThreadPoolExecutor(**self.executor_kwargs) as pool:
       for (i, j, k), arr in pool.map(
           self._make_tile, self._tile_indexes(key[0], bbox)
       ):
@@ -775,6 +779,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       ee_mask_value: Optional[float] = None,
+      executor_kwargs: Optional[dict] = None,
   ) -> xarray.Dataset:
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -862,6 +867,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         primary_dim_name=primary_dim_name,
         primary_dim_property=primary_dim_property,
         mask_value=ee_mask_value,
+        executor_kwargs=executor_kwargs,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
