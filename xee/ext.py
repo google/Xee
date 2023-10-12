@@ -89,12 +89,6 @@ class EarthEngineStore(common.AbstractDataStore):
 
   DEFAULT_MASK_VALUE = np.iinfo(np.int32).max
 
-  def __init__(self, executor_kwargs=None):
-    if executor_kwargs is None:
-      self.executor_kwargs = {}
-    else:
-      self.executor_kwargs = executor_kwargs
-
   @classmethod
   def open(
       cls,
@@ -140,6 +134,7 @@ class EarthEngineStore(common.AbstractDataStore):
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
+      executor_kwargs: Optional[dict] = None,
   ):
     self.image_collection = image_collection
     if n_images != -1:
@@ -170,6 +165,11 @@ class EarthEngineStore(common.AbstractDataStore):
         coordinates=f'{self.primary_dim_name} {x_dim_name} {y_dim_name}',
         crs=self.crs_arg,
     )
+    # Initialize executor_kwargs
+    if executor_kwargs is None:
+      self.executor_kwargs = {}
+    else:
+      self.executor_kwargs = executor_kwargs
 
     # Scale in the projection's units. Typically, either meters or degrees.
     # If we use the default CRS i.e. EPSG:3857, the units is in meters.
