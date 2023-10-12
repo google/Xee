@@ -1,21 +1,40 @@
 # Xee: Xarray + Google Earth Engine
 
-![Xee Logo](docs/xee-logo.png)
+![Xee Logo](https://raw.githubusercontent.com/google/Xee/main/docs/xee-logo.png)
 
 _An Xarray extension for Google Earth Engine._
 
+[![image](https://img.shields.io/pypi/v/xee.svg)](https://pypi.python.org/pypi/xee)
+[![image](https://static.pepy.tech/badge/xee)](https://pepy.tech/project/xee)
+[![Conda Recipe](https://img.shields.io/badge/recipe-xee-green.svg)](https://github.com/conda-forge/xee-feedstock)
+[![image](https://img.shields.io/conda/vn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
+[![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
+
 ## How to use
 
-Install with pip (distributions on PyPi will come soon):
+Install with pip:
 
 ```shell
-pip install git+https://github.com/google/xee.git
+pip install --upgrade xee
+```
+
+Install with conda:
+
+```shell
+conda install -c conda-forge xee
 ```
 
 Then, authenticate Earth Engine:
 
 ```shell
 earthengine authenticate --quiet
+```
+
+Now, in your Python environment, make the following imports:
+
+```python
+import ee
+import xarray
 ```
 
 Next, initialize the EE client with the high volume API:
@@ -47,7 +66,7 @@ ds = xarray.open_dataset(ic, engine='ee', crs='EPSG:4326', scale=0.25)
 Open an ImageCollection with a specific EE projection or geometry:
 
 ```python
-ic = ee.ImageCollection('ee://ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
 leg1 = ee.Geometry.Rectangle(113.33, -43.63, 153.56, -10.66)
 ds = xarray.open_dataset(
     ic,

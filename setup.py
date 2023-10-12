@@ -39,19 +39,40 @@ examples_require = [
 
 setuptools.setup(
     name='xee',
-    version='0.0.0',
+    version='0.0.1',
     license='Apache 2.0',
     author='Google LLC',
     author_email='noreply@google.com',
-    install_requires=['xarray', 'earthengine-api', 'pyproj', 'affine'],
+    description='A Google Earth Engine extension for Xarray.',
+    long_description=open('README.md', 'r', encoding='utf-8').read(),
+    long_description_content_type='text/markdown',
+    install_requires=['xarray', 'earthengine-api>=0.1.374', 'pyproj', 'affine'],
     extras_require={
         'tests': tests_requires,
         'examples': examples_require,
     },
     url='https://github.com/google/xee',
     packages=setuptools.find_packages(exclude=['examples']),
-    python_requires='>=3.8',
+    python_requires='>=3.9',
     entry_points={
         'xarray.backends': ['ee=xee:EarthEngineBackendEntrypoint'],
-    }
+    },
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Science/Research',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Information Technology',
+        'License :: OSI Approved :: Apache Software License',
+        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: POSIX',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Topic :: Scientific/Engineering :: Atmospheric Science',
+
+    ],
+    project_urls={
+        'Issue Tracking': 'https://github.com/google/Xee/issues',
+    },
 )

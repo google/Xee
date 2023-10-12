@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 r"""Integration tests for the Google Earth Engine backend for Xarray."""
-
 import pathlib
 
 from absl.testing import absltest
@@ -217,10 +216,13 @@ class EEBackendArrayTest(absltest.TestCase):
         return ee.data.computePixels(params)
 
     arr = xee.EarthEngineBackendArray('B5', self.store)
-    grid = arr._project((0, 10, 0, 10))
+    grid = self.store.project((0, 10, 0, 10))
     getter = ErroneousPixelsGetter()
-    arr._to_array(
-        self.store.image_collection.first(), pixels_getter=getter, grid=grid
+    self.store.image_to_array(
+        self.store.image_collection.first(),
+        pixels_getter=getter,
+        grid=grid,
+        dtype=arr.dtype,
     )
 
     self.assertEqual(getter.count, 3)
@@ -309,7 +311,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine=xee.EarthEngineBackendEntrypoint,
     )
 
-    self.assertEqual(ds.dims, {'time': 4248, 'lon': 42, 'lat': 36})
+    self.assertEqual(ds.dims, {'time': 4248, 'lon': 41, 'lat': 35})
     self.assertNotEqual(ds.dims, standard_ds.dims)
 
   def test_honors_projection(self):
@@ -326,7 +328,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine=xee.EarthEngineBackendEntrypoint,
     )
 
-    self.assertEqual(ds.dims, {'time': 4248, 'lon': 3600, 'lat': 1799})
+    self.assertEqual(ds.dims, {'time': 4248, 'lon': 3600, 'lat': 1800})
     self.assertNotEqual(ds.dims, standard_ds.dims)
 
   def test_parses_ee_url(self):
@@ -336,7 +338,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 7})
     ds = self.entry.open_dataset(
         'ee:LANDSAT/LC08/C01/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
@@ -370,6 +372,23 @@ class EEBackendEntrypointTest(absltest.TestCase):
     
     self.assertEqual(ds.thread_pool.max_workers, executor_kwargs['max_workers'])
 
+  def test_validate_band_attrs(self):
+    ds = self.entry.open_dataset(
+        'ee:LANDSAT/LC08/C01/T1',
+        drop_variables=tuple(f'B{i}' for i in range(3, 12)),
+        scale=25.0,  # in degrees
+        n_images=3,
+    )
+    valid_types = (str, int, float, complex, np.ndarray, np.number, list, tuple)
+
+    # Check attrs on the dataset itself
+    for _, value in ds.attrs.items():
+      self.assertIsInstance(value, valid_types)
+
+    # Check attrs on each variable within the dataset
+    for variable in ds.variables.values():
+      for _, value in variable.attrs.items():
+        self.assertIsInstance(value, valid_types)
 
 if __name__ == '__main__':
   absltest.main()
