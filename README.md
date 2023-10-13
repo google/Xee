@@ -83,7 +83,7 @@ ds = xarray.open_mfdataset(['ee://ECMWF/ERA5_LAND/HOURLY', 'ee://NASA/GDDP-CMIP6
                            engine='ee', crs='EPSG:4326', scale=0.25)
 ```
 
-See [examples/](examples/) or [docs](docs/) for more uses and integrations.
+See [examples](examples/) or [docs](docs/) for more uses and integrations.
 
 ## License
 
