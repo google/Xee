@@ -64,15 +64,40 @@ _BUILTIN_DTYPES = {
     'double': np.float64,
 }
 
+# While this documentation says that the limit is 10 MB...
+# https://developers.google.com/earth-engine/guides/usage#request_payload_size
+# actual byte limit seems to depend on other factors. This has been found via
+# trial & error.
+REQUEST_BYTE_LIMIT = 2**20 * 48  # 48 MBs
+
+
+def _check_request_limit(chunks: dict[str, int], dtype_size: int, limit: int):
+  """Checks that the actual number of bytes exceeds the limit."""
+  index, width, height = chunks['index'], chunks['width'], chunks['height']
+  actual_bytes = index * width * height * dtype_size
+  if actual_bytes > limit:
+    raise ValueError(
+        f'`chunks="auto"` failed! Actual bytes {actual_bytes!r} exceeds limit'
+        f' {limit!r}.  Please choose another value for `chunks` (and file a'
+        ' bug).'
+    )
+
+
+class _GetComputedPixels:
+  """Wrapper around `ee.data.computePixels()` to make retries simple."""
+
+  def __getitem__(self, params) -> np.ndarray:
+    return ee.data.computePixels(params)
+
 
 class EarthEngineStore(common.AbstractDataStore):
   """Read-only Data Store for Google Earth Engine."""
 
   # "Safe" default chunks that won't exceed the request limit.
   PREFERRED_CHUNKS: dict[str, int] = {
-      'index': 24,
+      'index': 48,
       'width': 512,
-      'height': 512,
+      'height': 256,
   }
 
   SCALE_UNITS: dict[str, int] = {
@@ -89,6 +114,17 @@ class EarthEngineStore(common.AbstractDataStore):
 
   DEFAULT_MASK_VALUE = np.iinfo(np.int32).max
 
+  ATTRS_VALID_TYPES = (
+      str,
+      int,
+      float,
+      complex,
+      np.ndarray,
+      np.number,
+      list,
+      tuple
+  )
+
   @classmethod
   def open(
       cls,
@@ -103,6 +139,7 @@ class EarthEngineStore(common.AbstractDataStore):
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
+      request_byte_limit: int = REQUEST_BYTE_LIMIT,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -120,6 +157,7 @@ class EarthEngineStore(common.AbstractDataStore):
         primary_dim_name=primary_dim_name,
         primary_dim_property=primary_dim_property,
         mask_value=mask_value,
+        request_byte_limit=request_byte_limit,
     )
 
   def __init__(
@@ -135,6 +173,7 @@ class EarthEngineStore(common.AbstractDataStore):
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
       executor_kwargs: Optional[dict] = None,
+      request_byte_limit: int = REQUEST_BYTE_LIMIT,
   ):
     # Initialize executor_kwargs
     if executor_kwargs is None:
@@ -171,6 +210,12 @@ class EarthEngineStore(common.AbstractDataStore):
         coordinates=f'{self.primary_dim_name} {x_dim_name} {y_dim_name}',
         crs=self.crs_arg,
     )
+    # Initialize executor_kwargs
+    if executor_kwargs is None:
+      self.executor_kwargs = {}
+    else:
+      self.executor_kwargs = executor_kwargs
+
     # Scale in the projection's units. Typically, either meters or degrees.
     # If we use the default CRS i.e. EPSG:3857, the units is in meters.
     default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
@@ -198,20 +243,18 @@ class EarthEngineStore(common.AbstractDataStore):
       x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
           self.get_info['bounds']
       )
-    # We add and subtract the scale to solve an off-by-one error. With this
-    # adjustment, we achieve parity with a pure `computePixels()` call.
-    x_min, y_min = self.project(x_min_0 - self.scale_x, y_min_0)
-    if _bounds_are_invalid(x_min, y_min, self.scale_units == 'degree'):
-      x_min, y_min = self.project(x_min_0, y_min_0)
-    x_max, y_max = self.project(x_max_0, y_max_0 + self.scale_y)
-    if _bounds_are_invalid(x_max, y_max, self.scale_units == 'degree'):
-      x_max, y_max = self.project(x_max_0, y_max_0)
+    # TODO(#40): Investigate data discrepancy (off-by-one) issue.
+    x_min, y_min = self.transform(x_min_0, y_min_0)
+    x_max, y_max = self.transform(x_max_0, y_max_0)
     self.bounds = x_min, y_min, x_max, y_max
 
-    self.chunks = self.PREFERRED_CHUNKS.copy()
+    max_dtype = self._max_itemsize()
+
+    # TODO(b/291851322): Consider support for laziness when chunks=None.
+    # By default, automatically optimize io_chunks.
+    self.chunks = self._auto_chunks(max_dtype, request_byte_limit)
     if chunks == -1:
       self.chunks = -1
-    # TODO(b/291851322): Consider support for laziness when chunks=None.
     elif chunks is not None and chunks != 'auto':
       self.chunks = self._assign_index_chunks(chunks)
 
@@ -270,6 +313,38 @@ class EarthEngineStore(common.AbstractDataStore):
     image_ids, _ = self.image_collection_properties
     return image_ids
 
+  def _max_itemsize(self) -> int:
+    return max(
+        _parse_dtype(b['data_type']).itemsize for b in self._img_info['bands']
+    )
+
+  @classmethod
+  def _auto_chunks(
+      cls, dtype_bytes: int, request_byte_limit: int = REQUEST_BYTE_LIMIT
+  ) -> dict[str, int]:
+    """Given the data type size and request limit, calculate optimal chunks."""
+    # Taking the data type number of bytes into account, let's try to have the
+    # height and width follow round numbers (powers of two) and allocate the
+    # remaining bytes available for the index length. To illustrate this logic,
+    # let's follow through with an example where:
+    #   request_byte_limit = 2 ** 20 * 10  # = 10 MBs
+    #   dtype_bytes = 8
+    log_total = np.log2(request_byte_limit)  # e.g.=23.32...
+    log_dtype = np.log2(dtype_bytes)  # e.g.=3
+    log_limit = 10 * (log_total // 10)  # e.g.=20
+    log_index = log_total - log_limit  # e.g.=3.32...
+
+    # Motivation: How do we divide a number N into the closest sum of two ints?
+    d = (log_limit - np.ceil(log_dtype)) / 2  # e.g.=17/2=8.5
+    wd, ht = np.ceil(d), np.floor(d)  # e.g. wd=9, ht=8
+
+    # Put back to byte space, then round to the nearst integer number of bytes.
+    index = int(np.rint(2**log_index))  # e.g.=10
+    width = int(np.rint(2**wd))  # e.g.=512
+    height = int(np.rint(2**ht))  # e.g.=256
+
+    return {'index': index, 'width': width, 'height': height}
+
   def _assign_index_chunks(
       self, input_chunk_store: dict[Any, Any]
   ) -> dict[Any, Any]:
@@ -313,11 +388,95 @@ class EarthEngineStore(common.AbstractDataStore):
       chunks[y_dim_name] = self.chunks['height']
     return chunks
 
-  def project(self, xs: float, ys: float) -> tuple[float, float]:
+  def transform(self, xs: float, ys: float) -> tuple[float, float]:
     transformer = pyproj.Transformer.from_crs(
         self.crs.geodetic_crs, self.crs, always_xy=True
     )
     return transformer.transform(xs, ys)
+
+  def project(self, bbox: types.BBox) -> types.Grid:
+    """Translate a bounding box (pixel space) to a grid (projection space).
+
+    Here, we calculate a simple affine transformation to get a specific region
+    when computing pixels.
+
+    Args:
+      bbox: Bounding box in pixel space.
+
+    Returns:
+      A Grid, to be passed into `computePixels()`'s "grid" keyword. Defines the
+        appropriate region of data to return according to the Array's configured
+        projection and scale.
+    """
+    # The origin of the image is in the top left corner. X is the minimum value
+    # and Y is the maximum value.
+    x_origin, _, _, y_origin = self.bounds  # x_min, x_max, y_min, y_max
+    x_start, y_start, x_end, y_end = bbox
+    width = x_end - x_start
+    height = y_end - y_start
+
+    return {
+        # The size of the bounding box. The affine transform and project will be
+        # applied, so we can think in terms of pixels.
+        'dimensions': {
+            'width': width,
+            'height': height,
+        },
+        'affineTransform': {
+            # Since the origin is in the top left corner, we want to translate
+            # the start of the grid to the positive direction for X and the
+            # negative direction for Y.
+            'translateX': x_origin + self.scale_x * x_start,
+            'translateY': y_origin + self.scale_y * y_start,
+            # Define the scale for each pixel (e.g. the number of meters between
+            # each value).
+            'scaleX': self.scale_x,
+            'scaleY': self.scale_y,
+        },
+        'crsCode': self.crs_arg,
+    }
+
+  def image_to_array(
+      self,
+      image: ee.Image,
+      pixels_getter=_GetComputedPixels(),
+      dtype=np.float32,
+      **kwargs,
+  ) -> np.ndarray:
+    """Gets the pixels for a given image as a numpy array.
+
+    This method includes exponential backoff (with jitter) when trying to get
+    pixel data.
+
+    Args:
+      image: An EE image.
+      pixels_getter: An object whose `__getitem__()` method calls
+        `computePixels()`.
+      dtype: a np.dtype. The returned array will be in this dtype.
+      **kwargs: Additional settings for `params` in `computePixels(params)`. For
+        example, a `grid` dictionary.
+
+    Returns:
+      An numpy array containing the pixels computed based on the given image.
+    """
+    image = image.unmask(self.mask_value)
+    params = {
+        'expression': image,
+        'fileFormat': 'NUMPY_NDARRAY',
+        **kwargs,
+    }
+    raw = common.robust_getitem(
+        pixels_getter, params, catch=ee.ee_exception.EEException
+    )
+
+    # TODO(#9): Find a way to make this more efficient. This is needed because
+    # `raw` is a structured array of all the same dtype (i.e. number of images).
+    arr = np.array(raw.tolist(), dtype=dtype)
+    data = arr.T
+
+    # Sets EE nodata masked value to NaNs.
+    data = np.where(data == self.mask_value, np.nan, data)
+    return data
 
   @functools.lru_cache()
   def _band_attrs(self, band_name: str) -> types.BandInfo:
@@ -330,13 +489,28 @@ class EarthEngineStore(common.AbstractDataStore):
   def _bands(self) -> list[str]:
     return [b['id'] for b in self._img_info['bands']]
 
+  def _make_attrs_valid(
+      self, attrs: dict[str, Any]
+  ) -> dict[
+      str,
+      Union[
+          str, int, float, complex, np.ndarray, np.number, list[Any], tuple[Any]
+      ],
+  ]:
+    return {
+        key: (str(value)
+              if not isinstance(value, self.ATTRS_VALID_TYPES)
+              else value)
+        for key, value in attrs.items()
+    }
+
   def open_store_variable(self, name: str) -> xarray.Variable:
     arr = EarthEngineBackendArray(name, self)
     data = indexing.LazilyIndexedArray(arr)
 
     x_dim_name, y_dim_name = self.dimension_names
     dimensions = [self.primary_dim_name, x_dim_name, y_dim_name]
-    attrs = self._band_attrs(name)
+    attrs = self._make_attrs_valid(self._band_attrs(name))
     encoding = {
         'source': attrs['id'],
         'scale_factor': arr.scale,
@@ -383,9 +557,17 @@ class EarthEngineStore(common.AbstractDataStore):
           f'ImageCollection due to: {e}.'
       )
 
-    x_min_0, y_min_0, x_max_0, y_max_0 = self.bounds
-    width_coord = np.linspace(x_min_0, x_max_0, v0.shape[1])
-    height_coord = np.linspace(y_max_0, y_min_0, v0.shape[2])
+    lnglat_img = ee.Image.pixelLonLat()
+    lon_grid = self.project((0, 0, v0.shape[1], 1))
+    lat_grid = self.project((0, 0, 1, v0.shape[2]))
+    lon = self.image_to_array(
+        lnglat_img, grid=lon_grid, dtype=np.float32, bandIds=['longitude']
+    )
+    lat = self.image_to_array(
+        lnglat_img, grid=lat_grid, dtype=np.float32, bandIds=['latitude']
+    )
+    width_coord = np.squeeze(lon)
+    height_coord = np.squeeze(lat)
 
     x_dim_name, y_dim_name = self.dimension_names
 
@@ -402,20 +584,6 @@ class EarthEngineStore(common.AbstractDataStore):
 
   def close(self) -> None:
     del self.image_collection
-
-
-def _bounds_are_invalid(x: float, y: float, is_degrees=False) -> bool:
-  """Check for obviously bad x and y projection values."""
-  bad_num = math.isnan(x) or math.isnan(y) or math.isinf(x) or math.isinf(y)
-
-  invalid_degree = (
-      y < -90.0
-      or y > 90.0
-      or x < -180.0
-      or x > 360.0  # degrees could be from 0 to 360...
-  )
-
-  return bad_num or (is_degrees and invalid_degree)
 
 
 def _parse_dtype(data_type: types.DataType):
@@ -458,13 +626,6 @@ def geometry_to_bounds(geom: ee.Geometry) -> types.Bounds:
   return _ee_bounds_to_bounds(bounds)
 
 
-class _GetComputedPixels:
-  """Wrapper around `ee.data.computePixels()` to make retries simple."""
-
-  def __getitem__(self, params) -> np.ndarray:
-    return ee.data.computePixels(params)
-
-
 class EarthEngineBackendArray(backends.BackendArray):
   """Array backend for Earth Engine."""
 
@@ -472,11 +633,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     self.variable_name = variable_name
     self.store = ee_store
 
-    self.scale_x = ee_store.scale_x
-    self.scale_y = ee_store.scale_y
     self.scale = ee_store.scale
-    self.crs_arg = ee_store.crs_arg
-    self.crs = ee_store.crs
     self.bounds = ee_store.bounds
 
     # It looks like different bands have different dimensions & transforms!
@@ -486,50 +643,13 @@ class EarthEngineBackendArray(backends.BackendArray):
 
     x_min, y_min, x_max, y_max = self.bounds
 
-    x_size = int(np.ceil((x_max - x_min) / np.abs(self.scale_x)))
-    y_size = int(np.ceil((y_max - y_min) / np.abs(self.scale_y)))
+    x_size = int(np.ceil((x_max - x_min) / np.abs(self.store.scale_x)))
+    y_size = int(np.ceil((y_max - y_min) / np.abs(self.store.scale_y)))
 
     self.shape = (ee_store.n_images, x_size, y_size)
     self._apparent_chunks = {k: 1 for k in self.store.PREFERRED_CHUNKS.keys()}
     if isinstance(self.store.chunks, dict):
       self._apparent_chunks = self.store.chunks.copy()
-
-  def _to_array(
-      self, image: ee.Image, pixels_getter=_GetComputedPixels(), **kwargs
-  ) -> np.ndarray:
-    """Gets the pixels for a given image as a numpy array.
-
-    This method includes exponential backoff (with jitter) when trying to get
-    pixel data.
-
-    Args:
-      image: An EE image.
-      pixels_getter: An object whose `__getitem__()` method calls
-        `computePixels()`.
-      **kwargs: Additional settings for `params` in `computePixels(params)`. For
-        example, a `grid` dictionary.
-
-    Returns:
-      An numpy array containing the pixels computed based on the given image.
-    """
-    image = image.unmask(self.store.mask_value)
-    params = {
-        'expression': image,
-        'fileFormat': 'NUMPY_NDARRAY',
-        **kwargs,
-    }
-    raw = common.robust_getitem(
-        pixels_getter, params, catch=ee.ee_exception.EEException
-    )
-
-    # TODO(#9): Find a way to make this more efficient. This is needed because
-    # `raw` is a structured array of all the same dtype (i.e. number of images).
-    arr = np.array(raw.tolist(), dtype=self.dtype)
-    data = arr.T
-
-    # Sets EE nodata masked value to NaNs.
-    data = np.where(data == self.store.mask_value, np.nan, data)
-    return data
 
   def __getitem__(self, key: indexing.ExplicitIndexer) -> np.typing.ArrayLike:
     return indexing.explicit_indexing_adapter(
@@ -538,48 +658,6 @@ class EarthEngineBackendArray(backends.BackendArray):
         indexing.IndexingSupport.BASIC,
         self._raw_indexing_method,
     )
-
-  def _project(self, bbox: types.BBox) -> types.Grid:
-    """Translate a bounding box (pixel space) to a grid (projection space).
-
-    Here, we calculate a simple affine transformation to get a specific region
-    when computing pixels.
-
-    Args:
-      bbox: Bounding box in pixel space.
-
-    Returns:
-      A Grid, to be passed into `computePixels()`'s "grid" keyword. Defines the
-        appropriate region of data to return according to the Array's configured
-        projection and scale.
-    """
-    # The origin of the image is in the top left corner. X is the minimum value
-    # and Y is the maximum value.
-    x_origin, _, _, y_origin = self.bounds  # x_min, x_max, y_min, y_max
-    x_start, y_start, x_end, y_end = bbox
-    width = x_end - x_start
-    height = y_end - y_start
-
-    return {
-        # The size of the bounding box. The affine transform and project will be
-        # applied, so we can think in terms of pixels.
-        'dimensions': {
-            'width': width,
-            'height': height,
-        },
-        'affineTransform': {
-            # Since the origin is in the top left corner, we want to translate
-            # the start of the grid to the positive direction for X and the
-            # negative direction for Y.
-            'translateX': x_origin + self.scale_x * x_start,
-            'translateY': y_origin + self.scale_y * y_start,
-            # Define the scale for each pixel (e.g. the number of meters between
-            # each value).
-            'scaleX': self.scale_x,
-            'scaleY': self.scale_y,
-        },
-        'crsCode': self.crs_arg,
-    }
 
   def _key_to_slices(
       self, key: tuple[Union[int, slice], ...]
@@ -656,7 +734,9 @@ class EarthEngineBackendArray(backends.BackendArray):
     # User does not want to use any chunks...
     if self.store.chunks == -1:
       target_image = self._slice_collection(key[0])
-      out = self._to_array(target_image, grid=self._project(bbox))
+      out = self.store.image_to_array(
+          target_image, grid=self.store.project(bbox), dtype=self.dtype
+      )
 
       if squeeze_axes:
         out = np.squeeze(out, squeeze_axes)
@@ -709,9 +789,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     """Get a numpy array from EE for a specific 3D bounding box (a 'tile')."""
     tile_idx, (istart, iend, *bbox) = tile_index
     target_image = self._slice_collection(slice(istart, iend))
-    return tile_idx, self._to_array(
-        target_image, grid=self._project(tuple(bbox))
-    )
+    return tile_idx, self.store.image_to_array(
+        target_image, grid=self.store.project(tuple(bbox)), dtype=self.dtype)
 
   def _tile_indexes(
       self, index_range: slice, bbox: types.BBox
@@ -780,6 +859,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       primary_dim_property: Optional[str] = None,
       ee_mask_value: Optional[float] = None,
       executor_kwargs: Optional[dict] = None,
+      request_byte_limit: int = REQUEST_BYTE_LIMIT,
   ) -> xarray.Dataset:
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -788,7 +868,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         ee.ImageCollection object.
       drop_variables (optional): Variables or bands to drop before opening.
       io_chunks (optional): Specifies the chunking strategy for loading data
-        from EE.
+        from EE. By default, this automatically calculates optional chunks based
+        on the `request_byte_limit`.
       n_images (optional): The max number of EE images in the collection to
         open. Useful when there are a large number of images in the collection
         since calculating collection size can be slow. -1 indicates that all
@@ -843,7 +924,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         this is 'np.iinfo(np.int32).max' i.e. 2147483647.
       executor_kwargs (optional): A dictionary of keyword arguments to pass to
         the ThreadPoolExecutor that handles the parallel computation of pixels.
-        
+
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
     """
@@ -870,6 +951,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         primary_dim_property=primary_dim_property,
         mask_value=ee_mask_value,
         executor_kwargs=executor_kwargs,
+        request_byte_limit=request_byte_limit,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
