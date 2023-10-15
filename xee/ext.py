@@ -136,6 +136,12 @@ class EarthEngineStore(common.AbstractDataStore):
       mask_value: Optional[float] = None,
       executor_kwargs: Optional[dict] = None,
   ):
+    # Initialize executor_kwargs
+    if executor_kwargs is None:
+      self.executor_kwargs = {}
+    else:
+      self.executor_kwargs = executor_kwargs
+
     self.image_collection = image_collection
     if n_images != -1:
       self.image_collection = image_collection.limit(n_images)
@@ -165,12 +171,6 @@ class EarthEngineStore(common.AbstractDataStore):
         coordinates=f'{self.primary_dim_name} {x_dim_name} {y_dim_name}',
         crs=self.crs_arg,
     )
-    # Initialize executor_kwargs
-    if executor_kwargs is None:
-      self.executor_kwargs = {}
-    else:
-      self.executor_kwargs = executor_kwargs
-
     # Scale in the projection's units. Typically, either meters or degrees.
     # If we use the default CRS i.e. EPSG:3857, the units is in meters.
     default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
@@ -640,7 +640,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     return target_image
 
   def _raw_indexing_method(
-      self, key: tuple[Union[int, slice], ...] 
+      self, key: tuple[Union[int, slice], ...]
   ) -> np.typing.ArrayLike:
     key, squeeze_axes = self._key_to_slices(key)
 
@@ -841,7 +841,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         'system:time_start'.
       ee_mask_value (optional): Value to mask to EE nodata values. By default,
         this is 'np.iinfo(np.int32).max' i.e. 2147483647.
-
+      executor_kwargs (optional): A dictionary of keyword arguments to pass to
+        the ThreadPoolExecutor that handles the parallel computation of pixels.
+        
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
     """
