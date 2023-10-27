@@ -122,7 +122,7 @@ class EarthEngineStore(common.AbstractDataStore):
       np.ndarray,
       np.number,
       list,
-      tuple
+      tuple,
   )
 
   @classmethod
@@ -278,14 +278,14 @@ class EarthEngineStore(common.AbstractDataStore):
     # client-side. Ideally, this would live behind a xarray-backend-specific
     # feature flag, since it's not guaranteed that data is this consistent.
     columns = ['system:id', self.primary_dim_property]
-    rpcs.append(
-        ('properties',
-         (
-             self.image_collection
-             .reduceColumns(ee.Reducer.toList().repeat(len(columns)), columns)
-             .get('list'))
-         )
-    )
+    rpcs.append((
+        'properties',
+        (
+            self.image_collection.reduceColumns(
+                ee.Reducer.toList().repeat(len(columns)), columns
+            ).get('list')
+        ),
+    ))
 
     info = ee.List([rpc for _, rpc in rpcs]).getInfo()
 
@@ -477,18 +477,18 @@ class EarthEngineStore(common.AbstractDataStore):
   def _bands(self) -> list[str]:
     return [b['id'] for b in self._img_info['bands']]
 
-  def _make_attrs_valid(
-      self, attrs: dict[str, Any]
-  ) -> dict[
+  def _make_attrs_valid(self, attrs: dict[str, Any]) -> dict[
       str,
       Union[
           str, int, float, complex, np.ndarray, np.number, list[Any], tuple[Any]
       ],
   ]:
     return {
-        key: (str(value)
-              if not isinstance(value, self.ATTRS_VALID_TYPES)
-              else value)
+        key: (
+            str(value)
+            if not isinstance(value, self.ATTRS_VALID_TYPES)
+            else value
+        )
         for key, value in attrs.items()
     }
 
@@ -777,7 +777,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     tile_idx, (istart, iend, *bbox) = tile_index
     target_image = self._slice_collection(slice(istart, iend))
     return tile_idx, self.store.image_to_array(
-        target_image, grid=self.store.project(tuple(bbox)), dtype=self.dtype)
+        target_image, grid=self.store.project(tuple(bbox)), dtype=self.dtype
+    )
 
   def _tile_indexes(
       self, index_range: slice, bbox: types.BBox
