@@ -83,6 +83,13 @@ ds = xarray.open_mfdataset(['ee://ECMWF/ERA5_LAND/HOURLY', 'ee://NASA/GDDP-CMIP6
                            engine='ee', crs='EPSG:4326', scale=0.25)
 ```
 
+Open a single Image by passing it to an ImageCollection:
+
+```python
+i = ee.ImageCollection(ee.Image("LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318"))
+ds = xarray.open_dataset(i, engine='ee')
+```
+
 See [examples](examples/) or [docs](docs/) for more uses and integrations.
 
 ## License
