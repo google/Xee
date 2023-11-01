@@ -234,7 +234,7 @@ class EarthEngineStore(common.AbstractDataStore):
     # TODO(#40): Investigate data discrepancy (off-by-one) issue.
     x_min, y_min = self.transform(x_min_0, y_min_0)
     x_max, y_max = self.transform(x_max_0, y_max_0)
-    
+
     x_min = x_min - x_min % self.scale_x
     y_max = y_max - y_max % self.scale_y
     self.bounds = x_min, y_min, x_max, y_max
