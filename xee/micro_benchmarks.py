@@ -42,7 +42,8 @@ def init_ee_for_tests():
 
 def open_dataset() -> None:
   _ = xarray.open_dataset(
-      'NASA/GPM_L3/IMERG_V06', engine=xee.EarthEngineBackendEntrypoint
+      'NASA/GPM_L3/IMERG_V06',
+      engine=xee.EarthEngineBackendEntrypoint
   )
 
 

@@ -38,7 +38,9 @@ _CRS = flags.DEFINE_string(
     'EPSG:4326',
     help='Coordinate Reference System for output Zarr.',
 )
-_SCALE = flags.DEFINE_float('scale', 0.25, help='Scale factor for output Zarr.')
+_SCALE = flags.DEFINE_float(
+    'scale', 0.25, help='Scale factor for output Zarr.'
+)
 _TARGET_CHUNKS = flags.DEFINE_string(
     'target_chunks',
     '',
@@ -49,8 +51,12 @@ _TARGET_CHUNKS = flags.DEFINE_string(
         'chunksize of -1 indicates not to chunk a dimension.'
     ),
 )
-_OUTPUT = flags.DEFINE_string('output', '', help='The output zarr path.')
-_RUNNER = flags.DEFINE_string('runner', None, help='beam.runners.Runner')
+_OUTPUT = flags.DEFINE_string(
+    'output', '', help='The output zarr path.'
+)
+_RUNNER = flags.DEFINE_string(
+    'runner', None, help='beam.runners.Runner'
+)
 
 
 # Borrowed from the xbeam examples:

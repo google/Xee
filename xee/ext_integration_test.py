@@ -166,9 +166,8 @@ class EEBackendArrayTest(absltest.TestCase):
         (slice(-3, -1), slice(-5, -1), slice(-5, -1))
     )
     expected_last_5 = np.zeros((2, 4, 4))
-    self.assertTrue(
-        np.allclose(expected_last_5, arr[last_5]), f'Actual:\n{arr[last_5]}'
-    )
+    self.assertTrue(np.allclose(expected_last_5, arr[last_5]),
+                    f'Actual:\n{arr[last_5]}')
 
   def test_slice_indexing__medium(self):
     try:
@@ -261,7 +260,9 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+    self.assertEqual(
+        dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8}
+    )
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
         list(ds.data_vars.keys()),
@@ -376,7 +377,6 @@ class EEBackendEntrypointTest(absltest.TestCase):
     for variable in ds.variables.values():
       for _, value in variable.attrs.items():
         self.assertIsInstance(value, valid_types)
-
 
 if __name__ == '__main__':
   absltest.main()
