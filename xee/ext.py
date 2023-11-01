@@ -528,7 +528,9 @@ class EarthEngineStore(common.AbstractDataStore):
       )
     if self.primary_dim_property in ['system:time_start', 'system:time_end']:
       # Convert elements in primary_dim_list to np.datetime64
-      primary_coords = [pd.to_datetime(time, unit='ms') for time in primary_coords]
+      primary_coords = [
+          pd.to_datetime(time, unit='ms') for time in primary_coords
+      ]
     return primary_coords
 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
