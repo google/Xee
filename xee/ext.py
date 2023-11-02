@@ -527,7 +527,7 @@ class EarthEngineStore(common.AbstractDataStore):
           " 'ImageCollection'"
       )
     if self.primary_dim_property in ['system:time_start', 'system:time_end']:
-      # Convert elements in primary_dim_list to np.datetime64
+      # Convert elements in primary_coords to a timestamp.
       primary_coords = [
           pd.to_datetime(time, unit='ms') for time in primary_coords
       ]
