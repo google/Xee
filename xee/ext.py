@@ -679,31 +679,19 @@ class EarthEngineBackendArray(backends.BackendArray):
     # Get the right range of Images in the collection, either a single image or
     # a range of images...
     start, stop, stride = image_slice.indices(self.shape[0])
-
-    # If the input images have IDs, just slice them. Otherwise, we need to do
-    # an expensive `toList()` operation.
-    if self.store.image_ids:
-      imgs = self.store.image_ids[start:stop:stride]
+    selectors = list(range(start, stop, stride))
+    col = self.store.image_collection.select(self.variable_name)
+    if self.shape[0] <= 5000:  # 5000 == max bands in an Image
+      col_as_image = col.toBands()
+      return col_as_image.select(selectors)
+    elif stop < 5000:  # 5000 == max bands in an Image
+      col_as_image = col.limit(stop).toBands()
+      return col_as_image.select(selectors)
     else:
       # TODO(alxr, mahrsee): Find a way to make this case more efficient.
       list_range = stop - start
-      col0 = self.store.image_collection
-      imgs = col0.toList(list_range, offset=start).slice(0, list_range, stride)
-
-    col = ee.ImageCollection(imgs)
-
-    # For a more efficient slice of the series of images, we reduce each
-    # image in the collection to bands on a single image.
-    def reduce_bands(x, acc):
-      return ee.Image(acc).addBands(x, [self.variable_name])
-
-    aggregate_images_as_bands = ee.Image(col.iterate(reduce_bands, ee.Image()))
-    # Remove the first "constant" band from the reduction.
-    target_image = aggregate_images_as_bands.select(
-        aggregate_images_as_bands.bandNames().slice(1)
-    )
-
-    return target_image
+      imgs = col.toList(list_range, offset=start).slice(0, list_range, stride)
+      return ee.ImageCollection(imgs).toBands()
 
   def _raw_indexing_method(
       self, key: tuple[Union[int, slice], ...]

@@ -296,6 +296,19 @@ class EEBackendEntrypointTest(absltest.TestCase):
     except ValueError:
       self.fail('Chunking failed.')
 
+  def test_can_slice_past_5000(self):
+    ds = xr.open_dataset(
+        'NASA/GPM_L3/IMERG_V06',
+        crs='EPSG:4326',
+        scale=0.25,
+        engine=xee.EarthEngineBackendEntrypoint,
+    ).isel(time=slice(4999, 5001), lon=slice(0, 1), lat=slice(0, 1))
+
+    try:
+      ds.chunk().compute()
+    except ValueError:
+      self.fail('Chunking failed.')
+
   def test_honors_geometry(self):
     ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
         '1992-10-05', '1993-03-31'
@@ -377,6 +390,56 @@ class EEBackendEntrypointTest(absltest.TestCase):
     for variable in ds.variables.values():
       for _, value in variable.attrs.items():
         self.assertIsInstance(value, valid_types)
+
+  def test_rename_bands(self):
+    point = ee.Geometry.Point((-122.45, 37.79))
+    col = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2').filterBounds(point)
+    col = col.map(lambda im: im.regexpRename('$', '_new'))
+    b1, b2 = col.first().bandNames().getInfo()[:2]
+
+    ds = xr.open_dataset(
+      col,
+      engine=xee.EarthEngineBackendEntrypoint,
+      scale=120,
+      crs='epsg:32610',
+      geometry=point.buffer(512).bounds(),
+    )
+
+    ds['sum'] = ds[b1] + ds[b2]
+
+    self.assertTrue('sum' in ds)
+
+  def test_add_new_bands(self):
+    s2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED')
+    geometry = ee.Geometry.Polygon([[
+      [82.60642647743225, 27.16350437805251],
+      [82.60984897613525, 27.1618529901377],
+      [82.61088967323303, 27.163695288375266],
+      [82.60757446289062, 27.16517483230927]
+    ]])
+    filtered = s2 \
+      .filter(ee.Filter.date('2017-01-01', '2018-01-01')) \
+      .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30)) \
+      .filter(ee.Filter.bounds(geometry))
+
+    def addNDVI(image):
+      ndvi = image.normalizedDifference(['B8', 'B4']).rename('ndvi')
+      return image.addBands(ndvi)
+
+    withNdvi = filtered.map(addNDVI)
+
+    ds = xr.open_dataset(
+        withNdvi.select('ndvi'),
+        engine=xee.EarthEngineBackendEntrypoint,
+        crs='EPSG:3857',
+        scale=10,
+        geometry=geometry,
+    )
+
+    original_ts = ds.ndvi.chunk('auto')
+    original_ts = original_ts.interp(X=82.607376, Y=27.164335)
+
+    self.assertIsInstance(original_ts.values, np.ndarray)
 
 if __name__ == '__main__':
   absltest.main()
