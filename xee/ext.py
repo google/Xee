@@ -248,7 +248,10 @@ class EarthEngineStore(common.AbstractDataStore):
       self.chunks = self._assign_index_chunks(chunks)
 
     self.preferred_chunks = self._assign_preferred_chunks()
-    self.mask_value = mask_value or self.DEFAULT_MASK_VALUE
+    if mask_value is None:
+      self.mask_value = self.DEFAULT_MASK_VALUE
+    else:
+      self.mask_value = mask_value
 
   @functools.cached_property
   def get_info(self) -> dict[str, Any]:
