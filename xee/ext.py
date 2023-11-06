@@ -277,29 +277,14 @@ class EarthEngineStore(common.AbstractDataStore):
     # (few) values of the primary dim (read: time) and interpolate the rest
     # client-side. Ideally, this would live behind a xarray-backend-specific
     # feature flag, since it's not guaranteed that data is this consistent.
-    columns = ['system:id', self.primary_dim_property]
     rpcs.append(
-        ('properties',
-         (
-             self.image_collection
-             .reduceColumns(ee.Reducer.toList().repeat(len(columns)), columns)
-             .get('list'))
-         )
+      ('primary_coords',
+       self.image_collection.aggregate_array(self.primary_dim_property))
     )
 
     info = ee.List([rpc for _, rpc in rpcs]).getInfo()
 
     return dict(zip((name for name, _ in rpcs), info))
-
-  @property
-  def image_collection_properties(self) -> tuple[list[str], list[str]]:
-    system_ids, primary_coord = self.get_info['properties']
-    return (system_ids, primary_coord)
-
-  @property
-  def image_ids(self) -> list[str]:
-    image_ids, _ = self.image_collection_properties
-    return image_ids
 
   def _max_itemsize(self) -> int:
     return max(
@@ -518,7 +503,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
   def _get_primary_coordinates(self) -> list[Any]:
     """Gets the primary dimension coordinate values from an ImageCollection."""
-    _, primary_coords = self.image_collection_properties
+    primary_coords = self.get_info['primary_coords']
 
     if not primary_coords:
       raise ValueError(
