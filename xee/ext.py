@@ -679,19 +679,14 @@ class EarthEngineBackendArray(backends.BackendArray):
     # Get the right range of Images in the collection, either a single image or
     # a range of images...
     start, stop, stride = image_slice.indices(self.shape[0])
-    selectors = list(range(start, stop, stride))
-    col = self.store.image_collection.select(self.variable_name)
-    if self.shape[0] <= 5000:  # 5000 == max bands in an Image
-      col_as_image = col.toBands()
-      return col_as_image.select(selectors)
-    elif stop < 5000:  # 5000 == max bands in an Image
-      col_as_image = col.limit(stop).toBands()
-      return col_as_image.select(selectors)
-    else:
-      # TODO(alxr, mahrsee): Find a way to make this case more efficient.
-      list_range = stop - start
-      imgs = col.toList(list_range, offset=start).slice(0, list_range, stride)
-      return ee.ImageCollection(imgs).toBands()
+    col = self.store.image_collection.limit(stop).select(self.variable_name)
+    filtered_col = col.filter(
+      ee.Filter.listContains(
+        leftValue=col.aggregate_array('system:index').slice(start, stop, stride),
+        rightField='system:index',
+      )
+    )
+    return filtered_col.toBands()
 
   def _raw_indexing_method(
       self, key: tuple[Union[int, slice], ...]
