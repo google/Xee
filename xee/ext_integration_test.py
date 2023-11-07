@@ -261,7 +261,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 16, 'lat': 8})
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
         list(ds.data_vars.keys()),
@@ -270,7 +270,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     for v in ds.values():
       self.assertIsNotNone(v.data)
       self.assertFalse(v.isnull().all(), 'All values are null!')
-      self.assertEqual(v.shape, (3, 15, 8))
+      self.assertEqual(v.shape, (3, 16, 8))
 
   def test_open_dataset__n_images(self):
     ds = self.entry.open_dataset(
@@ -310,7 +310,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine=xee.EarthEngineBackendEntrypoint,
     )
 
-    self.assertEqual(ds.dims, {'time': 4248, 'lon': 41, 'lat': 35})
+    self.assertEqual(ds.dims, {'time': 4248, 'lon': 41, 'lat': 36})
     self.assertNotEqual(ds.dims, standard_ds.dims)
 
   def test_honors_projection(self):
@@ -337,14 +337,14 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 7})
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 16, 'lat': 8})
     ds = self.entry.open_dataset(
         'ee:LANDSAT/LC08/C01/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 16, 'lat': 8})
 
   def test_data_sanity_check(self):
     # This simple test uncovered a bug with the default definition of `scale`.
