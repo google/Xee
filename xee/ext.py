@@ -249,6 +249,9 @@ class EarthEngineStore(common.AbstractDataStore):
     self.preferred_chunks = self._assign_preferred_chunks()
     self.mask_value = mask_value or self.DEFAULT_MASK_VALUE
 
+    # verify that each image in the collection has a system:index property
+    self.has_system_index = self.get_info['system_index_count'] == self.n_images
+
   @functools.cached_property
   def get_info(self) -> dict[str, Any]:
     """Make all getInfo() calls to EE at once."""
@@ -281,6 +284,18 @@ class EarthEngineStore(common.AbstractDataStore):
       ('primary_coords',
        self.image_collection.aggregate_array(self.primary_dim_property))
     )
+
+    # since we are using system:index in a ee filter we dont need to pull all
+    # of the system:index values out with getInfo, we only need to verify that
+    # each image in the collection has a system:index property. If an image in
+    # a collection is missing a property, aggregate_array returns nothing for
+    # that image. So a call to aggregate_array('system:index') on a collection
+    # with 10 images where 1 is missing 'system:index' will return a list with
+    # 9 elements.
+    rpcs.append((
+        'system_index_count',
+        self.image_collection.aggregate_array('system:index').length()
+    ))
 
     info = ee.List([rpc for _, rpc in rpcs]).getInfo()
 
@@ -664,14 +679,27 @@ class EarthEngineBackendArray(backends.BackendArray):
     # Get the right range of Images in the collection, either a single image or
     # a range of images...
     start, stop, stride = image_slice.indices(self.shape[0])
-    col = self.store.image_collection.limit(stop).select(self.variable_name)
-    filtered_col = col.filter(
-      ee.Filter.listContains(
-        leftValue=col.aggregate_array('system:index').slice(start, stop, stride),
-        rightField='system:index',
-      )
-    )
-    return filtered_col.toBands()
+
+    # never need more than "stop" images so limit the collection upfront
+    col = self.store.image_collection.limit(stop)
+    col = col.select(self.variable_name)
+
+    if self.store.has_system_index:  # recommended way to slice a collection
+      target_image = col.filter(
+        ee.Filter.listContains(
+          leftValue=col.aggregate_array('system:index').slice(start, stop, stride),
+          rightField='system:index',
+        )
+      ).toBands()
+    elif stop <= 5000:  # toBands fails if it would create an image with 5000+ bands
+      selectors = list(range(start, stop, stride))
+      target_image = col.toBands().select(selectors)
+    else:
+      # TODO(alxr, mahrsee): Find a way to make this case more efficient.
+      list_range = stop - start
+      imgs = col.toList(list_range, offset=start).slice(0, list_range, stride)
+      target_image = ee.ImageCollection(imgs).toBands()
+    return target_image
 
   def _raw_indexing_method(
       self, key: tuple[Union[int, slice], ...]
