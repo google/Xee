@@ -30,6 +30,7 @@ import warnings
 
 import affine
 import numpy as np
+import pandas as pd
 import pyproj
 from pyproj.crs import CRS
 import xarray
@@ -122,7 +123,7 @@ class EarthEngineStore(common.AbstractDataStore):
       np.ndarray,
       np.number,
       list,
-      tuple
+      tuple,
   )
 
   @classmethod
@@ -247,7 +248,10 @@ class EarthEngineStore(common.AbstractDataStore):
       self.chunks = self._assign_index_chunks(chunks)
 
     self.preferred_chunks = self._assign_preferred_chunks()
-    self.mask_value = mask_value or self.DEFAULT_MASK_VALUE
+    if mask_value is None:
+      self.mask_value = self.DEFAULT_MASK_VALUE
+    else:
+      self.mask_value = mask_value
 
     # verify that each image in the collection has a system:index property
     self.has_system_index = self.get_info['system_index_count'] == self.n_images
@@ -477,18 +481,18 @@ class EarthEngineStore(common.AbstractDataStore):
   def _bands(self) -> list[str]:
     return [b['id'] for b in self._img_info['bands']]
 
-  def _make_attrs_valid(
-      self, attrs: dict[str, Any]
-  ) -> dict[
+  def _make_attrs_valid(self, attrs: dict[str, Any]) -> dict[
       str,
       Union[
           str, int, float, complex, np.ndarray, np.number, list[Any], tuple[Any]
       ],
   ]:
     return {
-        key: (str(value)
-              if not isinstance(value, self.ATTRS_VALID_TYPES)
-              else value)
+        key: (
+            str(value)
+            if not isinstance(value, self.ATTRS_VALID_TYPES)
+            else value
+        )
         for key, value in attrs.items()
     }
 
@@ -526,8 +530,10 @@ class EarthEngineStore(common.AbstractDataStore):
           " 'ImageCollection'"
       )
     if self.primary_dim_property in ['system:time_start', 'system:time_end']:
-      # Convert elements in primary_dim_list to np.datetime64
-      primary_coords = [np.datetime64(time, 'ms') for time in primary_coords]
+      # Convert elements in primary_coords to a timestamp.
+      primary_coords = [
+          pd.to_datetime(time, unit='ms') for time in primary_coords
+      ]
     return primary_coords
 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
@@ -773,7 +779,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     tile_idx, (istart, iend, *bbox) = tile_index
     target_image = self._slice_collection(slice(istart, iend))
     return tile_idx, self.store.image_to_array(
-        target_image, grid=self.store.project(tuple(bbox)), dtype=self.dtype)
+        target_image, grid=self.store.project(tuple(bbox)), dtype=self.dtype
+    )
 
   def _tile_indexes(
       self, index_range: slice, bbox: types.BBox
