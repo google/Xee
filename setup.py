@@ -28,6 +28,8 @@ tests_requires = [
     "absl-py",
     "pytest",
     "pyink",
+    "rioxarray",
+    "rasterio",
 ]
 
 examples_require = [

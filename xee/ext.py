@@ -253,6 +253,12 @@ class EarthEngineStore(common.AbstractDataStore):
     else:
       self.mask_value = mask_value
 
+    self.coordinate_transformer = pyproj.Transformer.from_crs(
+      "EPSG:4326",
+      self.crs,
+      always_xy=True
+    )
+
   @functools.cached_property
   def get_info(self) -> dict[str, Any]:
     """Make all getInfo() calls to EE at once."""
@@ -555,11 +561,13 @@ class EarthEngineStore(common.AbstractDataStore):
     lon_grid = self.project((0, 0, v0.shape[1], 1))
     lat_grid = self.project((0, 0, 1, v0.shape[2]))
     lon = self.image_to_array(
-        lnglat_img, grid=lon_grid, dtype=np.float32, bandIds=['longitude']
+        lnglat_img, grid=lon_grid, dtype=np.float32, bandIds=['longitude', 'latitude']
     )
+    lon = self.coordinate_transformer.transform(lon[0], lon[1])[0]
     lat = self.image_to_array(
-        lnglat_img, grid=lat_grid, dtype=np.float32, bandIds=['latitude']
+        lnglat_img, grid=lat_grid, dtype=np.float32, bandIds=['longitude', 'latitude']
     )
+    lat = self.coordinate_transformer.transform(lat[0], lat[1])[1]
     width_coord = np.squeeze(lon)
     height_coord = np.squeeze(lat)
 
