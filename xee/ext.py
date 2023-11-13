@@ -284,10 +284,10 @@ class EarthEngineStore(common.AbstractDataStore):
     # (few) values of the primary dim (read: time) and interpolate the rest
     # client-side. Ideally, this would live behind a xarray-backend-specific
     # feature flag, since it's not guaranteed that data is this consistent.
-    rpcs.append(
-      ('primary_coords',
-       self.image_collection.aggregate_array(self.primary_dim_property))
-    )
+    rpcs.append((
+        'primary_coords',
+        self.image_collection.aggregate_array(self.primary_dim_property),
+    ))
 
     # since we are using system:index in a ee filter we dont need to pull all
     # of the system:index values out with getInfo, we only need to verify that
@@ -298,7 +298,7 @@ class EarthEngineStore(common.AbstractDataStore):
     # 9 elements.
     rpcs.append((
         'system_index_count',
-        self.image_collection.aggregate_array('system:index').length()
+        self.image_collection.aggregate_array('system:index').length(),
     ))
 
     info = ee.List([rpc for _, rpc in rpcs]).getInfo()
@@ -692,12 +692,16 @@ class EarthEngineBackendArray(backends.BackendArray):
 
     if self.store.has_system_index:  # recommended way to slice a collection
       target_image = col.filter(
-        ee.Filter.listContains(
-          leftValue=col.aggregate_array('system:index').slice(start, stop, stride),
-          rightField='system:index',
-        )
+          ee.Filter.listContains(
+              leftValue=col.aggregate_array('system:index').slice(
+                  start, stop, stride
+              ),
+              rightField='system:index',
+          )
       ).toBands()
-    elif stop <= 5000:  # toBands fails if it would create an image with 5000+ bands
+    elif (
+        stop <= 5000
+    ):  # toBands fails if it would create an image with 5000+ bands
       selectors = list(range(start, stop, stride))
       target_image = col.toBands().select(selectors)
     else:
