@@ -1,5 +1,63 @@
+[project]
+name = "xee"
+dynamic = ["version"]
+description = "A Google Earth Engine extension for Xarray."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "Apache-2.0"}
+authors = [
+  {name = "Google LLC", email = "noreply@google.com"},
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+dependencies = [
+  "xarray[parallel]",
+  "earthengine-api>=0.1.374",
+  "pyproj",
+  "affine",
+]
+
+[project.entry-points."xarray.backends"]
+ee = "xee:EarthEngineBackendEntrypoint"
+
+[project.optional-dependencies]
+tests = [
+  "absl-py",
+  "pytest",
+  "pyink",
+]
+examples = [
+  "apache_beam[gcp]",
+  "xarray-beam",
+  "absl-py",
+  "gcsfs",
+]
+
+[project.urls]
+Homepage = "https://github.com/google/xee"
+Issues = "https://github.com/google/Xee/issues"
+
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
 [tool.pyink]
 line-length = 80
 preview = true
 pyink-indentation = 2
 pyink-use-majority-quotes = true
+
+[tool.setuptools_scm]
