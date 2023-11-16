@@ -13,16 +13,16 @@
 # limitations under the License.
 # ==============================================================================
 """Type definitions for Earth Engine concepts (and others)."""
-from typing import Union, TypedDict
+from typing import Dict, List, Tuple, Union, TypedDict
 
-TileIndex = tuple[int, int, int]
+TileIndex = Tuple[int, int, int]
 # x_min, y_min, x_max, y_max
-Bounds = tuple[float, float, float, float]
+Bounds = Tuple[float, float, float, float]
 # x_start, y_start, x_stop, y_stop
-BBox = tuple[int, int, int, int]
+BBox = Tuple[int, int, int, int]
 # index_start, index_stop, x_start, y_start, x_stop, y_stop
-BBox3d = tuple[int, int, int, int, int, int]
-Grid = dict[str, Union[dict[str, Union[float, str]], str, float]]
+BBox3d = Tuple[int, int, int, int, int, int]
+Grid = Dict[str, Union[Dict[str, Union[float, str]], str, float]]
 
 
 class DataType(TypedDict):
@@ -34,14 +34,14 @@ class DataType(TypedDict):
 
 class BandInfo(TypedDict):
   crs: str
-  crs_transform: list[int]  # len: 6, gdal order
+  crs_transform: List[int]  # len: 6, gdal order
   data_type: DataType
-  dimensions: list[int]  # len: 2
+  dimensions: List[int]  # len: 2
   id: str
 
 
 class ImageInfo(TypedDict):
   type: str
-  bands: list[BandInfo]
+  bands: List[BandInfo]
   id: str
   version: int
