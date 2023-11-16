@@ -22,6 +22,7 @@ import cProfile
 import os
 import tempfile
 import timeit
+from typing import List
 
 from absl import app
 import numpy as np
@@ -70,7 +71,7 @@ def open_and_write() -> None:
     ds.to_zarr(os.path.join(tmpdir, 'imerg.zarr'))
 
 
-def main(_: list[str]) -> None:
+def main(_: List[str]) -> None:
   print('Initializing EE...')
   init_ee_for_tests()
   print(f'[{REPEAT} time(s) with {LOOPS} loop(s) each.]')
