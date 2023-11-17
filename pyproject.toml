@@ -38,6 +38,8 @@ tests = [
   "absl-py",
   "pytest",
   "pyink",
+  "rasterio",
+  "rioxarray",
 ]
 examples = [
   "apache_beam[gcp]",
