@@ -16,16 +16,15 @@ r"""Integration tests for the Google Earth Engine backend for Xarray."""
 import json
 import os
 import pathlib
+import tempfile
 
 from absl.testing import absltest
 from google.auth import identity_pool
 import numpy as np
 import xarray as xr
 from xarray.core import indexing
-import os
 import rioxarray
 import rasterio
-import tempfile
 import xee
 
 import ee
