@@ -467,7 +467,7 @@ class EarthEngineStore(common.AbstractDataStore):
     data = arr.T
 
     # Sets EE nodata masked value to NaNs.
-    data = np.where(data == self.mask_value, np.nan, data)
+    data = np.where(np.isclose(data, self.mask_value), np.nan, data)
     return data
 
   @functools.lru_cache()
