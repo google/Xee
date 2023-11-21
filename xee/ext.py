@@ -913,9 +913,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       primary_dim_property (optional): Override the `ee.Image` property for
         which to derive the values of the primary dimension. By default, this is
         'system:time_start'.
-      ee_mask_value (optional): Value to mask to EE nodata values. Matching is
-        done with `np.isclose`. By default, this is 'np.iinfo(np.int32).max'
-        (i.e. 2147483647).
+      ee_mask_value (optional): Value to mask to EE nodata values. By default,
+        this is 'np.iinfo(np.int32).max' i.e. 2147483647.
       request_byte_limit: the max allowed bytes to request at a time from Earth
         Engine. By default, it is 48MBs.
 
