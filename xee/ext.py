@@ -465,9 +465,9 @@ class EarthEngineStore(common.AbstractDataStore):
     # `raw` is a structured array of all the same dtype (i.e. number of images).
     arr = np.array(raw.tolist(), dtype=dtype)
     data = arr.T
-
+    current_mask_value = np.array(self.mask_value, dtype=data.dtype)
     # Sets EE nodata masked value to NaNs.
-    data = np.where(data == self.mask_value, np.nan, data)
+    data = np.where(data == current_mask_value, np.nan, data)
     return data
 
   @functools.lru_cache()
