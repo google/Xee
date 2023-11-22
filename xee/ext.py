@@ -639,6 +639,7 @@ class EarthEngineBackendArray(backends.BackendArray):
 
     x_size = int(np.round((x_max - x_min) / np.abs(self.store.scale_x)))
     y_size = int(np.round((y_max - y_min) / np.abs(self.store.scale_y)))
+
     self.shape = (ee_store.n_images, x_size, y_size)
     self._apparent_chunks = {k: 1 for k in self.store.PREFERRED_CHUNKS.keys()}
     if isinstance(self.store.chunks, dict):
