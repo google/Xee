@@ -44,8 +44,8 @@ def _read_identity_pool_creds() -> identity_pool.Credentials:
 
 def init_ee_for_tests():
   ee.Initialize(
-      # credentials=_read_identity_pool_creds(),
-      # opt_url=ee.data.HIGH_VOLUME_API_BASE_URL,
+      credentials=_read_identity_pool_creds(),
+      opt_url=ee.data.HIGH_VOLUME_API_BASE_URL,
   )
 
 
