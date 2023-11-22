@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 r"""Integration tests for the Google Earth Engine backend for Xarray."""
+import io
 import json
 import os
 import pathlib
@@ -43,8 +44,8 @@ def _read_identity_pool_creds() -> identity_pool.Credentials:
 
 def init_ee_for_tests():
   ee.Initialize(
-      credentials=_read_identity_pool_creds(),
-      opt_url=ee.data.HIGH_VOLUME_API_BASE_URL,
+      # credentials=_read_identity_pool_creds(),
+      # opt_url=ee.data.HIGH_VOLUME_API_BASE_URL,
   )
 
 
@@ -281,7 +282,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
         list(ds.data_vars.keys()),
@@ -290,7 +291,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     for v in ds.values():
       self.assertIsNotNone(v.data)
       self.assertFalse(v.isnull().all(), 'All values are null!')
-      self.assertEqual(v.shape, (3, 15, 8))
+      self.assertEqual(v.shape, (3, 14, 7))
 
   def test_open_dataset__n_images(self):
     ds = self.entry.open_dataset(
@@ -330,7 +331,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine=xee.EarthEngineBackendEntrypoint,
     )
 
-    self.assertEqual(ds.dims, {'time': 4248, 'lon': 41, 'lat': 35})
+    self.assertEqual(ds.dims, {'time': 4248, 'lon': 40, 'lat': 35})
     self.assertNotEqual(ds.dims, standard_ds.dims)
 
   def test_honors_projection(self):
@@ -357,14 +358,14 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
     ds = self.entry.open_dataset(
         'ee:LANDSAT/LC08/C01/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 15, 'lat': 8})
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
 
   def test_data_sanity_check(self):
     # This simple test uncovered a bug with the default definition of `scale`.

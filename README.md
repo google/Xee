@@ -76,6 +76,17 @@ ds = xarray.open_dataset(
 )
 ```
 
+```python
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
+leg1 = ee.Geometry.BBox(113.33, -43.63, 153.56, -10.66)
+ds = xarray.open_dataset(
+    ic,
+    engine='ee',
+    projection=ic.first().select(0).projection(),
+    geometry=leg1
+)
+```
+
 Open multiple ImageCollections into one `xarray.Dataset`, all with the same projection:
 
 ```python
