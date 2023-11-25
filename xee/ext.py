@@ -821,7 +821,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
 
   def guess_can_open(
       self, filename_or_obj: Union[str, os.PathLike[Any], ee.ImageCollection]
-  ) -> bool:
+  ) -> bool:  # type: ignore
     """Returns True if the candidate is a valid ImageCollection."""
     if isinstance(filename_or_obj, ee.ImageCollection):
       return True
@@ -853,7 +853,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       primary_dim_property: Optional[str] = None,
       ee_mask_value: Optional[float] = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
-  ) -> xarray.Dataset:
+  ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
     Args:
