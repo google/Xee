@@ -105,12 +105,14 @@ class EarthEngineStore(common.AbstractDataStore):
       'degree': 1,
       'metre': 10_000,
       'meter': 10_000,
+      'm': 10_000,
   }
 
   DIMENSION_NAMES: Dict[str, Tuple[str, str]] = {
       'degree': ('lon', 'lat'),
       'metre': ('X', 'Y'),
       'meter': ('X', 'Y'),
+      'm': ('X', 'Y'),
   }
 
   DEFAULT_MASK_VALUE = np.iinfo(np.int32).max
