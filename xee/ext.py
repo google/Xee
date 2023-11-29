@@ -540,17 +540,17 @@ class EarthEngineStore(common.AbstractDataStore):
   def _get_tile_from_EE(
       self, tile_index: Tuple[Any, Union[str, int]]
   ) -> Tuple[slice, np.ndarray]:
-    """Get a numpy array from EE for a specific 3D bounding box (a 'tile')."""
-    tile_index, BandIds = tile_index
+    """Get a numpy array from EE for a specific bounding box (a 'tile')."""
+    tile_index, band_id = tile_index
     bbox = self.project(
         (tile_index[0], 0, tile_index[1], 1)
-        if BandIds == 'longitude'
+        if band_id == 'longitude'
         else (0, tile_index[0], 1, tile_index[1])
     )
     tile_idx = slice(tile_index[0], tile_index[1])
     target_image = ee.Image.pixelLonLat()
     return tile_idx, self.image_to_array(
-        target_image, grid=bbox, dtype=np.float32, bandIds=[BandIds]
+        target_image, grid=bbox, dtype=np.float32, bandIds=[band_id]
     )
 
   def process_coordinate_data(
