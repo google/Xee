@@ -568,7 +568,8 @@ class EarthEngineStore(common.AbstractDataStore):
     tiles = [None] * total_tile
     with concurrent.futures.ThreadPoolExecutor() as pool:
       for i, arr in pool.map(
-          self._get_tile_from_ee, list(zip(data, itertools.cycle([coordinate_type])))
+          self._get_tile_from_ee,
+          list(zip(data, itertools.cycle([coordinate_type])))
       ):
         tiles[i] = (
             arr.tolist() if coordinate_type == 'longitude' else arr.tolist()[0]
