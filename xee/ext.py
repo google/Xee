@@ -21,6 +21,7 @@ from __future__ import annotations
 import concurrent.futures
 import functools
 import importlib
+import itertools
 import math
 import os
 import sys
@@ -29,7 +30,6 @@ from urllib import parse
 import warnings
 
 import affine
-from itertools import cycle
 import numpy as np
 import pandas as pd
 import pyproj
@@ -537,7 +537,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ]
     return primary_coords
 
-  def _get_tile_from_EE(
+  def _get_tile_from_ee(
       self, tile_index: Tuple[Any, Union[str, int]]
   ) -> Tuple[slice, np.ndarray]:
     """Get a numpy array from EE for a specific bounding box (a 'tile')."""
@@ -553,7 +553,7 @@ class EarthEngineStore(common.AbstractDataStore):
         target_image, grid=bbox, dtype=np.float32, bandIds=[band_id]
     )
 
-  def process_coordinate_data(
+  def _process_coordinate_data(
       self,
       total_tile: int,
       tile_size: int,
@@ -565,10 +565,10 @@ class EarthEngineStore(common.AbstractDataStore):
         (tile_size * i, min(tile_size * (i + 1), end_point))
         for i in range(total_tile)
     ]
-    tiles = [None for _ in range(total_tile)]
+    tiles = [None] * total_tile
     with concurrent.futures.ThreadPoolExecutor() as pool:
       for i, arr in pool.map(
-          self._get_tile_from_EE, list(zip(data, cycle([coordinate_type])))
+          self._get_tile_from_ee, list(zip(data, itertools.cycle([coordinate_type])))
       ):
         tiles[i] = (
             arr.tolist() if coordinate_type == 'longitude' else arr.tolist()[0]
@@ -592,20 +592,20 @@ class EarthEngineStore(common.AbstractDataStore):
 
     if isinstance(self.chunks, dict):
       # when the value of self.chunks = 'auto' or user-define.
-      self._apparent_chunks = self.chunks.copy()
+      width_chunk = self.chunks['width']
+      height_chunk = self.chunks['height']
     else:
       # when the value of self.chunks = -1
-      self._apparent_chunks = {k: 1 for k in self.PREFERRED_CHUNKS.keys()}
-      self._apparent_chunks['width'] = v0.shape[1]
-      self._apparent_chunks['height'] = v0.shape[2]
+      width_chunk = v0.shape[1]
+      height_chunk = v0.shape[2]
 
-    lon_total_tile = math.ceil(v0.shape[1] / self._apparent_chunks['width'])
-    lon = self.process_coordinate_data(
-        lon_total_tile, self._apparent_chunks['width'], v0.shape[1], 'longitude'
+    lon_total_tile = math.ceil(v0.shape[1] / width_chunk)
+    lon = self._process_coordinate_data(
+        lon_total_tile, width_chunk, v0.shape[1], 'longitude'
     )
-    lat_total_tile = math.ceil(v0.shape[2] / self._apparent_chunks['height'])
-    lat = self.process_coordinate_data(
-        lat_total_tile, self._apparent_chunks['height'], v0.shape[2], 'latitude'
+    lat_total_tile = math.ceil(v0.shape[2] / height_chunk)
+    lat = self._process_coordinate_data(
+        lat_total_tile, height_chunk, v0.shape[2], 'latitude'
     )
 
     width_coord = np.squeeze(lon)
