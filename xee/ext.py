@@ -555,7 +555,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
   def _process_coordinate_data(
       self,
-      total_tile: int,
+      tile_count: int,
       tile_size: int,
       end_point: int,
       coordinate_type: str,
@@ -563,13 +563,13 @@ class EarthEngineStore(common.AbstractDataStore):
     """Process coordinate data using multithreading for longitude or latitude."""
     data = [
         (tile_size * i, min(tile_size * (i + 1), end_point))
-        for i in range(total_tile)
+        for i in range(tile_count)
     ]
-    tiles = [None] * total_tile
+    tiles = [None] * tile_count
     with concurrent.futures.ThreadPoolExecutor() as pool:
       for i, arr in pool.map(
           self._get_tile_from_ee,
-          list(zip(data, itertools.cycle([coordinate_type])))
+          list(zip(data, itertools.cycle([coordinate_type]))),
       ):
         tiles[i] = (
             arr.tolist() if coordinate_type == 'longitude' else arr.tolist()[0]
