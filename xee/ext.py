@@ -592,11 +592,11 @@ class EarthEngineStore(common.AbstractDataStore):
       )
 
     if isinstance(self.chunks, dict):
-      # when the value of self.chunks = 'auto' or user-define.
+      # when the value of self.chunks = 'auto' or user-defined.
       width_chunk = self.chunks['width']
       height_chunk = self.chunks['height']
     else:
-      # when the value of self.chunks = -1
+      # when the value of self.chunks = -1.
       width_chunk = v0.shape[1]
       height_chunk = v0.shape[2]
 
