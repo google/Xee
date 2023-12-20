@@ -506,6 +506,7 @@ class EarthEngineStore(common.AbstractDataStore):
     x_dim_name, y_dim_name = self.dimension_names
     dimensions = [self.primary_dim_name, x_dim_name, y_dim_name]
     attrs = self._make_attrs_valid(self._band_attrs(name))
+    attrs['crs'] = str(self.crs)
     encoding = {
         'source': attrs['id'],
         'scale_factor': arr.scale,
