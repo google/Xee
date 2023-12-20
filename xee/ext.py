@@ -573,9 +573,7 @@ class EarthEngineStore(common.AbstractDataStore):
           self._get_tile_from_ee,
           list(zip(data, itertools.cycle([coordinate_type]))),
       ):
-        tiles[i] = (
-            arr.tolist() if coordinate_type == 'x' else arr.tolist()[0]
-        )
+        tiles[i] = arr.tolist() if coordinate_type == 'x' else arr.tolist()[0]
     return np.concatenate(tiles)
 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
@@ -609,7 +607,6 @@ class EarthEngineStore(common.AbstractDataStore):
     lat_total_tile = math.ceil(v0.shape[2] / height_chunk)
     lat = self._process_coordinate_data(
         lat_total_tile, height_chunk, v0.shape[2], 'y'
-
     )
 
     width_coord = np.squeeze(lon)
