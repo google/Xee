@@ -21,6 +21,7 @@ from __future__ import annotations
 import concurrent.futures
 import functools
 import importlib
+import itertools
 import math
 import os
 import sys
@@ -105,12 +106,14 @@ class EarthEngineStore(common.AbstractDataStore):
       'degree': 1,
       'metre': 10_000,
       'meter': 10_000,
+      'm': 10_000,
   }
 
   DIMENSION_NAMES: Dict[str, Tuple[str, str]] = {
       'degree': ('lon', 'lat'),
       'metre': ('X', 'Y'),
       'meter': ('X', 'Y'),
+      'm': ('X', 'Y'),
   }
 
   DEFAULT_MASK_VALUE = np.iinfo(np.int32).max
@@ -232,7 +235,7 @@ class EarthEngineStore(common.AbstractDataStore):
       x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
           self.get_info['bounds']
       )
-    # TODO(#40): Investigate data discrepancy (off-by-one) issue.
+
     x_min, y_min = self.transform(x_min_0, y_min_0)
     x_max, y_max = self.transform(x_max_0, y_max_0)
     self.bounds = x_min, y_min, x_max, y_max
@@ -465,9 +468,9 @@ class EarthEngineStore(common.AbstractDataStore):
     # `raw` is a structured array of all the same dtype (i.e. number of images).
     arr = np.array(raw.tolist(), dtype=dtype)
     data = arr.T
-
+    current_mask_value = np.array(self.mask_value, dtype=data.dtype)
     # Sets EE nodata masked value to NaNs.
-    data = np.where(data == self.mask_value, np.nan, data)
+    data = np.where(data == current_mask_value, np.nan, data)
     return data
 
   @functools.lru_cache()
@@ -536,6 +539,45 @@ class EarthEngineStore(common.AbstractDataStore):
       ]
     return primary_coords
 
+  def _get_tile_from_ee(
+      self, tile_index: Tuple[Any, Union[str, int]]
+  ) -> Tuple[slice, np.ndarray]:
+    """Get a numpy array from EE for a specific bounding box (a 'tile')."""
+    tile_index, band_id = tile_index
+    bbox = self.project(
+        (tile_index[0], 0, tile_index[1], 1)
+        if band_id == 'x'
+        else (0, tile_index[0], 1, tile_index[1])
+    )
+    tile_idx = slice(tile_index[0], tile_index[1])
+    target_image = ee.Image.pixelCoordinates(ee.Projection(self.crs_arg))
+    return tile_idx, self.image_to_array(
+        target_image, grid=bbox, dtype=np.float32, bandIds=[band_id]
+    )
+
+  def _process_coordinate_data(
+      self,
+      tile_count: int,
+      tile_size: int,
+      end_point: int,
+      coordinate_type: str,
+  ) -> np.ndarray:
+    """Process coordinate data using multithreading for longitude or latitude."""
+    data = [
+        (tile_size * i, min(tile_size * (i + 1), end_point))
+        for i in range(tile_count)
+    ]
+    tiles = [None] * tile_count
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+      for i, arr in pool.map(
+          self._get_tile_from_ee,
+          list(zip(data, itertools.cycle([coordinate_type]))),
+      ):
+        tiles[i] = (
+            arr.tolist() if coordinate_type == 'x' else arr.tolist()[0]
+        )
+    return np.concatenate(tiles)
+
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
     vars_ = [(name, self.open_store_variable(name)) for name in self._bands()]
 
@@ -551,15 +593,25 @@ class EarthEngineStore(common.AbstractDataStore):
           f'ImageCollection due to: {e}.'
       )
 
-    lnglat_img = ee.Image.pixelCoordinates(ee.Projection(self.crs_arg))
-    lon_grid = self.project((0, 0, v0.shape[1], 1))
-    lat_grid = self.project((0, 0, 1, v0.shape[2]))
-    lon = self.image_to_array(
-        lnglat_img, grid=lon_grid, dtype=np.float32, bandIds=['x']
+    if isinstance(self.chunks, dict):
+      # when the value of self.chunks = 'auto' or user-defined.
+      width_chunk = self.chunks['width']
+      height_chunk = self.chunks['height']
+    else:
+      # when the value of self.chunks = -1.
+      width_chunk = v0.shape[1]
+      height_chunk = v0.shape[2]
+
+    lon_total_tile = math.ceil(v0.shape[1] / width_chunk)
+    lon = self._process_coordinate_data(
+        lon_total_tile, width_chunk, v0.shape[1], 'x'
     )
-    lat = self.image_to_array(
-        lnglat_img, grid=lat_grid, dtype=np.float32, bandIds=['y']
+    lat_total_tile = math.ceil(v0.shape[2] / height_chunk)
+    lat = self._process_coordinate_data(
+        lat_total_tile, height_chunk, v0.shape[2], 'y'
+
     )
+
     width_coord = np.squeeze(lon)
     height_coord = np.squeeze(lat)
 
@@ -637,8 +689,8 @@ class EarthEngineBackendArray(backends.BackendArray):
 
     x_min, y_min, x_max, y_max = self.bounds
 
-    x_size = int(np.ceil((x_max - x_min) / np.abs(self.store.scale_x)))
-    y_size = int(np.ceil((y_max - y_min) / np.abs(self.store.scale_y)))
+    x_size = int(np.round((x_max - x_min) / np.abs(self.store.scale_x)))
+    y_size = int(np.round((y_max - y_min) / np.abs(self.store.scale_y)))
 
     self.shape = (ee_store.n_images, x_size, y_size)
     self._apparent_chunks = {k: 1 for k in self.store.PREFERRED_CHUNKS.keys()}
@@ -821,7 +873,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
 
   def guess_can_open(
       self, filename_or_obj: Union[str, os.PathLike[Any], ee.ImageCollection]
-  ) -> bool:
+  ) -> bool:  # type: ignore
     """Returns True if the candidate is a valid ImageCollection."""
     if isinstance(filename_or_obj, ee.ImageCollection):
       return True
@@ -853,7 +905,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       primary_dim_property: Optional[str] = None,
       ee_mask_value: Optional[float] = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
-  ) -> xarray.Dataset:
+  ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
     Args:
