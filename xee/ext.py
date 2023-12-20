@@ -256,6 +256,9 @@ class EarthEngineStore(common.AbstractDataStore):
     else:
       self.mask_value = mask_value
 
+    # verify that each image in the collection has a system:index property
+    self.has_system_index = self.get_info['system_index_count'] == self.n_images
+
   @functools.cached_property
   def get_info(self) -> Dict[str, Any]:
     """Make all getInfo() calls to EE at once."""
@@ -284,29 +287,26 @@ class EarthEngineStore(common.AbstractDataStore):
     # (few) values of the primary dim (read: time) and interpolate the rest
     # client-side. Ideally, this would live behind a xarray-backend-specific
     # feature flag, since it's not guaranteed that data is this consistent.
-    columns = ['system:id', self.primary_dim_property]
     rpcs.append((
-        'properties',
-        (
-            self.image_collection.reduceColumns(
-                ee.Reducer.toList().repeat(len(columns)), columns
-            ).get('list')
-        ),
+        'primary_coords',
+        self.image_collection.aggregate_array(self.primary_dim_property),
+    ))
+
+    # since we are using system:index in a ee filter we dont need to pull all
+    # of the system:index values out with getInfo, we only need to verify that
+    # each image in the collection has a system:index property. If an image in
+    # a collection is missing a property, aggregate_array returns nothing for
+    # that image. So a call to aggregate_array('system:index') on a collection
+    # with 10 images where 1 is missing 'system:index' will return a list with
+    # 9 elements.
+    rpcs.append((
+        'system_index_count',
+        self.image_collection.aggregate_array('system:index').length(),
     ))
 
     info = ee.List([rpc for _, rpc in rpcs]).getInfo()
 
     return dict(zip((name for name, _ in rpcs), info))
-
-  @property
-  def image_collection_properties(self) -> Tuple[List[str], List[str]]:
-    system_ids, primary_coord = self.get_info['properties']
-    return (system_ids, primary_coord)
-
-  @property
-  def image_ids(self) -> List[str]:
-    image_ids, _ = self.image_collection_properties
-    return image_ids
 
   def _max_itemsize(self) -> int:
     return max(
@@ -526,7 +526,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
   def _get_primary_coordinates(self) -> List[Any]:
     """Gets the primary dimension coordinate values from an ImageCollection."""
-    _, primary_coords = self.image_collection_properties
+    primary_coords = self.get_info['primary_coords']
 
     if not primary_coords:
       raise ValueError(
@@ -738,29 +738,29 @@ class EarthEngineBackendArray(backends.BackendArray):
     # a range of images...
     start, stop, stride = image_slice.indices(self.shape[0])
 
-    # If the input images have IDs, just slice them. Otherwise, we need to do
-    # an expensive `toList()` operation.
-    if self.store.image_ids:
-      imgs = self.store.image_ids[start:stop:stride]
+    # never need more than "stop" images so limit the collection upfront
+    col = self.store.image_collection.limit(stop)
+    col = col.select(self.variable_name)
+
+    if self.store.has_system_index:  # recommended way to slice a collection
+      target_image = col.filter(
+          ee.Filter.listContains(
+              leftValue=col.aggregate_array('system:index').slice(
+                  start, stop, stride
+              ),
+              rightField='system:index',
+          )
+      ).toBands()
+    elif (
+        stop <= 5000
+    ):  # toBands fails if it would create an image with 5000+ bands
+      selectors = list(range(start, stop, stride))
+      target_image = col.toBands().select(selectors)
     else:
       # TODO(alxr, mahrsee): Find a way to make this case more efficient.
       list_range = stop - start
-      col0 = self.store.image_collection
-      imgs = col0.toList(list_range, offset=start).slice(0, list_range, stride)
-
-    col = ee.ImageCollection(imgs)
-
-    # For a more efficient slice of the series of images, we reduce each
-    # image in the collection to bands on a single image.
-    def reduce_bands(x, acc):
-      return ee.Image(acc).addBands(x, [self.variable_name])
-
-    aggregate_images_as_bands = ee.Image(col.iterate(reduce_bands, ee.Image()))
-    # Remove the first "constant" band from the reduction.
-    target_image = aggregate_images_as_bands.select(
-        aggregate_images_as_bands.bandNames().slice(1)
-    )
-
+      imgs = col.toList(list_range, offset=start).slice(0, list_range, stride)
+      target_image = ee.ImageCollection(imgs).toBands()
     return target_image
 
   def _raw_indexing_method(
