@@ -23,11 +23,16 @@ from google.auth import identity_pool
 import numpy as np
 import xarray as xr
 from xarray.core import indexing
-import rioxarray
-import rasterio
 import xee
 
 import ee
+
+_SKIP_RASTERIO_TESTS = False
+try:
+  import rasterio  # pylint: disable=g-import-not-at-top
+  import rioxarray  # pylint: disable=g-import-not-at-top,unused-import
+except ImportError:
+  _SKIP_RASTERIO_TESTS = True
 
 _CREDENTIALS_PATH_KEY = 'GOOGLE_APPLICATION_CREDENTIALS'
 _SCOPES = [
@@ -400,6 +405,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
       for _, value in variable.attrs.items():
         self.assertIsInstance(value, valid_types)
 
+  @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
   def test_write_projected_dataset_to_raster(self):
     # ensure that a projected dataset written to a raster intersects with the
     # point used to create the initial image collection
@@ -436,6 +442,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         intersects = bbox.intersects(point, 1, proj=proj)
         self.assertTrue(intersects.getInfo())
 
+  @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
   def test_write_dataset_to_raster(self):
     # ensure that a dataset written to a raster intersects with the point used
     # to create the initial image collection
