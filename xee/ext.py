@@ -547,11 +547,11 @@ class EarthEngineStore(common.AbstractDataStore):
     tile_index, band_id = tile_index
     bbox = self.project(
         (tile_index[0], 0, tile_index[1], 1)
-        if band_id == 'longitude'
+        if band_id == 'x'
         else (0, tile_index[0], 1, tile_index[1])
     )
     tile_idx = slice(tile_index[0], tile_index[1])
-    target_image = ee.Image.pixelLonLat()
+    target_image = ee.Image.pixelCoordinates(ee.Projection(self.crs_arg))
     return tile_idx, self.image_to_array(
         target_image, grid=bbox, dtype=np.float32, bandIds=[band_id]
     )
@@ -574,9 +574,7 @@ class EarthEngineStore(common.AbstractDataStore):
           self._get_tile_from_ee,
           list(zip(data, itertools.cycle([coordinate_type]))),
       ):
-        tiles[i] = (
-            arr.tolist() if coordinate_type == 'longitude' else arr.tolist()[0]
-        )
+        tiles[i] = arr.tolist() if coordinate_type == 'x' else arr.tolist()[0]
     return np.concatenate(tiles)
 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
@@ -605,11 +603,11 @@ class EarthEngineStore(common.AbstractDataStore):
 
     lon_total_tile = math.ceil(v0.shape[1] / width_chunk)
     lon = self._process_coordinate_data(
-        lon_total_tile, width_chunk, v0.shape[1], 'longitude'
+        lon_total_tile, width_chunk, v0.shape[1], 'x'
     )
     lat_total_tile = math.ceil(v0.shape[2] / height_chunk)
     lat = self._process_coordinate_data(
-        lat_total_tile, height_chunk, v0.shape[2], 'latitude'
+        lat_total_tile, height_chunk, v0.shape[2], 'y'
     )
 
     width_coord = np.squeeze(lon)

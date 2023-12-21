@@ -16,6 +16,7 @@ r"""Integration tests for the Google Earth Engine backend for Xarray."""
 import json
 import os
 import pathlib
+import tempfile
 
 from absl.testing import absltest
 from google.auth import identity_pool
@@ -25,6 +26,13 @@ from xarray.core import indexing
 import xee
 
 import ee
+
+_SKIP_RASTERIO_TESTS = False
+try:
+  import rasterio  # pylint: disable=g-import-not-at-top
+  import rioxarray  # pylint: disable=g-import-not-at-top,unused-import
+except ImportError:
+  _SKIP_RASTERIO_TESTS = True
 
 _CREDENTIALS_PATH_KEY = 'GOOGLE_APPLICATION_CREDENTIALS'
 _SCOPES = [
@@ -396,6 +404,79 @@ class EEBackendEntrypointTest(absltest.TestCase):
     for variable in ds.variables.values():
       for _, value in variable.attrs.items():
         self.assertIsInstance(value, valid_types)
+
+  @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
+  def test_write_projected_dataset_to_raster(self):
+    # ensure that a projected dataset written to a raster intersects with the
+    # point used to create the initial image collection
+    with tempfile.TemporaryDirectory() as temp_dir:
+      temp_file = os.path.join(temp_dir, 'test.tif')
+
+      crs = 'epsg:32610'
+      proj = ee.Projection(crs)
+      point = ee.Geometry.Point([-122.44, 37.78])
+      geom = point.buffer(1024).bounds()
+
+      col = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+      col = col.filterBounds(point)
+      col = col.filter(ee.Filter.lte('CLOUDY_PIXEL_PERCENTAGE', 5))
+      col = col.limit(10)
+
+      ds = xr.open_dataset(
+          col,
+          engine=xee.EarthEngineBackendEntrypoint,
+          scale=10,
+          crs=crs,
+          geometry=geom,
+      )
+
+      ds = ds.isel(time=0).transpose('Y', 'X')
+      ds.rio.set_spatial_dims(x_dim='X', y_dim='Y', inplace=True)
+      ds.rio.write_crs(crs, inplace=True)
+      ds.rio.reproject(crs, inplace=True)
+      ds.rio.to_raster(temp_file)
+
+      with rasterio.open(temp_file) as raster:
+        # see https://gis.stackexchange.com/a/407755 for evenOdd explanation
+        bbox = ee.Geometry.Rectangle(raster.bounds, proj=proj, evenOdd=False)
+        intersects = bbox.intersects(point, 1, proj=proj)
+        self.assertTrue(intersects.getInfo())
+
+  @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
+  def test_write_dataset_to_raster(self):
+    # ensure that a dataset written to a raster intersects with the point used
+    # to create the initial image collection
+    with tempfile.TemporaryDirectory() as temp_dir:
+      temp_file = os.path.join(temp_dir, 'test.tif')
+
+      crs = 'EPSG:4326'
+      proj = ee.Projection(crs)
+      point = ee.Geometry.Point([-122.44, 37.78])
+      geom = point.buffer(1024).bounds()
+
+      col = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+      col = col.filterBounds(point)
+      col = col.filter(ee.Filter.lte('CLOUDY_PIXEL_PERCENTAGE', 5))
+      col = col.limit(10)
+
+      ds = xr.open_dataset(
+          col,
+          engine=xee.EarthEngineBackendEntrypoint,
+          scale=0.0025,
+          geometry=geom,
+      )
+
+      ds = ds.isel(time=0).transpose('lat', 'lon')
+      ds.rio.set_spatial_dims(x_dim='lon', y_dim='lat', inplace=True)
+      ds.rio.write_crs(crs, inplace=True)
+      ds.rio.reproject(crs, inplace=True)
+      ds.rio.to_raster(temp_file)
+
+      with rasterio.open(temp_file) as raster:
+        # see https://gis.stackexchange.com/a/407755 for evenOdd explanation
+        bbox = ee.Geometry.Rectangle(raster.bounds, proj=proj, evenOdd=False)
+        intersects = bbox.intersects(point, 1, proj=proj)
+        self.assertTrue(intersects.getInfo())
 
 
 if __name__ == '__main__':
