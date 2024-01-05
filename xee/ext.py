@@ -613,6 +613,12 @@ class EarthEngineStore(common.AbstractDataStore):
     width_coord = np.squeeze(lon)
     height_coord = np.squeeze(lat)
 
+    # Make sure there's at least a single point in each dimension.
+    if width_coord.ndim == 0:
+      width_coord = width_coord[None, ...]
+    if height_coord.ndim == 0:
+      height_coord = height_coord[None, ...]
+
     x_dim_name, y_dim_name = self.dimension_names
 
     coords = [
@@ -687,8 +693,9 @@ class EarthEngineBackendArray(backends.BackendArray):
 
     x_min, y_min, x_max, y_max = self.bounds
 
-    x_size = int(np.round((x_max - x_min) / np.abs(self.store.scale_x)))
-    y_size = int(np.round((y_max - y_min) / np.abs(self.store.scale_y)))
+    # Make sure the size is at least 1x1.
+    x_size = max(1, int(np.round((x_max - x_min) / np.abs(self.store.scale_x))))
+    y_size = max(1, int(np.round((y_max - y_min) / np.abs(self.store.scale_y))))
 
     self.shape = (ee_store.n_images, x_size, y_size)
     self._apparent_chunks = {k: 1 for k in self.store.PREFERRED_CHUNKS.keys()}
