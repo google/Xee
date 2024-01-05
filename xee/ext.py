@@ -564,7 +564,7 @@ class EarthEngineStore(common.AbstractDataStore):
   ) -> np.ndarray:
     """Process coordinate data using multithreading for longitude or latitude."""
     data = [
-        (i, tile_size * i, min(tile_size * (i + 1), end_point) )
+        (i, tile_size * i, min(tile_size * (i + 1), end_point))
         for i in range(tile_count)
     ]
     tiles = [None] * tile_count
@@ -573,7 +573,9 @@ class EarthEngineStore(common.AbstractDataStore):
           self._get_tile_from_ee,
           list(zip(data, itertools.cycle([coordinate_type]))),
       ):
-        tiles[i] = arr.tolist()[0] if coordinate_type == 'x' else arr.tolist()[0][0]
+        tiles[i] = (
+            arr.tolist()[0] if coordinate_type == 'x' else arr.tolist()[0][0]
+        )
     return np.concatenate(tiles)
 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
