@@ -541,18 +541,17 @@ class EarthEngineStore(common.AbstractDataStore):
     return primary_coords
 
   def _get_tile_from_ee(
-      self, tile_index: Tuple[Any, Union[str, int]]
-  ) -> Tuple[slice, np.ndarray]:
+      self, tile_and_band: List[Tuple[int, int, int], str]
+  ) -> Tuple[int, np.ndarray]:
     """Get a numpy array from EE for a specific bounding box (a 'tile')."""
-    tile_index, band_id = tile_index
+    (tile_index, tile_coords_start, tile_coords_end), band_id = tile_and_band
     bbox = self.project(
-        (tile_index[0], 0, tile_index[1], 1)
+        (tile_coords_start, 0, tile_coords_end, 1)
         if band_id == 'x'
-        else (0, tile_index[0], 1, tile_index[1])
+        else (0, tile_coords_start, 1, tile_coords_end)
     )
-    tile_idx = slice(tile_index[0], tile_index[1])
     target_image = ee.Image.pixelCoordinates(ee.Projection(self.crs_arg))
-    return tile_idx, self.image_to_array(
+    return tile_index, self.image_to_array(
         target_image, grid=bbox, dtype=np.float32, bandIds=[band_id]
     )
 
@@ -565,7 +564,7 @@ class EarthEngineStore(common.AbstractDataStore):
   ) -> np.ndarray:
     """Process coordinate data using multithreading for longitude or latitude."""
     data = [
-        (tile_size * i, min(tile_size * (i + 1), end_point))
+        (i, tile_size * i, min(tile_size * (i + 1), end_point) )
         for i in range(tile_count)
     ]
     tiles = [None] * tile_count
@@ -574,7 +573,7 @@ class EarthEngineStore(common.AbstractDataStore):
           self._get_tile_from_ee,
           list(zip(data, itertools.cycle([coordinate_type]))),
       ):
-        tiles[i] = arr.tolist() if coordinate_type == 'x' else arr.tolist()[0]
+        tiles[i] = arr.tolist()[0] if coordinate_type == 'x' else arr.tolist()[0][0]
     return np.concatenate(tiles)
 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
