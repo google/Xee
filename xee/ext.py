@@ -568,15 +568,16 @@ class EarthEngineStore(common.AbstractDataStore):
         (tile_size * i, min(tile_size * (i + 1), end_point))
         for i in range(tile_count)
     ]
-    tiles = [None] * tile_count
+    
+    coords = []
     with concurrent.futures.ThreadPoolExecutor() as pool:
       for i, arr in pool.map(
           self._get_tile_from_ee,
           list(zip(data, itertools.cycle([coordinate_type]))),
       ):
-        tiles[i] = arr.tolist() if coordinate_type == 'x' else arr.tolist()[0]
-    return np.concatenate(tiles)
-
+        coords.extend(arr.flatten())
+    return np.array(coords)
+ 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
     vars_ = [(name, self.open_store_variable(name)) for name in self._bands()]
 
