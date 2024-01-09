@@ -25,7 +25,7 @@ import itertools
 import math
 import os
 import sys
-from typing import Any, Dict, List, Iterable, Literal, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple, Union
 from urllib import parse
 import warnings
 
@@ -464,9 +464,30 @@ class EarthEngineStore(common.AbstractDataStore):
         pixels_getter, params, catch=ee.ee_exception.EEException
     )
 
-    # TODO(#9): Find a way to make this more efficient. This is needed because
-    # `raw` is a structured array of all the same dtype (i.e. number of images).
-    arr = np.array(raw.tolist(), dtype=dtype)
+    # Extract out the shape information from EE response.
+    y_size, x_size = raw.shape
+    n_bands = len(raw.dtype)
+
+    # Get a view (no copy) of the data as the returned type from EE
+    # then reshape to the correct shape based on the request.
+    # This is needed because `raw` is a structured array of all the same dtype
+    # (i.e. number of images) and this converts it to an ndarray.
+    arr = raw.view(raw.dtype[0]).reshape(
+        y_size,
+        x_size,
+        n_bands,
+    )
+
+    # try converting the data to desired dtype in place without copying
+    # if conversion is not allowed then just use the EE returned dtype
+    try:
+      arr = arr.astype(dtype, copy=False)
+    except ValueError:
+      warnings.warn(
+          f'Could convert EE results to requested dtype {dtype} '
+          f'falling back to returned dtype from EE {np.dtype(raw.dtype[0])}'
+      )
+
     data = arr.T
     current_mask_value = np.array(self.mask_value, dtype=data.dtype)
     # Sets EE nodata masked value to NaNs.

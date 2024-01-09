@@ -16,8 +16,8 @@
 
 # Print Python environment info for easier debugging on ReadTheDocs
 
-import sys
 import subprocess
+import sys
 import xee  # verify this works
 
 print('python exec:', sys.executable)

@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Type definitions for Earth Engine concepts (and others)."""
-from typing import Dict, List, Tuple, Union, TypedDict
+from typing import Dict, List, Tuple, TypedDict, Union
 
 TileIndex = Tuple[int, int, int]
 # x_min, y_min, x_max, y_max
