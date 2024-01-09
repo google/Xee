@@ -573,10 +573,8 @@ class EarthEngineStore(common.AbstractDataStore):
           self._get_tile_from_ee,
           list(zip(data, itertools.cycle([coordinate_type]))),
       ):
-        tiles[i] = (
-            arr.tolist()[0] if coordinate_type == 'x' else arr.tolist()[0][0]
-        )
-    return np.concatenate(tiles)
+        tiles[i] = arr.flatten()
+    return np.array(tiles)
 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
     vars_ = [(name, self.open_store_variable(name)) for name in self._bands()]
