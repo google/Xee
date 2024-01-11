@@ -231,6 +231,8 @@ class EarthEngineStore(common.AbstractDataStore):
             self.get_info['bounds']
         )
       else:
+        # TODO: Maybe converting the area of use to the desired
+        # crs and them getting the bounds is a better approach.
         x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
         x_min, y_min = self.transform(x_min_0, y_min_0)
         x_max, y_max = self.transform(x_max_0, y_max_0)
