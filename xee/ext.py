@@ -541,8 +541,8 @@ class EarthEngineStore(common.AbstractDataStore):
     return primary_coords
 
   def _get_tile_from_ee(
-      self, tile_and_band: List[Tuple[int, int, int], str]
-  ) -> Tuple[int, np.ndarray]:
+      self, tile_and_band: Tuple[Tuple[int, int, int], str]
+  ) -> Tuple[int, np.ndarray[Any, np.dtype]]:
     """Get a numpy array from EE for a specific bounding box (a 'tile')."""
     (tile_index, tile_coords_start, tile_coords_end), band_id = tile_and_band
     bbox = self.project(
