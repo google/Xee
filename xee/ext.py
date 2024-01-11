@@ -263,26 +263,25 @@ class EarthEngineStore(common.AbstractDataStore):
   def get_info(self) -> Dict[str, Any]:
     """Make all getInfo() calls to EE at once."""
 
-    rpcs = [
-        ('size', self.image_collection.size()),
-        ('props', self.image_collection.toDictionary()),
-        ('first', self.image_collection.first()),
-    ]
+    rpcs = {
+        'size': self.image_collection.size(),
+        'props': self.image_collection.toDictionary(),
+        'first': self.image_collection.first(),
+    }
 
     if isinstance(self.projection, ee.Projection):
-      rpcs.append(('projection', self.projection))
+      rpcs['projection'] = self.projection
       
     if self.crs_arg is not None:
-      rpcs.append(('crs_arg', self.crs_arg))
+      rpcs['crs_arg'] = self.crs_arg
     else:
-      rpcs_dict = {k: v for k, v in rpcs}
-      rpcs.append(('crs_arg', rpcs_dict.get('projection', {}).get('wkt', 'EPSG:4326')))
+      rpcs['crs_arg'] = rpcs.get('projection', {}).get('wkt', 'EPSG:4326')
 
-    rpcs_dict = {k: v for k, v in rpcs}
     if isinstance(self.geometry, ee.Geometry):
-      rpcs.append(('bounds', self.geometry.bounds(1, rpcs_dict['crs_arg'])))
+      # TODO: Is 1 good enough for the max error?
+      rpcs['bounds'] = self.geometry.bounds(1, rpcs['crs_arg'])
     else:
-      rpcs.append(('bounds', self.image_collection.first().geometry().bounds(1, rpcs_dict['crs_arg'])))
+      rpcs['bounds'] = self.image_collection.first().geometry().bounds(1, rpcs['crs_arg'])
 
     # TODO(#29, #30): This RPC call takes the longest time to compute. This
     # requires a full scan of the images in the collection, which happens on the
@@ -295,18 +294,15 @@ class EarthEngineStore(common.AbstractDataStore):
     # client-side. Ideally, this would live behind a xarray-backend-specific
     # feature flag, since it's not guaranteed that data is this consistent.
     columns = ['system:id', self.primary_dim_property]
-    rpcs.append((
-        'properties',
-        (
-            self.image_collection.reduceColumns(
-                ee.Reducer.toList().repeat(len(columns)), columns
-            ).get('list')
-        ),
-    ))
+    rpcs['properties'] = (
+        self.image_collection.reduceColumns(
+            ee.Reducer.toList().repeat(len(columns)), columns
+        ).get('list')
+    )
 
-    info = ee.List([rpc for _, rpc in rpcs]).getInfo()
-
-    return dict(zip((name for name, _ in rpcs), info))
+    info = ee.List([rpc for _, rpc in rpcs.items()]).getInfo()
+    
+    return dict(zip((name for name, _ in rpcs.items()), info))
 
   @property
   def image_collection_properties(self) -> Tuple[List[str], List[str]]:
