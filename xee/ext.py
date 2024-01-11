@@ -186,16 +186,19 @@ class EarthEngineStore(common.AbstractDataStore):
     self.geometry = geometry
     self.primary_dim_name = primary_dim_name or 'time'
     self.primary_dim_property = primary_dim_property or 'system:time_start'
-
+    
+    # If crs_arg is None, we try to get it from projection but if
+    # projection is None, we use a default value ('EPSG:4326').
+    # This logic is implemented in self.get_info().
+    self.crs_arg = crs
+    proj = self.get_info.get('projection', {})
+    self.crs_arg = self.get_info['crs_arg']
+    self.crs = CRS(self.crs_arg)
+    
     self.n_images = self.get_info['size']
     self._props = self.get_info['props']
     #  Metadata should apply to all imgs.
     self._img_info: types.ImageInfo = self.get_info['first']
-
-    proj = self.get_info.get('projection', {})
-
-    self.crs_arg = crs or proj.get('crs', proj.get('wkt', 'EPSG:4326'))
-    self.crs = CRS(self.crs_arg)
     # Gets the unit i.e. meter, degree etc.
     self.scale_units = self.crs.axis_info[0].unit_name
     # Get the dimensions name based on the CRS (scale units).
@@ -224,22 +227,22 @@ class EarthEngineStore(common.AbstractDataStore):
     # used for all internal `computePixels()` calls.
     try:
       if isinstance(geometry, ee.Geometry):
-        x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
+        x_min, y_min, x_max, y_max = _ee_bounds_to_bounds(
             self.get_info['bounds']
         )
       else:
         x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
+        x_min, y_min = self.transform(x_min_0, y_min_0)
+        x_max, y_max = self.transform(x_max_0, y_max_0)
+        self.bounds = x_min, y_min, x_max, y_max
     except AttributeError:
       # `area_of_use` is probable `None`. Parse the geometry from the first
       # image instead (calculated in self.get_info())
-      x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
+      x_min, y_min, x_max, y_max = _ee_bounds_to_bounds(
           self.get_info['bounds']
-      )
-
-    x_min, y_min = self.transform(x_min_0, y_min_0)
-    x_max, y_max = self.transform(x_max_0, y_max_0)
+      )    
     self.bounds = x_min, y_min, x_max, y_max
-
+        
     max_dtype = self._max_itemsize()
 
     # TODO(b/291851322): Consider support for laziness when chunks=None.
@@ -268,11 +271,18 @@ class EarthEngineStore(common.AbstractDataStore):
 
     if isinstance(self.projection, ee.Projection):
       rpcs.append(('projection', self.projection))
-
-    if isinstance(self.geometry, ee.Geometry):
-      rpcs.append(('bounds', self.geometry.bounds()))
+      
+    if self.crs_arg is not None:
+      rpcs.append(('crs_arg', self.crs_arg))
     else:
-      rpcs.append(('bounds', self.image_collection.first().geometry().bounds()))
+      rpcs_dict = {k: v for k, v in rpcs}
+      rpcs.append(('crs_arg', rpcs_dict.get('projection', {}).get('wkt', 'EPSG:4326')))
+
+    rpcs_dict = {k: v for k, v in rpcs}
+    if isinstance(self.geometry, ee.Geometry):
+      rpcs.append(('bounds', self.geometry.bounds(1, rpcs_dict['crs_arg'])))
+    else:
+      rpcs.append(('bounds', self.image_collection.first().geometry().bounds(1, rpcs_dict['crs_arg'])))
 
     # TODO(#29, #30): This RPC call takes the longest time to compute. This
     # requires a full scan of the images in the collection, which happens on the
