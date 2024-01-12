@@ -276,11 +276,10 @@ class EarthEngineStore(common.AbstractDataStore):
       
     if self.crs_arg is not None:
       rpcs['crs_arg'] = self.crs_arg
+    elif 'projection' in rpcs.keys():
+      rpcs['crs_arg'] = rpcs['projection'].crs()
     else:
-      if 'projection' in rpcs.keys():
-        rpcs['crs_arg'] = rpcs['projection'].crs()
-      else:
-        rpcs['crs_arg'] = 'EPSG:4326'
+      rpcs['crs_arg'] = 'EPSG:4326'
 
     if isinstance(self.geometry, ee.Geometry):
       # TODO: Is 1 good enough for the max error?
