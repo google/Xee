@@ -595,7 +595,7 @@ class EarthEngineStore(common.AbstractDataStore):
           list(zip(data, itertools.cycle([coordinate_type]))),
       ):
         tiles[i] = arr.flatten()
-    return np.array(tiles)
+    return np.concatenate(tiles)
 
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
     vars_ = [(name, self.open_store_variable(name)) for name in self._bands()]
