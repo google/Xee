@@ -144,6 +144,8 @@ class EarthEngineStore(common.AbstractDataStore):
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
+      ee_init_kwargs: Optional[Dict[str, Any]] = None,
+      ee_init_if_necessary: bool = False,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -162,6 +164,8 @@ class EarthEngineStore(common.AbstractDataStore):
         primary_dim_property=primary_dim_property,
         mask_value=mask_value,
         request_byte_limit=request_byte_limit,
+        ee_init_kwargs=ee_init_kwargs,
+        ee_init_if_necessary=ee_init_if_necessary,
     )
 
   def __init__(
@@ -177,7 +181,12 @@ class EarthEngineStore(common.AbstractDataStore):
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
+      ee_init_kwargs: Optional[Dict[str, Any]] = None,
+      ee_init_if_necessary: bool = False,
   ):
+    self.ee_init_kwargs = ee_init_kwargs
+    self.ee_init_if_necessary = ee_init_if_necessary
+
     self.image_collection = image_collection
     if n_images != -1:
       self.image_collection = image_collection.limit(n_images)
@@ -722,6 +731,15 @@ class EarthEngineBackendArray(backends.BackendArray):
     if isinstance(self.store.chunks, dict):
       self._apparent_chunks = self.store.chunks.copy()
 
+  def _ee_init_check(self):
+    if not ee.data.is_initialized() and self.store.ee_init_if_necessary:
+      warnings.warn(
+          'Earth Engine is not initialized on worker. '
+          'Attempting to initialize using application default credentials.'
+      )
+
+      ee.Initialize(**(self.store.ee_init_kwargs or {}))
+
   def __getitem__(self, key: indexing.ExplicitIndexer) -> np.typing.ArrayLike:
     return indexing.explicit_indexing_adapter(
         key,
@@ -761,6 +779,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     """Reduce the ImageCollection into an Image with bands as index slices."""
     # Get the right range of Images in the collection, either a single image or
     # a range of images...
+    self._ee_init_check()
     start, stop, stride = image_slice.indices(self.shape[0])
 
     # If the input images have IDs, just slice them. Otherwise, we need to do
@@ -930,6 +949,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       primary_dim_property: Optional[str] = None,
       ee_mask_value: Optional[float] = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
+      ee_init_if_necessary: bool = False,
+      ee_init_kwargs: Optional[Dict[str, Any]] = None,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -994,6 +1015,11 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         this is 'np.iinfo(np.int32).max' i.e. 2147483647.
       request_byte_limit: the max allowed bytes to request at a time from Earth
         Engine. By default, it is 48MBs.
+      ee_init_if_necessary: boolean flag to set if auto initialize for Earth
+        Engine should be attempted. Set to True if using distributed compute
+        frameworks.
+      ee_init_kwargs: keywords to pass to Earth Engine Initialize when
+        attempting to auto init for remote workers.
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
@@ -1021,6 +1047,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         primary_dim_property=primary_dim_property,
         mask_value=ee_mask_value,
         request_byte_limit=request_byte_limit,
+        ee_init_kwargs=ee_init_kwargs,
+        ee_init_if_necessary=ee_init_if_necessary,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()

@@ -41,11 +41,14 @@ tests = [
   "rasterio",
   "rioxarray",
 ]
-examples = [
-  "apache_beam[gcp]",
-  "xarray-beam",
+dataflow = [
   "absl-py",
+  "apache-beam[gcp]",
   "gcsfs",
+  "xarray-beam",
+]
+examples = [
+  "xee[dataflow]",
 ]
 
 [project.urls]
