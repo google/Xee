@@ -90,7 +90,7 @@ i = ee.ImageCollection(ee.Image("LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318"))
 ds = xarray.open_dataset(i, engine='ee')
 ```
 
-See [examples](examples/) or [docs](docs/) for more uses and integrations.
+See [examples](https://github.com/google/Xee/tree/main/examples) or [docs](https://github.com/google/Xee/tree/main/docs) for more uses and integrations.
 
 ## License
 
