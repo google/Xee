@@ -463,7 +463,11 @@ class EarthEngineStore(common.AbstractDataStore):
     Returns:
       An numpy array containing the pixels computed based on the given image.
     """
-    image = ee.Image(self.mask_value).rename(image.bandNames().getInfo()[0]).blend(image)
+    image = (
+        ee.Image(self.mask_value)
+        .rename(image.bandNames().getInfo()[0])
+        .blend(image)
+    )
     params = {
         'expression': image,
         'fileFormat': 'NUMPY_NDARRAY',
