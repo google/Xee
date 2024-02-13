@@ -390,10 +390,50 @@ class EEBackendEntrypointTest(absltest.TestCase):
         crs='EPSG:4326',
         use_coords_double_precision=True,
     ).rename({'lon': 'x', 'lat': 'y'})
+    # This is off slightly due to bounds determined by geometry e.g. .getInfo() 
+    # seems to cause a super slight shift in the bounds. Thhe coords change before
+    # and after the call to .getInfo()!
     np.testing.assert_almost_equal(
         np.array(xee_dataset.rio.transform()),
         np.array(raster.rio.transform()),
         decimal=13,
+    )
+  
+  @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
+  def test_match_xarray(self):
+    data = np.empty((162, 120), dtype=np.float32)
+    # An example of a double precision bbox
+    bbox = (
+        -53.94158617595226,
+        -12.078281822698678,
+        -53.67209159071253,
+        -11.714464132625046,
+    )
+    x_res = (bbox[2] - bbox[0]) / data.shape[1]
+    y_res = (bbox[3] - bbox[1]) / data.shape[0]
+    raster = xr.DataArray(
+        data,
+        coords={
+            'y': np.linspace(bbox[3], bbox[1] + x_res, data.shape[0]),
+            'x': np.linspace(bbox[0], bbox[2] - y_res, data.shape[1]),
+        },
+        dims=('y', 'x'),
+    )
+    raster.rio.write_crs('EPSG:4326', inplace=True)
+    ic = (
+        ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY')
+        .filterDate(ee.DateRange('2014-01-01', '2014-01-02'))
+        .select('precipitation')
+    )
+    xee_dataset = xr.open_dataset(
+        ee.ImageCollection(ic),
+        engine='ee',
+        scale=raster.rio.resolution()[0],
+        match_xarray=raster,
+    )
+    np.testing.assert_equal(
+        np.array(xee_dataset.rio.transform()),
+        np.array(raster.rio.transform()),
     )
 
   def test_parses_ee_url(self):
