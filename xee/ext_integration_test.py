@@ -19,7 +19,7 @@ import pathlib
 import tempfile
 
 from absl.testing import absltest
-from google.auth import identity_pool
+import google.auth
 import numpy as np
 import xarray as xr
 from xarray.core import indexing
@@ -41,17 +41,14 @@ _SCOPES = [
 ]
 
 
-def _read_identity_pool_creds() -> identity_pool.Credentials:
-  credentials_path = os.environ[_CREDENTIALS_PATH_KEY]
-  with open(credentials_path) as file:
-    json_file = json.load(file)
-    credentials = identity_pool.Credentials.from_info(json_file)
-    return credentials.with_scopes(_SCOPES)
+def _read_default_creds():
+  credentials, _ = google.auth.default(scopes=_SCOPES)
+  return credentials
 
 
 def init_ee_for_tests():
   ee.Initialize(
-      credentials=_read_identity_pool_creds(),
+      credentials=_read_default_creds(),
       opt_url=ee.data.HIGH_VOLUME_API_BASE_URL,
   )
 
@@ -357,6 +354,47 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
     self.assertEqual(ds.dims, {'time': 4248, 'lon': 3600, 'lat': 1800})
     self.assertNotEqual(ds.dims, standard_ds.dims)
+
+  @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
+  def test_honors_transform_precisely(self):
+    data = np.empty((162, 120), dtype=np.float32)
+    # An example of a double precision bbox
+    bbox = (
+        -53.94158617595226,
+        -12.078281822698678,
+        -53.67209159071253,
+        -11.714464132625046,
+    )
+    x_res = (bbox[2] - bbox[0]) / data.shape[1]
+    y_res = (bbox[3] - bbox[1]) / data.shape[0]
+    raster = xr.DataArray(
+        data,
+        coords={
+            'y': np.linspace(bbox[3], bbox[1] + x_res, data.shape[0]),
+            'x': np.linspace(bbox[0], bbox[2] - y_res, data.shape[1]),
+        },
+        dims=('y', 'x'),
+    )
+
+    geo = ee.Geometry.Rectangle(*raster.rio.bounds())
+    ic = (
+        ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY')
+        .filterDate(ee.DateRange('2014-01-01', '2014-01-02'))
+        .select('precipitation')
+    )
+    xee_dataset = xr.open_dataset(
+        ee.ImageCollection(ic),
+        engine='ee',
+        geometry=geo,
+        scale=raster.rio.resolution()[0],
+        crs='EPSG:4326',
+        use_coords_double_precision=True,
+    ).rename({'lon': 'x', 'lat': 'y'})
+    np.testing.assert_almost_equal(
+        np.array(xee_dataset.rio.transform()),
+        np.array(raster.rio.transform()),
+        decimal=13,
+    )
 
   def test_parses_ee_url(self):
     ds = self.entry.open_dataset(

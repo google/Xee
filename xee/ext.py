@@ -146,6 +146,7 @@ class EarthEngineStore(common.AbstractDataStore):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
+      use_coords_double_precision: bool = False
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -166,6 +167,7 @@ class EarthEngineStore(common.AbstractDataStore):
         request_byte_limit=request_byte_limit,
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
+        use_coords_double_precision=use_coords_double_precision
     )
 
   def __init__(
@@ -183,6 +185,7 @@ class EarthEngineStore(common.AbstractDataStore):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
+      use_coords_double_precision: bool = False
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
@@ -195,6 +198,7 @@ class EarthEngineStore(common.AbstractDataStore):
     self.geometry = geometry
     self.primary_dim_name = primary_dim_name or 'time'
     self.primary_dim_property = primary_dim_property or 'system:time_start'
+    self.use_coords_double_precision = use_coords_double_precision
 
     self.n_images = self.get_info['size']
     self._props = self.get_info['props']
@@ -581,8 +585,9 @@ class EarthEngineStore(common.AbstractDataStore):
         else (0, tile_coords_start, 1, tile_coords_end)
     )
     target_image = ee.Image.pixelCoordinates(ee.Projection(self.crs_arg))
+    dtype = np.float64 if self.use_coords_double_precision else np.float32
     return tile_index, self.image_to_array(
-        target_image, grid=bbox, dtype=np.float32, bandIds=[band_id]
+        target_image, grid=bbox, dtype=dtype, bandIds=[band_id]
     )
 
   def _process_coordinate_data(
@@ -689,7 +694,7 @@ def _parse_dtype(data_type: types.DataType):
 
 
 def _ee_bounds_to_bounds(bounds: ee.Bounds) -> types.Bounds:
-  coords = np.array(bounds['coordinates'], dtype=np.float32)[0]
+  coords = np.array(bounds['coordinates'], dtype=np.float64)[0]
   x_min, y_min, x_max, y_max = (
       min(coords[:, 0]),
       min(coords[:, 1]),
@@ -951,6 +956,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_if_necessary: bool = False,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
+      use_coords_double_precision: bool = False,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -1020,6 +1026,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         frameworks.
       ee_init_kwargs: keywords to pass to Earth Engine Initialize when
         attempting to auto init for remote workers.
+      use_coords_double_precision: Whether to use double precision for coordinates
+        and bounds from provided geometry. False by default, but True may be 
+        helpful when hoping to match a transform of an existing dataset.
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
@@ -1049,6 +1058,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         request_byte_limit=request_byte_limit,
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
+        use_coords_double_precision=use_coords_double_precision
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
