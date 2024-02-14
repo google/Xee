@@ -42,18 +42,18 @@ _SCOPES = [
 
 
 def _read_identity_pool_creds() -> identity_pool.Credentials:
-    credentials_path = os.environ[_CREDENTIALS_PATH_KEY]
-    with open(credentials_path) as file:
-        json_file = json.load(file)
-        credentials = identity_pool.Credentials.from_info(json_file)
-        return credentials.with_scopes(_SCOPES)
+  credentials_path = os.environ[_CREDENTIALS_PATH_KEY]
+  with open(credentials_path) as file:
+    json_file = json.load(file)
+    credentials = identity_pool.Credentials.from_info(json_file)
+    return credentials.with_scopes(_SCOPES)
 
 
 def init_ee_for_tests():
-    ee.Initialize(
-        credentials=_read_identity_pool_creds(),
-        opt_url=ee.data.HIGH_VOLUME_API_BASE_URL,
-    )
+  ee.Initialize(
+      credentials=_read_identity_pool_creds(),
+      opt_url=ee.data.HIGH_VOLUME_API_BASE_URL,
+  )
 
 
 class EEBackendArrayTest(absltest.TestCase):
