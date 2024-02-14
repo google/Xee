@@ -148,7 +148,8 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       use_coords_double_precision: bool = False,
-      match_xarray: xarray.DataArray | xarray.Dataset | None = None,
+      match_xarray: xarray.DataArray | xarray.Dataset | None = None
+
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -170,7 +171,7 @@ class EarthEngineStore(common.AbstractDataStore):
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
         use_coords_double_precision=use_coords_double_precision,
-        match_xarray=match_xarray,
+        match_xarray=match_xarray
     )
 
   def __init__(
@@ -189,7 +190,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       use_coords_double_precision: bool = False,
-      match_xarray: xr.DataArray | xr.Dataset | None = None,
+      match_xarray: xr.DataArray | xr.Dataset | None = None
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
@@ -215,7 +216,7 @@ class EarthEngineStore(common.AbstractDataStore):
     self.crs = CRS(self.crs_arg)
     if match_xarray is not None:
       if match_xarray.rio.crs is None:
-        raise ValueError('If matching to xarray, we require `.rio.crs` is set.')
+        raise ValueError("If matching to xarray, we require `.rio.crs` is set.")
       self.crs = CRS(match_xarray.rio.crs)
       if match_xarray[match_xarray.rio.x_dim].dtype == np.float64:
         self.use_coords_double_precision = True
@@ -1045,7 +1046,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       ee_init_kwargs: keywords to pass to Earth Engine Initialize when
         attempting to auto init for remote workers.
       use_coords_double_precision: Whether to use double precision for coordinates
-        and bounds from provided geometry. False by default, but True may be
+        and bounds from provided geometry. False by default, but True may be 
         helpful when hoping to match a transform of an existing dataset.
       match_xarray: An xarray.DataArray or xarray.Dataset to use as a template
         with rioxarray-based schema to extract the crs and transform to specify
@@ -1081,7 +1082,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
         use_coords_double_precision=use_coords_double_precision,
-        match_xarray=match_xarray,
+        match_xarray=match_xarray
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()

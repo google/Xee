@@ -393,7 +393,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         crs='EPSG:4326',
         use_coords_double_precision=True,
     ).rename({'lon': 'x', 'lat': 'y'})
-    # This is off slightly due to bounds determined by geometry e.g. .getInfo()
+    # This is off slightly due to bounds determined by geometry e.g. .getInfo() 
     # seems to cause a super slight shift in the bounds. Thhe coords change before
     # and after the call to .getInfo()!
     np.testing.assert_almost_equal(
@@ -401,7 +401,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         np.array(raster.rio.transform()),
         decimal=13,
     )
-
+  
   @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
   def test_match_xarray(self):
     data = np.empty((162, 120), dtype=np.float32)
