@@ -465,7 +465,7 @@ class EarthEngineStore(common.AbstractDataStore):
     """
     image = (
         ee.Image(self.mask_value)
-        .rename(image.bandNames().getInfo()[0])
+        .rename([image.bandNames().get(0)])
         .blend(image)
     )
     params = {
