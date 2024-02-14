@@ -120,34 +120,26 @@ class EEBackendArrayTest(absltest.TestCase):
   def test_basic_indexing_multiple_images(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
     first_two = arr[indexing.BasicIndexer((slice(0, 2), 0, 0))]
-    self.assertTrue(
-        np.allclose(np.isnan(first_two), np.isnan(np.full(2, np.nan)))
-    )
+    self.assertTrue(np.allclose(first_two, np.full(2, np.nan), equal_nan=True))
     first_three = arr[indexing.BasicIndexer((slice(0, 3), 0, 0))]
     self.assertTrue(
-        np.allclose(np.isnan(first_three), np.isnan(np.full(3, np.nan)))
+        np.allclose(first_three, np.full(3, np.nan), equal_nan=True)
     )
     last_two = arr[indexing.BasicIndexer((slice(-3, -1), 0, 0))]
-    self.assertTrue(
-        np.allclose(np.isnan(last_two), np.isnan(np.full(2, np.nan)))
-    )
+    self.assertTrue(np.allclose(last_two, np.full(2, np.nan), equal_nan=True))
     last_three = arr[indexing.BasicIndexer((slice(-4, -1), 0, 0))]
-    self.assertTrue(
-        np.allclose(np.isnan(last_three), np.isnan(np.full(3, np.nan)))
-    )
+    self.assertTrue(np.allclose(last_three, np.full(3, np.nan), equal_nan=True))
 
   def test_slice_indexing(self):
     arr = xee.EarthEngineBackendArray('B5', self.store)
     first_10 = indexing.BasicIndexer((0, slice(0, 10), slice(0, 10)))
     self.assertTrue(
-        np.allclose(
-            np.isnan(arr[first_10]), np.isnan(np.full((10, 10), np.nan))
-        )
+        np.allclose(arr[first_10], np.full((10, 10), np.nan), equal_nan=True)
     )
     last_5 = indexing.BasicIndexer((0, slice(-5, -1), slice(-5, -1)))
     expected_last_5 = np.full((4, 4), np.nan)
     self.assertTrue(
-        np.allclose(np.isnan(expected_last_5), np.isnan(arr[last_5])),
+        np.allclose(expected_last_5, arr[last_5], equal_nan=True),
         f'Actual:\n{arr[last_5]}',
     )
 
@@ -209,16 +201,14 @@ class EEBackendArrayTest(absltest.TestCase):
     arr = xee.EarthEngineBackendArray('B5', self.store)
     first_10 = indexing.BasicIndexer((slice(0, 2), slice(0, 10), slice(0, 10)))
     self.assertTrue(
-        np.allclose(
-            np.isnan(arr[first_10]), np.isnan(np.full((2, 10, 10), np.nan))
-        )
+        np.allclose(arr[first_10], np.full((2, 10, 10), np.nan), equal_nan=True)
     )
     last_5 = indexing.BasicIndexer(
         (slice(-3, -1), slice(-5, -1), slice(-5, -1))
     )
     expected_last_5 = np.full((2, 4, 4), np.nan)
     self.assertTrue(
-        np.allclose(np.isnan(expected_last_5), np.isnan(arr[last_5])),
+        np.allclose(expected_last_5, arr[last_5], equal_nan=True),
         f'Actual:\n{arr[last_5]}',
     )
 
