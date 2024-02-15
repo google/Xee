@@ -99,7 +99,7 @@ class EEBackendArrayTest(absltest.TestCase):
 
   def test_basic_indexing(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
-    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((0, 0, 0))]),True)
+    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((0, 0, 0))]), True)
     self.assertEqual(np.isnan(arr[indexing.BasicIndexer((-1, -1, -1))]), True)
 
   def test_basic_indexing__nonzero(self):
