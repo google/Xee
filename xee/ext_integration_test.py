@@ -39,6 +39,7 @@ _SCOPES = [
     'https://www.googleapis.com/auth/cloud-platform',
     'https://www.googleapis.com/auth/earthengine',
 ]
+_USE_ADC_CREDENTIALS_KEY = 'USE_ADC_CREDENTIALS'
 
 
 def _read_identity_pool_creds() -> identity_pool.Credentials:
@@ -50,10 +51,12 @@ def _read_identity_pool_creds() -> identity_pool.Credentials:
 
 
 def init_ee_for_tests():
-  ee.Initialize(
-      credentials=_read_identity_pool_creds(),
-      opt_url=ee.data.HIGH_VOLUME_API_BASE_URL,
-  )
+  init_params = {
+      'opt_url': ee.data.HIGH_VOLUME_API_BASE_URL,
+  }
+  if not os.environ.get(_USE_ADC_CREDENTIALS_KEY, False):
+    init_params['credentials'] = _read_identity_pool_creds()
+  ee.Initialize(**init_params)
 
 
 class EEBackendArrayTest(absltest.TestCase):

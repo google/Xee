@@ -92,6 +92,16 @@ ds = xarray.open_dataset(i, engine='ee')
 
 See [examples](https://github.com/google/Xee/tree/main/examples) or [docs](https://github.com/google/Xee/tree/main/docs) for more uses and integrations.
 
+## How to run integration tests
+
+The Xee integration tests only pass on Xee branches (no forks). Please run the
+integration tests locally before sending a PR. To run the tests locally,
+authenticate using `earthengine authenticate` and run the following:
+
+```bash
+USE_ADC_CREDENTIALS=1 python -m unittest xee/ext_integration_test.py
+```
+
 ## License
 
 This is not an official Google product.
