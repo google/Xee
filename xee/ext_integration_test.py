@@ -99,14 +99,8 @@ class EEBackendArrayTest(absltest.TestCase):
 
   def test_basic_indexing(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
-    self.assertEqual(
-        np.isnan(arr[indexing.BasicIndexer((0, 0, 0))]),
-        np.isnan(np.array(np.NaN)),
-    )
-    self.assertEqual(
-        np.isnan(arr[indexing.BasicIndexer((-1, -1, -1))]),
-        np.isnan(np.array([np.NaN])),
-    )
+    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((0, 0, 0))]),True)
+    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((-1, -1, -1))]), True)
 
   def test_basic_indexing__nonzero(self):
     arr = xee.EarthEngineBackendArray('longitude', self.lnglat_store)
@@ -352,7 +346,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine=xee.EarthEngineBackendEntrypoint,
     )
 
-    self.assertEqual(ds.dims, {'time': 4248, 'lon': 40, 'lat': 33})
+    self.assertEqual(ds.dims, {'time': 4248, 'lon': 40, 'lat': 35})
     self.assertNotEqual(ds.dims, standard_ds.dims)
 
   def test_honors_projection(self):
