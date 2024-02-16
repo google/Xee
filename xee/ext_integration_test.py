@@ -102,8 +102,8 @@ class EEBackendArrayTest(absltest.TestCase):
 
   def test_basic_indexing(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
-    self.assertEqual(arr[indexing.BasicIndexer((0, 0, 0))], 0)
-    self.assertEqual(arr[indexing.BasicIndexer((-1, -1, -1))], np.array([0]))
+    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((0, 0, 0))]), True)
+    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((-1, -1, -1))]), True)
 
   def test_basic_indexing__nonzero(self):
     arr = xee.EarthEngineBackendArray('longitude', self.lnglat_store)
@@ -117,23 +117,21 @@ class EEBackendArrayTest(absltest.TestCase):
   def test_basic_indexing_multiple_images(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
     first_two = arr[indexing.BasicIndexer((slice(0, 2), 0, 0))]
-    self.assertTrue(np.allclose(first_two, np.array([0, 0])))
+    np.testing.assert_equal(first_two, np.full(2, np.nan))
     first_three = arr[indexing.BasicIndexer((slice(0, 3), 0, 0))]
-    self.assertTrue(np.allclose(first_three, np.array([0, 0, 0])))
+    np.testing.assert_equal(first_three, np.full(3, np.nan))
     last_two = arr[indexing.BasicIndexer((slice(-3, -1), 0, 0))]
-    self.assertTrue(np.allclose(last_two, np.array([0, 0])))
+    np.testing.assert_equal(last_two, np.full(2, np.nan))
     last_three = arr[indexing.BasicIndexer((slice(-4, -1), 0, 0))]
-    self.assertTrue(np.allclose(last_three, np.array([0, 0, 0])))
+    np.testing.assert_equal(last_three, np.full(3, np.nan))
 
   def test_slice_indexing(self):
     arr = xee.EarthEngineBackendArray('B5', self.store)
     first_10 = indexing.BasicIndexer((0, slice(0, 10), slice(0, 10)))
-    self.assertTrue(np.allclose(arr[first_10], np.zeros((10, 10))))
+    np.testing.assert_equal(arr[first_10], np.full((10, 10), np.nan))
     last_5 = indexing.BasicIndexer((0, slice(-5, -1), slice(-5, -1)))
-    expected_last_5 = np.zeros((4, 4))
-    self.assertTrue(
-        np.allclose(expected_last_5, arr[last_5]), f'Actual:\n{arr[last_5]}'
-    )
+    expected_last_5 = np.full((4, 4), np.nan)
+    np.testing.assert_equal(expected_last_5, arr[last_5])
 
   def test_slice_indexing__non_global(self):
     arr = xee.EarthEngineBackendArray('spi2y', self.conus_store)
@@ -192,14 +190,12 @@ class EEBackendArrayTest(absltest.TestCase):
   def test_slice_indexing_multiple_images(self):
     arr = xee.EarthEngineBackendArray('B5', self.store)
     first_10 = indexing.BasicIndexer((slice(0, 2), slice(0, 10), slice(0, 10)))
-    self.assertTrue(np.allclose(arr[first_10], np.zeros((2, 10, 10))))
+    np.testing.assert_equal(arr[first_10], np.full((2, 10, 10), np.nan))
     last_5 = indexing.BasicIndexer(
         (slice(-3, -1), slice(-5, -1), slice(-5, -1))
     )
-    expected_last_5 = np.zeros((2, 4, 4))
-    self.assertTrue(
-        np.allclose(expected_last_5, arr[last_5]), f'Actual:\n{arr[last_5]}'
-    )
+    expected_last_5 = np.full((2, 4, 4), np.nan)
+    np.testing.assert_equal(expected_last_5, arr[last_5])
 
   def test_slice_indexing__medium(self):
     try:
