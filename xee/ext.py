@@ -279,11 +279,13 @@ class EarthEngineStore(common.AbstractDataStore):
       rpcs.append(('projection', self.projection))
 
     if isinstance(self.geometry, ee.Geometry):
-      rpcs.append(('bounds', self.geometry.bounds(proj=self.projection)))
+      rpcs.append(('bounds', self.geometry.bounds(1, proj=self.projection)))
     else:
       rpcs.append((
           'bounds',
-          self.image_collection.first().geometry().bounds(proj=self.projection),
+          self.image_collection.first()
+          .geometry()
+          .bounds(1, proj=self.projection),
       ))
 
     # TODO(#29, #30): This RPC call takes the longest time to compute. This
