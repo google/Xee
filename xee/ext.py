@@ -40,7 +40,6 @@ from xarray.backends import common
 from xarray.backends import store as backends_store
 from xarray.core import indexing
 from xarray.core import utils
-import xarray as xr
 from xee import types
 
 import ee
@@ -147,8 +146,6 @@ class EarthEngineStore(common.AbstractDataStore):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
-      use_coords_double_precision: bool = False,
-      match_xarray: xarray.DataArray | xarray.Dataset | None = None,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -169,8 +166,6 @@ class EarthEngineStore(common.AbstractDataStore):
         request_byte_limit=request_byte_limit,
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
-        use_coords_double_precision=use_coords_double_precision,
-        match_xarray=match_xarray,
     )
 
   def __init__(
@@ -188,8 +183,6 @@ class EarthEngineStore(common.AbstractDataStore):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
-      use_coords_double_precision: bool = False,
-      match_xarray: xr.DataArray | xr.Dataset | None = None,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
@@ -202,7 +195,6 @@ class EarthEngineStore(common.AbstractDataStore):
     self.geometry = geometry
     self.primary_dim_name = primary_dim_name or 'time'
     self.primary_dim_property = primary_dim_property or 'system:time_start'
-    self.use_coords_double_precision = use_coords_double_precision
 
     self.n_images = self.get_info['size']
     self._props = self.get_info['props']
@@ -213,20 +205,12 @@ class EarthEngineStore(common.AbstractDataStore):
 
     self.crs_arg = crs or proj.get('crs', proj.get('wkt', 'EPSG:4326'))
     self.crs = CRS(self.crs_arg)
-    if match_xarray is not None:
-      if match_xarray.rio.crs is None:
-        raise ValueError('If matching to xarray, we require `.rio.crs` is set.')
-      self.crs = CRS(match_xarray.rio.crs)
-      if match_xarray[match_xarray.rio.x_dim].dtype == np.float64:
-        self.use_coords_double_precision = True
     # Gets the unit i.e. meter, degree etc.
     self.scale_units = self.crs.axis_info[0].unit_name
     # Get the dimensions name based on the CRS (scale units).
     self.dimension_names = self.DIMENSION_NAMES.get(
         self.scale_units, ('X', 'Y')
     )
-    if match_xarray is not None:
-      self.dimension_names = (match_xarray.rio.x_dim, match_xarray.rio.y_dim)
     x_dim_name, y_dim_name = self.dimension_names
     self._props.update(
         coordinates=f'{self.primary_dim_name} {x_dim_name} {y_dim_name}',
@@ -239,13 +223,10 @@ class EarthEngineStore(common.AbstractDataStore):
     if scale is None:
       scale = default_scale
     default_transform = affine.Affine.scale(scale, -1 * scale)
+
     transform = affine.Affine(*proj.get('transform', default_transform)[:6])
     self.scale_x, self.scale_y = transform.a, transform.e
     self.scale = np.sqrt(np.abs(transform.determinant))
-
-    if match_xarray is not None:
-      self.scale_x, self.scale_y = match_xarray.rio.resolution()
-      self.scale = np.sqrt(np.abs(self.scale_x * self.scale_y))
 
     # Parse the dataset bounds from the native projection (either from the CRS
     # or the image geometry) and translate it to the representation that will be
@@ -267,8 +248,6 @@ class EarthEngineStore(common.AbstractDataStore):
     x_min, y_min = self.transform(x_min_0, y_min_0)
     x_max, y_max = self.transform(x_max_0, y_max_0)
     self.bounds = x_min, y_min, x_max, y_max
-    if match_xarray is not None:
-      self.bounds = match_xarray.rio.bounds()
 
     max_dtype = self._max_itemsize()
 
@@ -602,9 +581,8 @@ class EarthEngineStore(common.AbstractDataStore):
         else (0, tile_coords_start, 1, tile_coords_end)
     )
     target_image = ee.Image.pixelCoordinates(ee.Projection(self.crs_arg))
-    dtype = np.float64 if self.use_coords_double_precision else np.float32
     return tile_index, self.image_to_array(
-        target_image, grid=bbox, dtype=dtype, bandIds=[band_id]
+        target_image, grid=bbox, dtype=np.float32, bandIds=[band_id]
     )
 
   def _process_coordinate_data(
@@ -711,7 +689,7 @@ def _parse_dtype(data_type: types.DataType):
 
 
 def _ee_bounds_to_bounds(bounds: ee.Bounds) -> types.Bounds:
-  coords = np.array(bounds['coordinates'], dtype=np.float64)[0]
+  coords = np.array(bounds['coordinates'], dtype=np.float32)[0]
   x_min, y_min, x_max, y_max = (
       min(coords[:, 0]),
       min(coords[:, 1]),
@@ -973,8 +951,6 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_if_necessary: bool = False,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
-      use_coords_double_precision: bool = False,
-      match_xarray: xarray.DataArray | xarray.Dataset | None = None,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -1044,13 +1020,6 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         frameworks.
       ee_init_kwargs: keywords to pass to Earth Engine Initialize when
         attempting to auto init for remote workers.
-      use_coords_double_precision: Whether to use double precision for coordinates
-        and bounds from provided geometry. False by default, but True may be
-        helpful when hoping to match a transform of an existing dataset.
-      match_xarray: An xarray.DataArray or xarray.Dataset to use as a template
-        with rioxarray-based schema to extract the crs and transform to specify
-        the spatial extent and crs of the output dataset. Using this arg requires
-        that rioxarray is installed.
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
@@ -1080,8 +1049,6 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         request_byte_limit=request_byte_limit,
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
-        use_coords_double_precision=use_coords_double_precision,
-        match_xarray=match_xarray,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
