@@ -139,7 +139,7 @@ class EarthEngineStore(common.AbstractDataStore):
       crs: Optional[str] = None,
       scale: Optional[float] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[ee.Geometry] = None,
+      geometry: Optional[Union[ee.Geometry, types.types.BBox]] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
@@ -176,7 +176,7 @@ class EarthEngineStore(common.AbstractDataStore):
       crs: Optional[str] = None,
       scale: Union[float, int, None] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[ee.Geometry] = None,
+      geometry: Optional[Union[ee.Geometry, types.BBox]] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
@@ -231,18 +231,30 @@ class EarthEngineStore(common.AbstractDataStore):
     # Parse the dataset bounds from the native projection (either from the CRS
     # or the image geometry) and translate it to the representation that will be
     # used for all internal `computePixels()` calls.
-    try:
-      if isinstance(geometry, ee.Geometry):
+    if geometry is None:
+      try:
+        x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
+      except AttributeError:
+        # `area_of_use` is probable `None`. Parse the geometry from the first
+        # image instead (calculated in self.get_info())
         x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
             self.get_info['bounds']
         )
-      else:
-        x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
-    except AttributeError:
-      # `area_of_use` is probable `None`. Parse the geometry from the first
-      # image instead (calculated in self.get_info())
+    elif isinstance(geometry, ee.Geometry):
       x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
           self.get_info['bounds']
+      )
+    elif isinstance(geometry, Union[List, Tuple, np.ndarray]):
+      if len(geometry) != 4:
+        raise ValueError(
+            'geometry must be a 4-tuple of floats or a ee.Geometry, '
+            f'but got {geometry!r}'
+        )
+      x_min_0, y_min_0, x_max_0, y_max_0 = geometry
+    else:
+      raise ValueError(
+          'geometry must be a 4-tuple of floats or a ee.Geometry or None, '
+          f'but got {type(geometry)}'
       )
 
     x_min, y_min = self.transform(x_min_0, y_min_0)
@@ -689,7 +701,7 @@ def _parse_dtype(data_type: types.DataType):
 
 
 def _ee_bounds_to_bounds(bounds: ee.Bounds) -> types.Bounds:
-  coords = np.array(bounds['coordinates'], dtype=np.float32)[0]
+  coords = np.array(bounds['coordinates'], dtype=np.float64)[0]
   x_min, y_min, x_max, y_max = (
       min(coords[:, 0]),
       min(coords[:, 1]),
@@ -1003,7 +1015,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         coalesce all variables upon opening. By default, the scale and reference
         system is set by the the `crs` and `scale` arguments.
       geometry (optional): Specify an `ee.Geometry` to define the regional
-        bounds when opening the data. When not set, the bounds are defined by
+        bounds when opening the data or a bbox specifying [x_min, y_min, x_max,
+        y_max] in EPSG:4326. When not set, the bounds are defined by
         the CRS's 'area_of_use` boundaries. If those aren't present, the bounds
         are derived from the geometry of the first image of the collection.
       primary_dim_name (optional): Override the name of the primary dimension of
