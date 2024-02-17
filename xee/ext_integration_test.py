@@ -378,8 +378,6 @@ class EEBackendEntrypointTest(absltest.TestCase):
         },
         dims=('y', 'x'),
     )
-
-    geo = ee.Geometry.Rectangle(*raster.rio.bounds())
     ic = (
         ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY')
         .filterDate(ee.DateRange('2014-01-01', '2014-01-02'))
@@ -388,7 +386,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     xee_dataset = xr.open_dataset(
         ee.ImageCollection(ic),
         engine='ee',
-        geometry=geo,
+        geometry=tuple(raster.rio.bounds()),
         scale=raster.rio.resolution()[0],
         crs='EPSG:4326',
     ).rename({'lon': 'x', 'lat': 'y'})
