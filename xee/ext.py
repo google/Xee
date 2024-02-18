@@ -594,7 +594,7 @@ class EarthEngineStore(common.AbstractDataStore):
     )
     target_image = ee.Image.pixelCoordinates(ee.Projection(self.crs_arg))
     return tile_index, self.image_to_array(
-        target_image, grid=bbox, dtype=np.float32, bandIds=[band_id]
+        target_image, grid=bbox, dtype=np.float64, bandIds=[band_id]
     )
 
   def _process_coordinate_data(

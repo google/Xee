@@ -359,9 +359,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertNotEqual(ds.dims, standard_ds.dims)
 
   @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
-  def test_expected_double_precision_transform(self):
-    data = np.empty((162, 120), dtype=np.float32)
-    # An example of a double precision bbox
+  def test_expected_precise_transform(self):
+    data = np.empty((162, 121), dtype=np.float32)
     bbox = (
         -53.94158617595226,
         -12.078281822698678,
@@ -378,6 +377,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         },
         dims=('y', 'x'),
     )
+    raster.rio.write_crs('EPSG:4326', inplace=True)
     ic = (
         ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY')
         .filterDate(ee.DateRange('2014-01-01', '2014-01-02'))
@@ -387,9 +387,11 @@ class EEBackendEntrypointTest(absltest.TestCase):
         ee.ImageCollection(ic),
         engine='ee',
         geometry=tuple(raster.rio.bounds()),
-        scale=raster.rio.resolution()[0],
-        crs='EPSG:4326',
+        projection=ee.Projection(
+            crs=str(raster.rio.crs), transform=raster.rio.transform()[:6]
+        ),
     ).rename({'lon': 'x', 'lat': 'y'})
+    self.assertNotEqual(abs(x_res), abs(y_res))
     np.testing.assert_equal(
         np.array(xee_dataset.rio.transform()),
         np.array(raster.rio.transform()),
