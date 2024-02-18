@@ -259,6 +259,32 @@ class EEBackendArrayTest(absltest.TestCase):
 
     self.assertEqual(getter.count, 3)
 
+  def test_geometry_bounds_with_and_without_projection(self):
+    image = (
+        ee.ImageCollection('LANDSAT/LC08/C01/T1')
+        .filterDate('2017-01-01', '2017-01-03')
+        .first()
+    )
+    point = ee.Geometry.Point(-40.2414893624401, 105.48790177216375)
+    distance = 311.5
+    scale = 5000
+    projection = ee.Projection('EPSG:4326', [1, 0, 0, 0, -1, 0]).atScale(scale)
+    image = image.reproject(projection)
+
+    geometry = point.buffer(distance, proj=projection).bounds(proj=projection)
+
+    data_store = xee.EarthEngineStore(
+        ee.ImageCollection(image),
+        projection=image.projection(),
+        geometry=geometry,
+    )
+    data_store_bounds = data_store.get_info['bounds']
+
+    self.assertNotEqual(geometry.bounds().getInfo(), data_store_bounds)
+    self.assertEqual(
+        geometry.bounds(1, proj=projection).getInfo(), data_store_bounds
+    )
+
 
 class EEBackendEntrypointTest(absltest.TestCase):
 
