@@ -25,7 +25,7 @@ import itertools
 import math
 import os
 import sys
-from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Tuple, Union
 from urllib import parse
 import warnings
 
@@ -139,7 +139,7 @@ class EarthEngineStore(common.AbstractDataStore):
       crs: Optional[str] = None,
       scale: Optional[float] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[Union[ee.Geometry, types.types.BBox]] = None,
+      geometry: Optional[Union[ee.Geometry, types.BBox]] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
@@ -244,7 +244,7 @@ class EarthEngineStore(common.AbstractDataStore):
       x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
           self.get_info['bounds']
       )
-    elif isinstance(geometry, Union[List, Tuple, np.ndarray]):
+    elif isinstance(geometry, Union[List, Tuple, np.ndarray, Sequence]):
       if len(geometry) != 4:
         raise ValueError(
             'geometry must be a 4-tuple of floats or a ee.Geometry, '
