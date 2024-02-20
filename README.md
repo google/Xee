@@ -90,6 +90,20 @@ i = ee.ImageCollection(ee.Image("LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318"))
 ds = xarray.open_dataset(i, engine='ee')
 ```
 
+Open any Earth Engine ImageCollection to match an existing transform:
+
+```python
+raster = rioxarray.open_rasterio(...) # assume crs + transform is set
+ds = xr.open_dataset(
+    'ee://ECMWF/ERA5_LAND/HOURLY',
+    engine='ee',
+    geometry=tuple(raster.rio.bounds()), # must be in EPSG:4326
+    projection=ee.Projection(
+        crs=str(raster.rio.crs), transform=raster.rio.transform()[:6]
+    ),
+)
+```
+
 See [examples](examples/) or [docs](docs/) for more uses and integrations.
 
 ## License
