@@ -139,7 +139,7 @@ class EarthEngineStore(common.AbstractDataStore):
       crs: Optional[str] = None,
       scale: Optional[float] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[Union[ee.Geometry, types.BBox]] = None,
+      geometry: Optional[Union[ee.Geometry, Tuple[float, float, float, float]]] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
@@ -176,7 +176,7 @@ class EarthEngineStore(common.AbstractDataStore):
       crs: Optional[str] = None,
       scale: Union[float, int, None] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[Union[ee.Geometry, types.BBox]] = None,
+      geometry: Optional[Union[ee.Geometry, Tuple[float, float, float, float]]] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
@@ -244,16 +244,16 @@ class EarthEngineStore(common.AbstractDataStore):
       x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
           self.get_info['bounds']
       )
-    elif isinstance(geometry, Union[List, Tuple, np.ndarray, Sequence]):
+    elif isinstance(geometry, Union[List, Tuple]):
       if len(geometry) != 4:
         raise ValueError(
-            'geometry must be a 4-tuple of floats or a ee.Geometry, '
+            'geometry must be a tuple or list of length 4, or a ee.Geometry, '
             f'but got {geometry!r}'
         )
       x_min_0, y_min_0, x_max_0, y_max_0 = geometry
     else:
       raise ValueError(
-          'geometry must be a 4-tuple of floats or a ee.Geometry or None, '
+          f'geometry must be a tuple or list of length 4, a ee.Geometry, or None '
           f'but got {type(geometry)}'
       )
 
@@ -956,7 +956,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       crs: Optional[str] = None,
       scale: Union[float, int, None] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[ee.Geometry] = None,
+      geometry: Optional[Union[ee.Geometry, Tuple[float, float, float, float]]] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       ee_mask_value: Optional[float] = None,
