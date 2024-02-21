@@ -139,7 +139,9 @@ class EarthEngineStore(common.AbstractDataStore):
       crs: Optional[str] = None,
       scale: Optional[float] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[Union[ee.Geometry, Tuple[float, float, float, float]]] = None,
+      geometry: Union[
+          ee.Geometry, Tuple[float, float, float, float], None
+      ] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
@@ -176,7 +178,9 @@ class EarthEngineStore(common.AbstractDataStore):
       crs: Optional[str] = None,
       scale: Union[float, int, None] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[Union[ee.Geometry, Tuple[float, float, float, float]]] = None,
+      geometry: Optional[
+          Union[ee.Geometry, Tuple[float, float, float, float]]
+      ] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
@@ -253,8 +257,8 @@ class EarthEngineStore(common.AbstractDataStore):
       x_min_0, y_min_0, x_max_0, y_max_0 = geometry
     else:
       raise ValueError(
-          f'geometry must be a tuple or list of length 4, a ee.Geometry, or None '
-          f'but got {type(geometry)}'
+          'geometry must be a tuple or list of length 4, a ee.Geometry, or'
+          f' None but got {type(geometry)}'
       )
 
     x_min, y_min = self.transform(x_min_0, y_min_0)
@@ -960,7 +964,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       crs: Optional[str] = None,
       scale: Union[float, int, None] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[Union[ee.Geometry, Tuple[float, float, float, float]]] = None,
+      geometry: Optional[
+          Union[ee.Geometry, Tuple[float, float, float, float]]
+      ] = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       ee_mask_value: Optional[float] = None,
