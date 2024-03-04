@@ -193,6 +193,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
     self.projection = projection
     self.geometry = geometry
+    print('self.geometry : ')
     self.primary_dim_name = primary_dim_name or 'time'
     self.primary_dim_property = primary_dim_property or 'system:time_start'
 
