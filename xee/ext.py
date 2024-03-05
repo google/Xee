@@ -1035,7 +1035,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       ee_init_kwargs: keywords to pass to Earth Engine Initialize when
         attempting to auto init for remote workers.
       executor_kwargs (optional): A dictionary of keyword arguments to pass to
-        the ThreadPoolExecutor that handles the parallel computation of pixels.
+        the ThreadPoolExecutor that handles the parallel computation of pixels
+        i.e. {'max_workers': 2}.
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
