@@ -146,7 +146,7 @@ class EarthEngineStore(common.AbstractDataStore):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
-      executor_kwargs: Optional[dict] = None,
+      executor_kwargs: Optional[Dict[str, Any]] = None,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -185,7 +185,7 @@ class EarthEngineStore(common.AbstractDataStore):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
-      executor_kwargs: Optional[dict] = None,
+      executor_kwargs: Optional[Dict[str, Any]] = None,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
@@ -964,7 +964,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_if_necessary: bool = False,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
-      executor_kwargs: Optional[dict] = None,
+      executor_kwargs: Optional[Dict[str, Any]] = None,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
