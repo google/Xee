@@ -146,6 +146,7 @@ class EarthEngineStore(common.AbstractDataStore):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
+      executor_kwargs: Optional[dict] = None,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -166,6 +167,7 @@ class EarthEngineStore(common.AbstractDataStore):
         request_byte_limit=request_byte_limit,
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
+        executor_kwargs=executor_kwargs
     )
 
   def __init__(
@@ -183,9 +185,15 @@ class EarthEngineStore(common.AbstractDataStore):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
+      executor_kwargs: Optional[dict] = None,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
+
+    # Initialize executor_kwargs
+    if executor_kwargs is None:
+      executor_kwargs = {}  
+    self.executor_kwargs = executor_kwargs
 
     self.image_collection = image_collection
     if n_images != -1:
@@ -602,7 +610,7 @@ class EarthEngineStore(common.AbstractDataStore):
         for i in range(tile_count)
     ]
     tiles = [None] * tile_count
-    with concurrent.futures.ThreadPoolExecutor() as pool:
+    with concurrent.futures.ThreadPoolExecutor(**self.executor_kwargs) as pool:
       for i, arr in pool.map(
           self._get_tile_from_ee,
           list(zip(data, itertools.cycle([coordinate_type]))),
@@ -862,8 +870,7 @@ class EarthEngineBackendArray(backends.BackendArray):
         for _ in range(shape[0])
     ]
 
-    # TODO(#11): Allow users to configure this via kwargs.
-    with concurrent.futures.ThreadPoolExecutor() as pool:
+    with concurrent.futures.ThreadPoolExecutor(**self.store.executor_kwargs) as pool:
       for (i, j, k), arr in pool.map(
           self._make_tile, self._tile_indexes(key[0], bbox)
       ):
@@ -955,6 +962,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_if_necessary: bool = False,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
+      executor_kwargs: Optional[dict] = None,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -1024,6 +1032,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         frameworks.
       ee_init_kwargs: keywords to pass to Earth Engine Initialize when
         attempting to auto init for remote workers.
+      executor_kwargs (optional): A dictionary of keyword arguments to pass to
+        the ThreadPoolExecutor that handles the parallel computation of pixels.
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
@@ -1053,6 +1063,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         request_byte_limit=request_byte_limit,
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
+        executor_kwargs=executor_kwargs,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
