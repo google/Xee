@@ -167,7 +167,7 @@ class EarthEngineStore(common.AbstractDataStore):
         request_byte_limit=request_byte_limit,
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
-        executor_kwargs=executor_kwargs
+        executor_kwargs=executor_kwargs,
     )
 
   def __init__(
@@ -192,7 +192,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
     # Initialize executor_kwargs
     if executor_kwargs is None:
-      executor_kwargs = {}  
+      executor_kwargs = {}
     self.executor_kwargs = executor_kwargs
 
     self.image_collection = image_collection
@@ -870,7 +870,9 @@ class EarthEngineBackendArray(backends.BackendArray):
         for _ in range(shape[0])
     ]
 
-    with concurrent.futures.ThreadPoolExecutor(**self.store.executor_kwargs) as pool:
+    with concurrent.futures.ThreadPoolExecutor(
+        **self.store.executor_kwargs
+    ) as pool:
       for (i, j, k), arr in pool.map(
           self._make_tile, self._tile_indexes(key[0], bbox)
       ):
