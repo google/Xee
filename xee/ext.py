@@ -452,7 +452,6 @@ class EarthEngineStore(common.AbstractDataStore):
       self,
       image: ee.Image,
       pixels_getter=_GetComputedPixels(),
-      dtype=np.float32,
       **kwargs,
   ) -> np.ndarray:
     """Gets the pixels for a given image as a numpy array.
@@ -464,12 +463,11 @@ class EarthEngineStore(common.AbstractDataStore):
       image: An EE image.
       pixels_getter: An object whose `__getitem__()` method calls
         `computePixels()`.
-      dtype: a np.dtype. The returned array will be in this dtype.
       **kwargs: Additional settings for `params` in `computePixels(params)`. For
         example, a `grid` dictionary.
 
     Returns:
-      An numpy array containing the pixels computed based on the given image.
+      A numpy array of float data value containing the pixels computed based on the given image.
     """
     image = image.toFloat()
     image = (
@@ -499,16 +497,6 @@ class EarthEngineStore(common.AbstractDataStore):
         x_size,
         n_bands,
     )
-
-    # try converting the data to desired dtype in place without copying
-    # if conversion is not allowed then just use the EE returned dtype
-    try:
-      arr = arr.astype(dtype, copy=False)
-    except ValueError:
-      warnings.warn(
-          f'Could convert EE results to requested dtype {dtype} '
-          f'falling back to returned dtype from EE {np.dtype(raw.dtype[0])}'
-      )
 
     data = arr.T
     current_mask_value = np.array(self.mask_value, dtype=data.dtype)
@@ -595,7 +583,7 @@ class EarthEngineStore(common.AbstractDataStore):
     )
     target_image = ee.Image.pixelCoordinates(ee.Projection(self.crs_arg))
     return tile_index, self.image_to_array(
-        target_image, grid=bbox, dtype=np.float32, bandIds=[band_id]
+        target_image, grid=bbox, bandIds=[band_id]
     )
 
   def _process_coordinate_data(
@@ -838,7 +826,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     if self.store.chunks == -1:
       target_image = self._slice_collection(key[0])
       out = self.store.image_to_array(
-          target_image, grid=self.store.project(bbox), dtype=self.dtype
+          target_image,
+          grid=self.store.project(bbox),
       )
 
       if squeeze_axes:
@@ -893,7 +882,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     tile_idx, (istart, iend, *bbox) = tile_index
     target_image = self._slice_collection(slice(istart, iend))
     return tile_idx, self.store.image_to_array(
-        target_image, grid=self.store.project(tuple(bbox)), dtype=self.dtype
+        target_image,
+        grid=self.store.project(tuple(bbox)),
     )
 
   def _tile_indexes(

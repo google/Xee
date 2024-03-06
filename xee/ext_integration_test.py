@@ -69,7 +69,6 @@ class EEBackendArrayTest(absltest.TestCase):
             '2017-01-01', '2017-01-03'
         ),
         n_images=64,
-        mask_value=-99999,
     )
     self.lnglat_store = xee.EarthEngineStore(
         ee.ImageCollection.fromImages([ee.Image.pixelLonLat()]),
@@ -244,14 +243,12 @@ class EEBackendArrayTest(absltest.TestCase):
           raise ee.ee_exception.EEException('Too many requests!')
         return ee.data.computePixels(params)
 
-    arr = xee.EarthEngineBackendArray('B5', self.store)
     grid = self.store.project((0, 10, 0, 10))
     getter = ErroneousPixelsGetter()
     self.store.image_to_array(
         self.store.image_collection.first(),
         pixels_getter=getter,
         grid=grid,
-        dtype=arr.dtype,
     )
 
     self.assertEqual(getter.count, 3)
