@@ -69,6 +69,7 @@ class EEBackendArrayTest(absltest.TestCase):
             '2017-01-01', '2017-01-03'
         ),
         n_images=64,
+        mask_value=-99999,
     )
     self.lnglat_store = xee.EarthEngineStore(
         ee.ImageCollection.fromImages([ee.Image.pixelLonLat()]),
