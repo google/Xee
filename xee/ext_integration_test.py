@@ -70,6 +70,13 @@ class EEBackendArrayTest(absltest.TestCase):
         ),
         n_images=64,
     )
+    self.store_with_neg_mask_value = xee.EarthEngineStore(
+        ee.ImageCollection('LANDSAT/LC08/C01/T1').filterDate(
+            '2017-01-01', '2017-01-03'
+        ),
+        n_images=64,
+        mask_value=-9999
+    )
     self.lnglat_store = xee.EarthEngineStore(
         ee.ImageCollection.fromImages([ee.Image.pixelLonLat()]),
         chunks={'index': 256, 'width': 512, 'height': 512},
@@ -97,11 +104,16 @@ class EEBackendArrayTest(absltest.TestCase):
     self.assertIsNotNone(arr)
 
     self.assertEqual((64, 360, 180), arr.shape)
-    self.assertEqual(np.int32, arr.dtype)
+    self.assertEqual(np.float32, arr.dtype)
     self.assertEqual('B4', arr.variable_name)
 
   def test_basic_indexing(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
+    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((0, 0, 0))]), True)
+    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((-1, -1, -1))]), True)
+
+  def test_basic_indexing_on_int_ee_image(self):
+    arr = xee.EarthEngineBackendArray('B4', self.store_with_neg_mask_value)
     self.assertEqual(np.isnan(arr[indexing.BasicIndexer((0, 0, 0))]), True)
     self.assertEqual(np.isnan(arr[indexing.BasicIndexer((-1, -1, -1))]), True)
 

@@ -719,7 +719,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     # It looks like different bands have different dimensions & transforms!
     # Can we get this into consistent dimensions?
     self._info = ee_store._band_attrs(variable_name)
-    self.dtype = _parse_dtype(self._info['data_type'])
+    self.dtype = np.dtype(np.float32)
 
     x_min, y_min, x_max, y_max = self.bounds
 
