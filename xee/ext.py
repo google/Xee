@@ -469,17 +469,8 @@ class EarthEngineStore(common.AbstractDataStore):
     Returns:
       A numpy array of float data value containing the pixels computed based on the given image.
     """
-    image = image.toFloat()
-    image = (
-        ee.Image(self.mask_value)
-        .rename([image.bandNames().get(0)])
-        .blend(image)
-    )
-    params = {
-        'expression': image,
-        'fileFormat': 'NUMPY_NDARRAY',
-        **kwargs,
-    }
+    image = image.unmask(self.mask_value, False)
+    params = {'expression': image, 'fileFormat': 'NUMPY_NDARRAY', **kwargs}
     raw = common.robust_getitem(
         pixels_getter, params, catch=ee.ee_exception.EEException
     )
