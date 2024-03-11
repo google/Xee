@@ -104,7 +104,7 @@ class EEBackendArrayTest(absltest.TestCase):
     self.assertIsNotNone(arr)
 
     self.assertEqual((64, 360, 180), arr.shape)
-    self.assertEqual(np.int32, arr.dtype)
+    self.assertEqual(np.float32, arr.dtype)
     self.assertEqual('B4', arr.variable_name)
 
   def test_basic_indexing(self):
