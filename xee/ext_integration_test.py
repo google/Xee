@@ -255,12 +255,14 @@ class EEBackendArrayTest(absltest.TestCase):
           raise ee.ee_exception.EEException('Too many requests!')
         return ee.data.computePixels(params)
 
+    arr = xee.EarthEngineBackendArray('B5', self.store)
     grid = self.store.project((0, 10, 0, 10))
     getter = ErroneousPixelsGetter()
     self.store.image_to_array(
         self.store.image_collection.first(),
         pixels_getter=getter,
         grid=grid,
+        dtype=arr.dtype,
     )
 
     self.assertEqual(getter.count, 3)
