@@ -148,11 +148,11 @@ class EEBackendArrayTest(absltest.TestCase):
   def test_slice_indexing__non_global(self):
     arr = xee.EarthEngineBackendArray('spi2y', self.conus_store)
     first_10 = indexing.BasicIndexer((0, slice(0, 10), slice(0, 10)))
-    self.assertTrue(np.allclose(arr[first_10], np.zeros((10, 10))))
+    np.testing.assert_equal(arr[first_10], np.full((10, 10), np.nan))
     last_5 = indexing.BasicIndexer((0, slice(-5, -1), slice(-5, -1)))
-    expected_last_5 = np.zeros((4, 4))
-    self.assertTrue(
-        np.allclose(expected_last_5, arr[last_5]), f'Actual:\n{arr[last_5]}'
+    expected_last_5 = np.full((4, 4), np.nan)
+    np.testing.assert_equal(
+        expected_last_5, arr[last_5], f'Actual:\n{arr[last_5]}'
     )
 
   # TODO(alxr): Add more tests here to check for off-by-one errors...
