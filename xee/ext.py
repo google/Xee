@@ -1053,10 +1053,10 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         the ThreadPoolExecutor that handles the parallel computation of pixels
         i.e. {'max_workers': 2}.
       compute_pixels_max_retries (int): The maximum number of retry
-        attempts for calling ee.data.computePixels(). defaults to 6.
+        attempts for calling ee.data.computePixels(). By default, it is 6.
         # (https://github.com/pydata/xarray/blob/main/xarray/backends/common.py#L181).
       compute_pixels_initial_delay (int): The initial delay in milliseconds
-        before the first retry of calling ee.data.computePixels(). defaults to 500.
+        before the first retry of calling ee.data.computePixels(). By default, it is 500.
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
