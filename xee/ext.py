@@ -1060,7 +1060,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       executor_kwargs (optional): A dictionary of keyword arguments to pass to
         the ThreadPoolExecutor that handles the parallel computation of pixels
         i.e. {'max_workers': 2}.
-      compute_pixels_max_retries (optional):  The maximum number of retry 
+      compute_pixels_max_retries (optional):  The maximum number of retry
         attempts for calling ee.data.computePixels().
       compute_pixels_initial_delay (optional): The initial delay in milliseconds
         before the first retry of calling ee.data.computePixels().
