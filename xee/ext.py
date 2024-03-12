@@ -147,6 +147,8 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
+      compute_pixels_max_retries: Optional[int] = None,
+      compute_pixels_initial_delay: Optional[int] = None,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -168,6 +170,8 @@ class EarthEngineStore(common.AbstractDataStore):
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
+        compute_pixels_max_retries=compute_pixels_max_retries,
+        compute_pixels_initial_delay=compute_pixels_initial_delay,
     )
 
   def __init__(
@@ -186,6 +190,8 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
+      compute_pixels_max_retries: Optional[int] = None,
+      compute_pixels_initial_delay: Optional[int] = None,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
@@ -194,6 +200,17 @@ class EarthEngineStore(common.AbstractDataStore):
     if executor_kwargs is None:
       executor_kwargs = {}
     self.executor_kwargs = executor_kwargs
+
+    # Here 6 & 500 is default value.
+    # (https://github.com/pydata/xarray/blob/main/xarray/backends/common.py#L181).
+    self.compute_pixels_max_retries = (
+        6 if compute_pixels_max_retries is None else compute_pixels_max_retries
+    )
+    self.compute_pixels_initial_delay = (
+        500
+        if compute_pixels_initial_delay is None
+        else compute_pixels_initial_delay
+    )
 
     self.image_collection = image_collection
     if n_images != -1:
@@ -482,7 +499,11 @@ class EarthEngineStore(common.AbstractDataStore):
         **kwargs,
     }
     raw = common.robust_getitem(
-        pixels_getter, params, catch=ee.ee_exception.EEException
+        pixels_getter,
+        params,
+        catch=ee.ee_exception.EEException,
+        max_retries=self.compute_pixels_max_retries,
+        initial_delay=self.compute_pixels_initial_delay,
     )
 
     # Extract out the shape information from EE response.
@@ -965,6 +986,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       ee_init_if_necessary: bool = False,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       executor_kwargs: Optional[Dict[str, Any]] = None,
+      compute_pixels_max_retries: Optional[int] = None,
+      compute_pixels_initial_delay: Optional[int] = None,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -1037,6 +1060,10 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       executor_kwargs (optional): A dictionary of keyword arguments to pass to
         the ThreadPoolExecutor that handles the parallel computation of pixels
         i.e. {'max_workers': 2}.
+      compute_pixels_max_retries (optional):  The maximum number of retry 
+        attempts for calling ee.data.computePixels().
+      compute_pixels_initial_delay (optional): The initial delay in milliseconds
+        before the first retry of calling ee.data.computePixels().
 
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
@@ -1067,6 +1094,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
+        compute_pixels_max_retries=compute_pixels_max_retries,
+        compute_pixels_initial_delay=compute_pixels_initial_delay,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
