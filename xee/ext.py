@@ -469,13 +469,9 @@ class EarthEngineStore(common.AbstractDataStore):
         example, a `grid` dictionary.
 
     Returns:
-      An numpy array containing the pixels computed based on the given image.
+      A numpy array containing the pixels computed based on the given image.
     """
-    image = (
-        ee.Image(self.mask_value)
-        .rename([image.bandNames().get(0)])
-        .blend(image)
-    )
+    image = image.unmask(self.mask_value, False)
     params = {
         'expression': image,
         'fileFormat': 'NUMPY_NDARRAY',
@@ -730,8 +726,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     # It looks like different bands have different dimensions & transforms!
     # Can we get this into consistent dimensions?
     self._info = ee_store._band_attrs(variable_name)
-    self.dtype = _parse_dtype(self._info['data_type'])
-
+    self.dtype = np.dtype(np.float32)
     x_min, y_min, x_max, y_max = self.bounds
 
     # Make sure the size is at least 1x1.

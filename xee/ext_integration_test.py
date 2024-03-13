@@ -70,6 +70,13 @@ class EEBackendArrayTest(absltest.TestCase):
         ),
         n_images=64,
     )
+    self.store_with_neg_mask_value = xee.EarthEngineStore(
+        ee.ImageCollection('LANDSAT/LC08/C01/T1').filterDate(
+            '2017-01-01', '2017-01-03'
+        ),
+        n_images=64,
+        mask_value=-9999,
+    )
     self.lnglat_store = xee.EarthEngineStore(
         ee.ImageCollection.fromImages([ee.Image.pixelLonLat()]),
         chunks={'index': 256, 'width': 512, 'height': 512},
@@ -97,11 +104,16 @@ class EEBackendArrayTest(absltest.TestCase):
     self.assertIsNotNone(arr)
 
     self.assertEqual((64, 360, 180), arr.shape)
-    self.assertEqual(np.int32, arr.dtype)
+    self.assertEqual(np.float32, arr.dtype)
     self.assertEqual('B4', arr.variable_name)
 
   def test_basic_indexing(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
+    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((0, 0, 0))]), True)
+    self.assertEqual(np.isnan(arr[indexing.BasicIndexer((-1, -1, -1))]), True)
+
+  def test_basic_indexing_on_int_ee_image(self):
+    arr = xee.EarthEngineBackendArray('B4', self.store_with_neg_mask_value)
     self.assertEqual(np.isnan(arr[indexing.BasicIndexer((0, 0, 0))]), True)
     self.assertEqual(np.isnan(arr[indexing.BasicIndexer((-1, -1, -1))]), True)
 
@@ -136,11 +148,11 @@ class EEBackendArrayTest(absltest.TestCase):
   def test_slice_indexing__non_global(self):
     arr = xee.EarthEngineBackendArray('spi2y', self.conus_store)
     first_10 = indexing.BasicIndexer((0, slice(0, 10), slice(0, 10)))
-    self.assertTrue(np.allclose(arr[first_10], np.zeros((10, 10))))
+    np.testing.assert_equal(arr[first_10], np.full((10, 10), np.nan))
     last_5 = indexing.BasicIndexer((0, slice(-5, -1), slice(-5, -1)))
-    expected_last_5 = np.zeros((4, 4))
-    self.assertTrue(
-        np.allclose(expected_last_5, arr[last_5]), f'Actual:\n{arr[last_5]}'
+    expected_last_5 = np.full((4, 4), np.nan)
+    np.testing.assert_equal(
+        expected_last_5, arr[last_5], f'Actual:\n{arr[last_5]}'
     )
 
   # TODO(alxr): Add more tests here to check for off-by-one errors...
