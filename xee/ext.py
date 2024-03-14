@@ -204,8 +204,9 @@ class EarthEngineStore(common.AbstractDataStore):
       executor_kwargs = {}
     self.executor_kwargs = executor_kwargs
 
-    self.tile_fetch_max_retries = tile_fetch_kwargs['max_retries']
-    self.tile_fetch_initial_delay = tile_fetch_kwargs['initial_delay']
+    # Default value: (https://github.com/pydata/xarray/blob/main/xarray/backends/common.py#L181).
+    self.tile_fetch_max_retries = tile_fetch_kwargs.pop('max_retries', 6)
+    self.tile_fetch_initial_delay = tile_fetch_kwargs.pop('initial_delay', 500)
 
     self.image_collection = image_collection
     if n_images != -1:
