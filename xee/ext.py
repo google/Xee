@@ -102,6 +102,11 @@ class EarthEngineStore(common.AbstractDataStore):
       'height': 256,
   }
 
+  TILE_FETCH_KWARGS: Dict[str, int] = {
+      'max_retries': 6,
+      'initial_delay': 500,
+  }
+
   SCALE_UNITS: Dict[str, int] = {
       'degree': 1,
       'metre': 10_000,
@@ -147,10 +152,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
-      tile_fetch_kwargs: Dict[str, int] = {
-          'max_retries': 6,
-          'initial_delay': 500,
-      },
+      tile_fetch_kwargs: Dict[str, int] = TILE_FETCH_KWARGS,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -191,10 +193,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
-      tile_fetch_kwargs: Dict[str, int] = {
-          'max_retries': 6,
-          'initial_delay': 500,
-      },
+      tile_fetch_kwargs: Dict[str, int] = TILE_FETCH_KWARGS,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
@@ -204,9 +203,7 @@ class EarthEngineStore(common.AbstractDataStore):
       executor_kwargs = {}
     self.executor_kwargs = executor_kwargs
 
-    # Default value: (https://github.com/pydata/xarray/blob/main/xarray/backends/common.py#L181).
-    self.tile_fetch_max_retries = tile_fetch_kwargs.pop('max_retries', 6)
-    self.tile_fetch_initial_delay = tile_fetch_kwargs.pop('initial_delay', 500)
+    self.tile_fetch_kwargs = tile_fetch_kwargs
 
     self.image_collection = image_collection
     if n_images != -1:
@@ -498,8 +495,12 @@ class EarthEngineStore(common.AbstractDataStore):
         pixels_getter,
         params,
         catch=ee.ee_exception.EEException,
-        max_retries=self.tile_fetch_max_retries,
-        initial_delay=self.tile_fetch_initial_delay,
+        max_retries=self.tile_fetch_kwargs.get(
+            'max_retries', self.TILE_FETCH_KWARGS.get('max_retries')
+        ),
+        initial_delay=self.tile_fetch_kwargs.get(
+            'initial_delay', self.TILE_FETCH_KWARGS.get('initial_delay')
+        ),
     )
 
     # Extract out the shape information from EE response.
