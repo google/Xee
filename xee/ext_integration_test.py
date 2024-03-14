@@ -270,6 +270,7 @@ class EEBackendArrayTest(absltest.TestCase):
     self.assertNotIn('initial_delay', arr1.store.tile_fetch_kwargs)
     self.assertEqual(arr1.store.tile_fetch_kwargs['max_retries'], 9)
 
+
 class EEBackendEntrypointTest(absltest.TestCase):
 
   def setUp(self):
