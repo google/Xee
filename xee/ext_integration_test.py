@@ -69,6 +69,7 @@ class EEBackendArrayTest(absltest.TestCase):
             '2017-01-01', '2017-01-03'
         ),
         n_images=64,
+        tile_fetch_kwargs={'max_retries': 10, 'initial_delay': 1500},
     )
     self.lnglat_store = xee.EarthEngineStore(
         ee.ImageCollection.fromImages([ee.Image.pixelLonLat()]),
@@ -254,6 +255,15 @@ class EEBackendArrayTest(absltest.TestCase):
     )
 
     self.assertEqual(getter.count, 3)
+
+  def test_tile_fetch_kwargs(self):
+    arr = xee.EarthEngineBackendArray('B4', self.store)
+    self.assertEqual(arr.store.tile_fetch_initial_delay, 1500)
+    self.assertEqual(arr.store.tile_fetch_max_retries, 10)
+
+    arr1 = xee.EarthEngineBackendArray('longitude', self.lnglat_store)
+    self.assertEqual(arr1.store.tile_fetch_initial_delay, 500)
+    self.assertEqual(arr1.store.tile_fetch_max_retries, 6)
 
 
 class EEBackendEntrypointTest(absltest.TestCase):
