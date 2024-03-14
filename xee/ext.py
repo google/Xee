@@ -152,7 +152,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
-      tile_fetch_kwargs: Dict[str, int] = TILE_FETCH_KWARGS,
+      tile_fetch_kwargs: Optional[Dict[str, int]] = None,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -193,7 +193,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
-      tile_fetch_kwargs: Dict[str, int] = TILE_FETCH_KWARGS,
+      tile_fetch_kwargs: Optional[Dict[str, int]] = None,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
@@ -203,7 +203,11 @@ class EarthEngineStore(common.AbstractDataStore):
       executor_kwargs = {}
     self.executor_kwargs = executor_kwargs
 
-    self.tile_fetch_kwargs = tile_fetch_kwargs
+    self.tile_fetch_kwargs = (
+        self.TILE_FETCH_KWARGS
+        if tile_fetch_kwargs is None
+        else tile_fetch_kwargs
+    )
 
     self.image_collection = image_collection
     if n_images != -1:
@@ -983,10 +987,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       ee_init_if_necessary: bool = False,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       executor_kwargs: Optional[Dict[str, Any]] = None,
-      tile_fetch_kwargs: Dict[str, int] = {
-          'max_retries': 6,
-          'initial_delay': 500,
-      },
+      tile_fetch_kwargs: Optional[Dict[str, int]] = None,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -1059,7 +1060,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       executor_kwargs (optional): A dictionary of keyword arguments to pass to
         the ThreadPoolExecutor that handles the parallel computation of pixels
         i.e. {'max_workers': 2}.
-      tile_fetch_kwargs (Dict): The necessary kwargs like `max_retries`,
+      tile_fetch_kwargs (optional): The necessary kwargs like `max_retries`,
         `initial_delay` which helps while fetching data through calling
         ee.data.computePixels(). i.e. {'max_retries' : 6, 'initial_delay': 500}.
         - max_retries is maximum number of retry attempts for calling
