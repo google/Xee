@@ -102,7 +102,7 @@ class EarthEngineStore(common.AbstractDataStore):
       'height': 256,
   }
 
-  TILE_FETCH_KWARGS: Dict[str, int] = {
+  GETITEM_KWARGS: Dict[str, int] = {
       'max_retries': 6,
       'initial_delay': 500,
   }
@@ -152,7 +152,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
-      tile_fetch_kwargs: Optional[Dict[str, int]] = None,
+      getitem_kwargs: Optional[Dict[str, int]] = None,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -174,7 +174,7 @@ class EarthEngineStore(common.AbstractDataStore):
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
-        tile_fetch_kwargs=tile_fetch_kwargs,
+        getitem_kwargs=getitem_kwargs,
     )
 
   def __init__(
@@ -193,7 +193,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
-      tile_fetch_kwargs: Optional[Dict[str, int]] = None,
+      getitem_kwargs: Optional[Dict[str, int]] = None,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
@@ -203,11 +203,7 @@ class EarthEngineStore(common.AbstractDataStore):
       executor_kwargs = {}
     self.executor_kwargs = executor_kwargs
 
-    self.tile_fetch_kwargs = (
-        self.TILE_FETCH_KWARGS
-        if tile_fetch_kwargs is None
-        else tile_fetch_kwargs
-    )
+    self.getitem_kwargs = {**self.GETITEM_KWARGS, **(getitem_kwargs or {})}
 
     self.image_collection = image_collection
     if n_images != -1:
@@ -499,12 +495,8 @@ class EarthEngineStore(common.AbstractDataStore):
         pixels_getter,
         params,
         catch=ee.ee_exception.EEException,
-        max_retries=self.tile_fetch_kwargs.get(
-            'max_retries', self.TILE_FETCH_KWARGS.get('max_retries')
-        ),
-        initial_delay=self.tile_fetch_kwargs.get(
-            'initial_delay', self.TILE_FETCH_KWARGS.get('initial_delay')
-        ),
+        max_retries=self.getitem_kwargs['max_retries'],
+        initial_delay=self.getitem_kwargs['initial_delay'],
     )
 
     # Extract out the shape information from EE response.
@@ -987,7 +979,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       ee_init_if_necessary: bool = False,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       executor_kwargs: Optional[Dict[str, Any]] = None,
-      tile_fetch_kwargs: Optional[Dict[str, int]] = None,
+      getitem_kwargs: Optional[Dict[str, int]] = None,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -1060,9 +1052,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       executor_kwargs (optional): A dictionary of keyword arguments to pass to
         the ThreadPoolExecutor that handles the parallel computation of pixels
         i.e. {'max_workers': 2}.
-      tile_fetch_kwargs (optional): The necessary kwargs like `max_retries`,
-        `initial_delay` which helps while fetching data through calling
-        ee.data.computePixels(). i.e. {'max_retries' : 6, 'initial_delay': 500}.
+      getitem_kwargs (optional): Exponential backoff kwargs passed into
+        the xarray function to index the array (`robust_getitem`).
+        i.e. {'max_retries' : 6, 'initial_delay': 500}.
         - max_retries is maximum number of retry attempts for calling
         ee.data.computePixels().By default, it is 6.
         - initial_delay is the initial delay in milliseconds before the first
@@ -1097,7 +1089,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
-        tile_fetch_kwargs=tile_fetch_kwargs,
+        getitem_kwargs=getitem_kwargs,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()

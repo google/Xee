@@ -69,7 +69,7 @@ class EEBackendArrayTest(absltest.TestCase):
             '2017-01-01', '2017-01-03'
         ),
         n_images=64,
-        tile_fetch_kwargs={'max_retries': 10, 'initial_delay': 1500},
+        getitem_kwargs={'max_retries': 10, 'initial_delay': 1500},
     )
     self.lnglat_store = xee.EarthEngineStore(
         ee.ImageCollection.fromImages([ee.Image.pixelLonLat()]),
@@ -81,7 +81,7 @@ class EEBackendArrayTest(absltest.TestCase):
             '2020-03-30', '2020-04-01'
         ),
         n_images=64,
-        tile_fetch_kwargs={'max_retries': 9},
+        getitem_kwargs={'max_retries': 9},
     )
     self.all_img_store = xee.EarthEngineStore(
         ee.ImageCollection('LANDSAT/LC08/C01/T1').filterDate(
@@ -257,18 +257,18 @@ class EEBackendArrayTest(absltest.TestCase):
 
     self.assertEqual(getter.count, 3)
 
-  def test_tile_fetch_kwargs(self):
+  def test_getitem_kwargs(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
-    self.assertEqual(arr.store.tile_fetch_kwargs['initial_delay'], 1500)
-    self.assertEqual(arr.store.tile_fetch_kwargs['max_retries'], 10)
+    self.assertEqual(arr.store.getitem_kwargs['initial_delay'], 1500)
+    self.assertEqual(arr.store.getitem_kwargs['max_retries'], 10)
 
     arr1 = xee.EarthEngineBackendArray('longitude', self.lnglat_store)
-    self.assertEqual(arr1.store.tile_fetch_kwargs['initial_delay'], 500)
-    self.assertEqual(arr1.store.tile_fetch_kwargs['max_retries'], 6)
+    self.assertEqual(arr1.store.getitem_kwargs['initial_delay'], 500)
+    self.assertEqual(arr1.store.getitem_kwargs['max_retries'], 6)
 
-    arr1 = xee.EarthEngineBackendArray('spi2y', self.conus_store)
-    self.assertNotIn('initial_delay', arr1.store.tile_fetch_kwargs)
-    self.assertEqual(arr1.store.tile_fetch_kwargs['max_retries'], 9)
+    arr2 = xee.EarthEngineBackendArray('spi2y', self.conus_store)
+    self.assertEqual(arr2.store.getitem_kwargs['initial_delay'], 500)
+    self.assertEqual(arr2.store.getitem_kwargs['max_retries'], 9)
 
 
 class EEBackendEntrypointTest(absltest.TestCase):
