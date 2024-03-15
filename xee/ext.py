@@ -495,8 +495,7 @@ class EarthEngineStore(common.AbstractDataStore):
         pixels_getter,
         params,
         catch=ee.ee_exception.EEException,
-        max_retries=self.getitem_kwargs['max_retries'],
-        initial_delay=self.getitem_kwargs['initial_delay'],
+        **self.getitem_kwargs,
     )
 
     # Extract out the shape information from EE response.
@@ -1055,10 +1054,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       getitem_kwargs (optional): Exponential backoff kwargs passed into
         the xarray function to index the array (`robust_getitem`).
         i.e. {'max_retries' : 6, 'initial_delay': 500}.
-        - max_retries is maximum number of retry attempts for calling
-        ee.data.computePixels().By default, it is 6.
-        - initial_delay is the initial delay in milliseconds before the first
-        retry of calling ee.data.computePixels(). By default, it is 500.
+        - max_retries, the maximum number of retry attempts.By default, it is 6.
+        - initial_delay, the initial delay in milliseconds before the first
+        retry. By default, it is 500.
         (https://github.com/pydata/xarray/blob/main/xarray/backends/common.py#L181).
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
