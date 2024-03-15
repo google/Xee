@@ -102,6 +102,11 @@ class EarthEngineStore(common.AbstractDataStore):
       'height': 256,
   }
 
+  GETITEM_KWARGS: Dict[str, int] = {
+      'max_retries': 6,
+      'initial_delay': 500,
+  }
+
   SCALE_UNITS: Dict[str, int] = {
       'degree': 1,
       'metre': 10_000,
@@ -147,6 +152,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
+      getitem_kwargs: Optional[Dict[str, int]] = None,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -168,6 +174,7 @@ class EarthEngineStore(common.AbstractDataStore):
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
+        getitem_kwargs=getitem_kwargs,
     )
 
   def __init__(
@@ -186,6 +193,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
+      getitem_kwargs: Optional[Dict[str, int]] = None,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
@@ -194,6 +202,8 @@ class EarthEngineStore(common.AbstractDataStore):
     if executor_kwargs is None:
       executor_kwargs = {}
     self.executor_kwargs = executor_kwargs
+
+    self.getitem_kwargs = {**self.GETITEM_KWARGS, **(getitem_kwargs or {})}
 
     self.image_collection = image_collection
     if n_images != -1:
@@ -478,7 +488,10 @@ class EarthEngineStore(common.AbstractDataStore):
         **kwargs,
     }
     raw = common.robust_getitem(
-        pixels_getter, params, catch=ee.ee_exception.EEException
+        pixels_getter,
+        params,
+        catch=ee.ee_exception.EEException,
+        **self.getitem_kwargs,
     )
 
     # Extract out the shape information from EE response.
@@ -960,6 +973,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       ee_init_if_necessary: bool = False,
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       executor_kwargs: Optional[Dict[str, Any]] = None,
+      getitem_kwargs: Optional[Dict[str, int]] = None,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -1032,7 +1046,11 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       executor_kwargs (optional): A dictionary of keyword arguments to pass to
         the ThreadPoolExecutor that handles the parallel computation of pixels
         i.e. {'max_workers': 2}.
-
+      getitem_kwargs (optional): Exponential backoff kwargs passed into the
+        xarray function to index the array (`robust_getitem`).
+        - 'max_retries', the maximum number of retry attempts. Defaults to 6.
+        - 'initial_delay', the initial delay in milliseconds before the first
+          retry. Defaults to 500.
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
     """
@@ -1062,6 +1080,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         ee_init_kwargs=ee_init_kwargs,
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
+        getitem_kwargs=getitem_kwargs,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
