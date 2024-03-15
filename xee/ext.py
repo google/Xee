@@ -311,7 +311,7 @@ class EarthEngineStore(common.AbstractDataStore):
     # (few) values of the primary dim (read: time) and interpolate the rest
     # client-side. Ideally, this would live behind a xarray-backend-specific
     # feature flag, since it's not guaranteed that data is this consistent.
-    columns = ['system:id', self.primary_dim_property]
+    columns = ['system:index', self.primary_dim_property]
     rpcs.append((
         'properties',
         (
@@ -331,9 +331,9 @@ class EarthEngineStore(common.AbstractDataStore):
     return (system_ids, primary_coord)
 
   @property
-  def image_ids(self) -> List[str]:
-    image_ids, _ = self.image_collection_properties
-    return image_ids
+  def image_indices(self) -> List[str]:
+    image_indices, _ = self.image_collection_properties
+    return image_indices
 
   def _max_itemsize(self) -> int:
     return max(
@@ -801,18 +801,15 @@ class EarthEngineBackendArray(backends.BackendArray):
     # a range of images...
     self._ee_init_check()
     start, stop, stride = image_slice.indices(self.shape[0])
-
-    # If the input images have IDs, just slice them. Otherwise, we need to do
-    # an expensive `toList()` operation.
-    if self.store.image_ids:
-      imgs = self.store.image_ids[start:stop:stride]
-    else:
-      # TODO(alxr, mahrsee): Find a way to make this case more efficient.
-      list_range = stop - start
-      col0 = self.store.image_collection
-      imgs = col0.toList(list_range, offset=start).slice(0, list_range, stride)
-
-    col = ee.ImageCollection(imgs)
+    indices = self.store.image_indices
+    idx_filter = ee.Filter.rangeContains(
+        'system:index', indices[start], indices[stop - 1]
+    )
+    col = ee.ImageCollection(
+        self.store.image_collection.filter(idx_filter)
+        .toList(stop - start)
+        .slice(0, step=stride)
+    )
 
     # For a more efficient slice of the series of images, we reduce each
     # image in the collection to bands on a single image.
