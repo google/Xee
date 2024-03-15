@@ -1051,13 +1051,11 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       executor_kwargs (optional): A dictionary of keyword arguments to pass to
         the ThreadPoolExecutor that handles the parallel computation of pixels
         i.e. {'max_workers': 2}.
-      getitem_kwargs (optional): Exponential backoff kwargs passed into
-        the xarray function to index the array (`robust_getitem`).
-        i.e. {'max_retries' : 6, 'initial_delay': 500}.
-        - max_retries, the maximum number of retry attempts.By default, it is 6.
-        - initial_delay, the initial delay in milliseconds before the first
-        retry. By default, it is 500.
-        (https://github.com/pydata/xarray/blob/main/xarray/backends/common.py#L181).
+      getitem_kwargs (optional): Exponential backoff kwargs passed into the
+        xarray function to index the array (`robust_getitem`).
+        - 'max_retries', the maximum number of retry attempts. Defaults to 6.
+        - 'initial_delay', the initial delay in milliseconds before the first
+          retry. Defaults to 500.
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
     """
