@@ -139,9 +139,7 @@ class EarthEngineStore(common.AbstractDataStore):
       crs: Optional[str] = None,
       scale: Optional[float] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Union[
-          ee.Geometry, Tuple[float, float, float, float], None
-      ] = None,
+      geometry: ee.Geometry | Tuple[float, float, float, float] | None = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
@@ -178,9 +176,7 @@ class EarthEngineStore(common.AbstractDataStore):
       crs: Optional[str] = None,
       scale: Union[float, int, None] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[
-          Union[ee.Geometry, Tuple[float, float, float, float]]
-      ] = None,
+      geometry: ee.Geometry | Tuple[float, float, float, float] | None = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       mask_value: Optional[float] = None,
@@ -232,38 +228,7 @@ class EarthEngineStore(common.AbstractDataStore):
     self.scale_x, self.scale_y = transform.a, transform.e
     self.scale = np.sqrt(np.abs(transform.determinant))
 
-    # Parse the dataset bounds from the native projection (either from the CRS
-    # or the image geometry) and translate it to the representation that will be
-    # used for all internal `computePixels()` calls.
-    if geometry is None:
-      try:
-        x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
-      except AttributeError:
-        # `area_of_use` is probable `None`. Parse the geometry from the first
-        # image instead (calculated in self.get_info())
-        x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
-            self.get_info['bounds']
-        )
-    elif isinstance(geometry, ee.Geometry):
-      x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
-          self.get_info['bounds']
-      )
-    elif isinstance(geometry, Union[List, Tuple]):
-      if len(geometry) != 4:
-        raise ValueError(
-            'geometry must be a tuple or list of length 4, or a ee.Geometry, '
-            f'but got {geometry!r}'
-        )
-      x_min_0, y_min_0, x_max_0, y_max_0 = geometry
-    else:
-      raise ValueError(
-          'geometry must be a tuple or list of length 4, a ee.Geometry, or'
-          f' None but got {type(geometry)}'
-      )
-
-    x_min, y_min = self.transform(x_min_0, y_min_0)
-    x_max, y_max = self.transform(x_max_0, y_max_0)
-    self.bounds = x_min, y_min, x_max, y_max
+    self.bounds = self._determine_bounds(geometry=geometry)
 
     max_dtype = self._max_itemsize()
 
@@ -626,6 +591,39 @@ class EarthEngineStore(common.AbstractDataStore):
         tiles[i] = arr.flatten()
     return np.concatenate(tiles)
 
+  def _determine_bounds(
+      self,
+      geometry: ee.Geometry | Tuple[float, float, float, float] | None = None,
+  ) -> Tuple[float, float, float, float]:
+    if geometry is None:
+      try:
+        x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
+      except AttributeError:
+        # `area_of_use` is probably `None`. Parse the geometry from the first
+        # image instead (calculated in self.get_info())
+        x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
+            self.get_info['bounds']
+        )
+    elif isinstance(geometry, ee.Geometry):
+      x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
+          self.get_info['bounds']
+      )
+    elif isinstance(geometry, Sequence):
+      if len(geometry) != 4:
+        raise ValueError(
+            'geometry must be a tuple or list of length 4, or a ee.Geometry, '
+            f'but got {geometry!r}'
+        )
+      x_min_0, y_min_0, x_max_0, y_max_0 = geometry
+    else:
+      raise ValueError(
+          'geometry must be a tuple or list of length 4, a ee.Geometry, or'
+          f' None but got {type(geometry)}'
+      )
+    x_min, y_min = self.transform(x_min_0, y_min_0)
+    x_max, y_max = self.transform(x_max_0, y_max_0)
+    return x_min, y_min, x_max, y_max
+
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
     vars_ = [(name, self.open_store_variable(name)) for name in self._bands()]
 
@@ -964,9 +962,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       crs: Optional[str] = None,
       scale: Union[float, int, None] = None,
       projection: Optional[ee.Projection] = None,
-      geometry: Optional[
-          Union[ee.Geometry, Tuple[float, float, float, float]]
-      ] = None,
+      geometry: ee.Geometry | Tuple[float, float, float, float] | None = None,
       primary_dim_name: Optional[str] = None,
       primary_dim_property: Optional[str] = None,
       ee_mask_value: Optional[float] = None,
