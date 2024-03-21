@@ -431,21 +431,49 @@ class EarthEngineStore(common.AbstractDataStore):
         projection and scale.
     """
     # The origin of the image is in the top left corner. X and Y is the minimum value.
-    x_origin, y_origin, _, _ = self.bounds  # x_min, y_min, x_max, y_max
+    print("Self.scale_x, : ", self.scale_x, self.scale_y)
+    print("self.bounds : ", self.bounds)
+    print("bbox is this : ", bbox)
+    x_origin, y_origin, x_origin1, y_origin1 = self.bounds  # x_min, y_min, x_max, y_max
     x_start, y_start, x_end, y_end = bbox
     width = x_end - x_start
     height = y_end - y_start
+    # points consider after taking the origin from the both side.
+    # translateX = (
+    #     x_origin + self.scale_x * x_start
+    #     if self.scale_x > 0
+    #     else x_origin + abs(self.scale_x) * x_end
+    # )
+    # translateY = (
+    #     y_origin + self.scale_y * y_start
+    #     if self.scale_y > 0
+    #     else y_origin1 + self.scale_y * y_end
+    # )
+
+    # # Points consider after taking below points as a origin
+    # translateX = (
+    #     x_origin + self.scale_x * x_start
+    #     if self.scale_x > 0
+    #     else x_origin + abs(self.scale_x) * x_end
+    # )
+    # translateY = (
+    #     y_origin + self.scale_y * y_start
+    #     if self.scale_y > 0
+    #     else y_origin + abs(self.scale_y) * y_end
+    # )
+
+    # Points consider after taking above points as a origin
     translateX = (
-        x_origin + self.scale_x * x_start
+        x_origin1 - self.scale_x * x_end
         if self.scale_x > 0
-        else x_origin + abs(self.scale_x) * x_end
+        else x_origin1 + abs(self.scale_x) * x_start
     )
     translateY = (
-        y_origin + self.scale_y * y_start
+        y_origin1 - self.scale_y * y_end
         if self.scale_y > 0
-        else y_origin + abs(self.scale_y) * y_end
+        else y_origin1 + abs(self.scale_y) * y_start
     )
-
+    print("translateY is this : ",translateX, translateY)
     return {
         # The size of the bounding box. The affine transform and project will be
         # applied, so we can think in terms of pixels.
