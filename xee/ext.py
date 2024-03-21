@@ -430,14 +430,14 @@ class EarthEngineStore(common.AbstractDataStore):
         appropriate region of data to return according to the Array's configured
         projection and scale.
     """
-    # The origin of the image is in the top left corner. X and Y is the minimum value.
-    x_origin, y_origin, x_origin1, y_origin1 = self.bounds  # x_min, y_min, x_max, y_max
+    # The origin of the image is in the top left corner.
+    x_min, y_min, x_max, y_max = self.bounds
     x_start, y_start, x_end, y_end = bbox
     width = x_end - x_start
     height = y_end - y_start
 
-    translateX = x_origin if self.scale_x > 0 else x_origin1
-    translateY = y_origin if self.scale_y > 0 else y_origin1
+    translateX = x_min if self.scale_x > 0 else x_max
+    translateY = y_min if self.scale_y > 0 else y_max
     return {
         # The size of the bounding box. The affine transform and project will be
         # applied, so we can think in terms of pixels.
