@@ -312,7 +312,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     ds = self.entry.open_dataset(
         pathlib.Path('LANDSAT') / 'LC08' / 'C01' / 'T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
-        scale=25.0,  # in degrees
+        projection = ee.Projection('EPSG:4326', [25, 0, 0, 0, -25, 0]),
         n_images=3,
     )
     self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
