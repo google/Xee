@@ -469,7 +469,6 @@ class EEBackendEntrypointTest(absltest.TestCase):
       ds = xr.open_dataset(
           col,
           engine=xee.EarthEngineBackendEntrypoint,
-          scale=10,
           crs=crs,
           geometry=geom,
           projection=ee.Projection(crs, [10, 0, 0, 0, -10, 0]),
