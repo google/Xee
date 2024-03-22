@@ -312,14 +312,16 @@ class EarthEngineStore(common.AbstractDataStore):
     # client-side. Ideally, this would live behind a xarray-backend-specific
     # feature flag, since it's not guaranteed that data is this consistent.
     columns = ['system:id', self.primary_dim_property]
-    rpcs.append((
-        'properties',
+    rpcs.append(
         (
-            self.image_collection.reduceColumns(
-                ee.Reducer.toList().repeat(len(columns)), columns
-            ).get('list')
-        ),
-    ))
+            'properties',
+            (
+                self.image_collection.reduceColumns(
+                    ee.Reducer.toList().repeat(len(columns)), columns
+                ).get('list')
+            ),
+        )
+    )
 
     info = ee.List([rpc for _, rpc in rpcs]).getInfo()
 
