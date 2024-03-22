@@ -472,6 +472,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
           scale=10,
           crs=crs,
           geometry=geom,
+          projection= ee.Projection(crs, [10, 0, 0, 0, -10, 0])
       )
 
       ds = ds.isel(time=0).transpose('Y', 'X')
@@ -506,8 +507,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
       ds = xr.open_dataset(
           col,
           engine=xee.EarthEngineBackendEntrypoint,
-          scale=0.0025,
           geometry=geom,
+          projection= ee.Projection('EPSG:4326', [0.0025, 0, 0, 0, -0.0025, 0])
       )
 
       ds = ds.isel(time=0).transpose('lat', 'lon')
