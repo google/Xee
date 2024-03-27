@@ -25,7 +25,7 @@ print('sys.path:', sys.path)
 print('pip environment:')
 subprocess.run([sys.executable, '-m', 'pip', 'list'])  # pylint: disable=subprocess-run-check
 
-print(f'xee: {xee.__version__}, {xee.__file__}')
+print(f'xee: {xee.__file__}')
 
 # -- Project information -----------------------------------------------------
 
