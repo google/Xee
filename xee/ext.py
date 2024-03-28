@@ -240,7 +240,7 @@ class EarthEngineStore(common.AbstractDataStore):
     default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
     if scale is None:
       scale = default_scale
-    default_transform = affine.Affine.scale(scale, -1 * scale)
+    default_transform = affine.Affine.scale(scale, 1 * scale)
 
     transform = affine.Affine(*proj.get('transform', default_transform)[:6])
     self.scale_x, self.scale_y = transform.a, transform.e
@@ -420,13 +420,14 @@ class EarthEngineStore(common.AbstractDataStore):
         appropriate region of data to return according to the Array's configured
         projection and scale.
     """
-    # The origin of the image is in the top left corner. X is the minimum value
-    # and Y is the maximum value.
-    x_origin, _, _, y_origin = self.bounds  # x_min, x_max, y_min, y_max
+    # The origin of the image is in the top left corner.
+    x_min, y_min, x_max, y_max = self.bounds
     x_start, y_start, x_end, y_end = bbox
     width = x_end - x_start
     height = y_end - y_start
 
+    translateX = x_min if self.scale_x > 0 else x_max
+    translateY = y_min if self.scale_y > 0 else y_max
     return {
         # The size of the bounding box. The affine transform and project will be
         # applied, so we can think in terms of pixels.
@@ -438,8 +439,8 @@ class EarthEngineStore(common.AbstractDataStore):
             # Since the origin is in the top left corner, we want to translate
             # the start of the grid to the positive direction for X and the
             # negative direction for Y.
-            'translateX': x_origin + self.scale_x * x_start,
-            'translateY': y_origin + self.scale_y * y_start,
+            'translateX': translateX,
+            'translateY': translateY,
             # Define the scale for each pixel (e.g. the number of meters between
             # each value).
             'scaleX': self.scale_x,
