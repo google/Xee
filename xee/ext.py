@@ -280,12 +280,14 @@ class EarthEngineStore(common.AbstractDataStore):
     if isinstance(self.geometry, ee.Geometry):
       rpcs.append(('bounds', self.geometry.bounds(1, proj=self.projection)))
     else:
-      rpcs.append((
-          'bounds',
-          self.image_collection.first()
-          .geometry()
-          .bounds(1, proj=self.projection),
-      ))
+      rpcs.append(
+          (
+              'bounds',
+              self.image_collection.first()
+              .geometry()
+              .bounds(1, proj=self.projection),
+          )
+      )
 
     # TODO(#29, #30): This RPC call takes the longest time to compute. This
     # requires a full scan of the images in the collection, which happens on the
@@ -298,14 +300,16 @@ class EarthEngineStore(common.AbstractDataStore):
     # client-side. Ideally, this would live behind a xarray-backend-specific
     # feature flag, since it's not guaranteed that data is this consistent.
     columns = ['system:id', self.primary_dim_property]
-    rpcs.append((
-        'properties',
+    rpcs.append(
         (
-            self.image_collection.reduceColumns(
-                ee.Reducer.toList().repeat(len(columns)), columns
-            ).get('list')
-        ),
-    ))
+            'properties',
+            (
+                self.image_collection.reduceColumns(
+                    ee.Reducer.toList().repeat(len(columns)), columns
+                ).get('list')
+            ),
+        )
+    )
 
     info = ee.List([rpc for _, rpc in rpcs]).getInfo()
 
