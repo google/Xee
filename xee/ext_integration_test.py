@@ -269,6 +269,32 @@ class EEBackendArrayTest(absltest.TestCase):
 
     self.assertEqual(getter.count, 3)
 
+  def test_geometry_bounds_with_and_without_projection(self):
+    image = (
+        ee.ImageCollection('LANDSAT/LC08/C01/T1')
+        .filterDate('2017-01-01', '2017-01-03')
+        .first()
+    )
+    point = ee.Geometry.Point(-40.2414893624401, 105.48790177216375)
+    distance = 311.5
+    scale = 5000
+    projection = ee.Projection('EPSG:4326', [1, 0, 0, 0, -1, 0]).atScale(scale)
+    image = image.reproject(projection)
+
+    geometry = point.buffer(distance, proj=projection).bounds(proj=projection)
+
+    data_store = xee.EarthEngineStore(
+        ee.ImageCollection(image),
+        projection=image.projection(),
+        geometry=geometry,
+    )
+    data_store_bounds = data_store.get_info['bounds']
+
+    self.assertNotEqual(geometry.bounds().getInfo(), data_store_bounds)
+    self.assertEqual(
+        geometry.bounds(1, proj=projection).getInfo(), data_store_bounds
+    )
+
   def test_getitem_kwargs(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
     self.assertEqual(arr.store.getitem_kwargs['initial_delay'], 1500)
@@ -401,6 +427,45 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
     self.assertEqual(ds.dims, {'time': 4248, 'lon': 3600, 'lat': 1800})
     self.assertNotEqual(ds.dims, standard_ds.dims)
+
+  @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
+  def test_expected_precise_transform(self):
+    data = np.empty((162, 121), dtype=np.float32)
+    bbox = (
+        -53.94158617595226,
+        -12.078281822698678,
+        -53.67209159071253,
+        -11.714464132625046,
+    )
+    x_res = (bbox[2] - bbox[0]) / data.shape[1]
+    y_res = (bbox[3] - bbox[1]) / data.shape[0]
+    raster = xr.DataArray(
+        data,
+        coords={
+            'y': np.linspace(bbox[3], bbox[1] + x_res, data.shape[0]),
+            'x': np.linspace(bbox[0], bbox[2] - y_res, data.shape[1]),
+        },
+        dims=('y', 'x'),
+    )
+    raster.rio.write_crs('EPSG:4326', inplace=True)
+    ic = (
+        ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY')
+        .filterDate(ee.DateRange('2014-01-01', '2014-01-02'))
+        .select('precipitation')
+    )
+    xee_dataset = xr.open_dataset(
+        ee.ImageCollection(ic),
+        engine='ee',
+        geometry=tuple(raster.rio.bounds()),
+        projection=ee.Projection(
+            crs=str(raster.rio.crs), transform=raster.rio.transform()[:6]
+        ),
+    ).rename({'lon': 'x', 'lat': 'y'})
+    self.assertNotEqual(abs(x_res), abs(y_res))
+    np.testing.assert_equal(
+        np.array(xee_dataset.rio.transform()),
+        np.array(raster.rio.transform()),
+    )
 
   def test_parses_ee_url(self):
     ds = self.entry.open_dataset(
