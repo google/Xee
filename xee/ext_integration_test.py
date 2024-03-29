@@ -536,7 +536,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
           engine=xee.EarthEngineBackendEntrypoint,
           crs=crs,
           geometry=geom,
-          projection=ee.Projection(crs, [10, 0, 0, 0, -10, 0]),
+          projection=ee.Projection('EPSG:4326', [10, 0, 0, 0, -10, 0]),
       )
 
       ds = ds.isel(time=0).transpose('Y', 'X')
