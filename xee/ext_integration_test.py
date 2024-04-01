@@ -334,6 +334,24 @@ class EEBackendEntrypointTest(absltest.TestCase):
     # Should not be able to open a feature collection.
     self.assertFalse(self.entry.guess_can_open('WRI/GPPD/power_plants'))
 
+  def test_open_dataset__sanity_check_with_negative_projection(self):
+    ds = self.entry.open_dataset(
+        pathlib.Path('LANDSAT') / 'LC08' / 'C01' / 'T1',
+        drop_variables=tuple(f'B{i}' for i in range(3, 12)),
+        n_images=3,
+        projection=ee.Projection('EPSG:4326', [25, 0, 0, 0, -25, 0]),
+    )
+    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
+    self.assertNotEmpty(dict(ds.coords))
+    self.assertEqual(
+        list(ds.data_vars.keys()),
+        [f'B{i}' for i in range(1, 3)] + ['BQA'],
+    )
+    for v in ds.values():
+      self.assertIsNotNone(v.data)
+      self.assertTrue(v.isnull().all(), 'All values are null!')
+      self.assertEqual(v.shape, (3, 14, 7))
+
   def test_open_dataset__sanity_check_with_positive_scale(self):
     ds = self.entry.open_dataset(
         pathlib.Path('LANDSAT') / 'LC08' / 'C01' / 'T1',
