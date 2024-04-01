@@ -421,7 +421,7 @@ class EarthEngineStore(common.AbstractDataStore):
         projection and scale.
     """
     # The origin of the image is in the top left corner.
-    x_min, y_min, _, _ = self.bounds
+    x_min, y_min, x_max, y_max = self.bounds
     x_start, y_start, x_end, y_end = bbox
     width = x_end - x_start
     height = y_end - y_start
@@ -430,12 +430,12 @@ class EarthEngineStore(common.AbstractDataStore):
     translateX = (
         x_min + x_start * self.scale_x
         if self.scale_x > 0
-        else x_min + (-1 * self.scale_x * x_end)
+        else x_max + self.scale_x * x_start
     )
     translateY = (
         y_min + y_start * self.scale_y
         if self.scale_y > 0
-        else y_min + (-1 * self.scale_y * y_end)
+        else y_max + self.scale_y * y_start
     )
     return {
         # The size of the bounding box. The affine transform and project will be
