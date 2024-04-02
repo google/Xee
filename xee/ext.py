@@ -432,8 +432,12 @@ class EarthEngineStore(common.AbstractDataStore):
     # the min and max extents. Instead, we calculate the translation by
     # considering the direction of scaling (positive or negative) along both
     # the x and y axes.
-    translate_x = self.scale_x * x_start + (x_min if self.scale_x > 0 else x_max)
-    translate_y = self.scale_y * y_start + (y_min if self.scale_y > 0 else y_max)
+    translate_x = self.scale_x * x_start + (
+        x_min if self.scale_x > 0 else x_max
+    )
+    translate_y = self.scale_y * y_start + (
+        y_min if self.scale_y > 0 else y_max
+    )
 
     return {
         # The size of the bounding box. The affine transform and project will be
