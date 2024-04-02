@@ -427,10 +427,10 @@ class EarthEngineStore(common.AbstractDataStore):
 
     # Find the actual coordinates of the first or last point of the bounding box
     # (bbox) based on the positive and negative scale in the actual Earth Engine
-    # (EE) image. Since EE bounding boxes can be flipped (negative scale), we 
+    # (EE) image. Since EE bounding boxes can be flipped (negative scale), we
     # cannot determine the origin (transform translation) simply by identifying
     # the min and max extents. Instead, we calculate the translation by
-    # considering the direction of scaling (positive or negative) along both 
+    # considering the direction of scaling (positive or negative) along both
     # the x and y axes.
     translateX = self.scale_x * x_start + (x_min if self.scale_x > 0 else x_max)
     translateY = self.scale_y * y_start + (y_min if self.scale_y > 0 else y_max)
