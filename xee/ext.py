@@ -420,23 +420,20 @@ class EarthEngineStore(common.AbstractDataStore):
         appropriate region of data to return according to the Array's configured
         projection and scale.
     """
-    # The origin of the image is in the top left corner.
     x_min, y_min, x_max, y_max = self.bounds
     x_start, y_start, x_end, y_end = bbox
     width = x_end - x_start
     height = y_end - y_start
 
-    # Found the actual coordinates of the first or last point of the bbox based on the pos & neg scale in the actual image.
-    translateX = (
-        x_min + x_start * self.scale_x
-        if self.scale_x > 0
-        else x_max + self.scale_x * x_start
-    )
-    translateY = (
-        y_min + y_start * self.scale_y
-        if self.scale_y > 0
-        else y_max + self.scale_y * y_start
-    )
+    # Find the actual coordinates of the first or last point of the bounding box (bbox)
+    # based on the positive and negative scale in the actual Earth Engine (EE) image.
+    # Since EE bounding boxes can be flipped (negative scale), we cannot determine
+    # the origin (transform translation) simply by identifying the min and max extents.
+    # Instead, we calculate the translation by considering the direction of scaling
+    # (positive or negative) along both the x and y axes.
+    translateX = self.scale_x * x_start + (x_min if self.scale_x > 0 else x_max)
+    translateY = self.scale_y * y_start + (y_min if self.scale_y > 0 else y_max)
+
     return {
         # The size of the bounding box. The affine transform and project will be
         # applied, so we can think in terms of pixels.
