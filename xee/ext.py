@@ -240,7 +240,7 @@ class EarthEngineStore(common.AbstractDataStore):
     default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
     if scale is None:
       scale = default_scale
-    default_transform = affine.Affine.scale(scale, -1 * scale)
+    default_transform = affine.Affine.scale(scale, scale)
 
     transform = affine.Affine(*proj.get('transform', default_transform)[:6])
     self.scale_x, self.scale_y = transform.a, transform.e
@@ -420,12 +420,24 @@ class EarthEngineStore(common.AbstractDataStore):
         appropriate region of data to return according to the Array's configured
         projection and scale.
     """
-    # The origin of the image is in the top left corner. X is the minimum value
-    # and Y is the maximum value.
-    x_origin, _, _, y_origin = self.bounds  # x_min, x_max, y_min, y_max
+    x_min, y_min, x_max, y_max = self.bounds
     x_start, y_start, x_end, y_end = bbox
     width = x_end - x_start
     height = y_end - y_start
+
+    # Find the actual coordinates of the first or last point of the bounding box
+    # (bbox) based on the positive and negative scale in the actual Earth Engine
+    # (EE) image. Since EE bounding boxes can be flipped (negative scale), we
+    # cannot determine the origin (transform translation) simply by identifying
+    # the min and max extents. Instead, we calculate the translation by
+    # considering the direction of scaling (positive or negative) along both
+    # the x and y axes.
+    translate_x = self.scale_x * x_start + (
+        x_min if self.scale_x > 0 else x_max
+    )
+    translate_y = self.scale_y * y_start + (
+        y_min if self.scale_y > 0 else y_max
+    )
 
     return {
         # The size of the bounding box. The affine transform and project will be
@@ -435,11 +447,8 @@ class EarthEngineStore(common.AbstractDataStore):
             'height': height,
         },
         'affineTransform': {
-            # Since the origin is in the top left corner, we want to translate
-            # the start of the grid to the positive direction for X and the
-            # negative direction for Y.
-            'translateX': x_origin + self.scale_x * x_start,
-            'translateY': y_origin + self.scale_y * y_start,
+            'translateX': translate_x,
+            'translateY': translate_y,
             # Define the scale for each pixel (e.g. the number of meters between
             # each value).
             'scaleX': self.scale_x,
