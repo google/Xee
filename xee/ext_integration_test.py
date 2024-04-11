@@ -514,6 +514,38 @@ class EEBackendEntrypointTest(absltest.TestCase):
       for _, value in variable.attrs.items():
         self.assertIsInstance(value, valid_types)
 
+  def test_fast_time_slicing(self):
+    band = 'temperature_2m'
+    hourly = (
+        ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY')
+        .filterDate('2024-01-01', '2024-01-02')
+        .select(band)
+    )
+    first = hourly.first()
+    props = ['system:id', 'system:time_start']
+    fake_collection = ee.ImageCollection(
+        hourly.toList(count=hourly.size()).replace(
+            first, ee.Image(0).rename(band).copyProperties(first, props)
+        )
+    )
+
+    params = dict(
+        filename_or_obj=fake_collection,
+        engine=xee.EarthEngineBackendEntrypoint,
+        geometry=ee.Geometry.BBox(-83.86, 41.13, -76.83, 46.15),
+        projection=first.projection().atScale(100000),
+    )
+
+    # With slow slicing, the returned data should include the modified image.
+    slow_slicing = xr.open_dataset(**params)
+    slow_slicing_data = getattr(slow_slicing[dict(time=0)], band).as_numpy()
+    self.assertTrue(np.all(slow_slicing_data == 0))
+
+    # With fast slicing, the returned data should include the original image.
+    fast_slicing = xr.open_dataset(**params, fast_time_slicing=True)
+    fast_slicing_data = getattr(fast_slicing[dict(time=0)], band).as_numpy()
+    self.assertTrue(np.all(fast_slicing_data > 0))
+
   @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
   def test_write_projected_dataset_to_raster(self):
     # ensure that a projected dataset written to a raster intersects with the

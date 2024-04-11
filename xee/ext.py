@@ -22,6 +22,7 @@ import concurrent.futures
 import functools
 import importlib
 import itertools
+import logging
 import math
 import os
 import sys
@@ -71,6 +72,12 @@ _BUILTIN_DTYPES = {
 # actual byte limit seems to depend on other factors. This has been found via
 # trial & error.
 REQUEST_BYTE_LIMIT = 2**20 * 48  # 48 MBs
+
+# Xee uses the ee.ImageCollection.toList function for slicing into an
+# ImageCollection. This function isn't optimized for large collections. If the
+# end index of the slice is beyond 10k, display a warning to the user. This
+# value was chosen by trial and error.
+_TO_LIST_WARNING_LIMIT = 10000
 
 
 def _check_request_limit(chunks: Dict[str, int], dtype_size: int, limit: int):
@@ -153,6 +160,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
       getitem_kwargs: Optional[Dict[str, int]] = None,
+      fast_time_slicing: bool = False,
   ) -> 'EarthEngineStore':
     if mode != 'r':
       raise ValueError(
@@ -175,6 +183,7 @@ class EarthEngineStore(common.AbstractDataStore):
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
         getitem_kwargs=getitem_kwargs,
+        fast_time_slicing=fast_time_slicing,
     )
 
   def __init__(
@@ -194,9 +203,11 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_if_necessary: bool = False,
       executor_kwargs: Optional[Dict[str, Any]] = None,
       getitem_kwargs: Optional[Dict[str, int]] = None,
+      fast_time_slicing: bool = False,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
+    self.fast_time_slicing = fast_time_slicing
 
     # Initialize executor_kwargs
     if executor_kwargs is None:
@@ -834,15 +845,27 @@ class EarthEngineBackendArray(backends.BackendArray):
     self._ee_init_check()
     start, stop, stride = image_slice.indices(self.shape[0])
 
-    # If the input images have IDs, just slice them. Otherwise, we need to do
-    # an expensive `toList()` operation.
-    if self.store.image_ids:
+    if self.store.fast_time_slicing and self.store.image_ids:
       imgs = self.store.image_ids[start:stop:stride]
     else:
+      if self.store.fast_time_slicing:
+        logging.warning(
+            "fast_time_slicing is enabled but ImageCollection images don't have"
+            ' IDs. Reverting to default behavior.'
+        )
+      if stop > _TO_LIST_WARNING_LIMIT:
+        logging.warning(
+            'Xee is indexing into the ImageCollection beyond %s images. This'
+            ' operation can be slow. To improve performance, consider filtering'
+            ' the ImageCollection prior to using Xee or enabling'
+            ' fast_time_slicing.',
+            _TO_LIST_WARNING_LIMIT,
+        )
       # TODO(alxr, mahrsee): Find a way to make this case more efficient.
       list_range = stop - start
-      col0 = self.store.image_collection
-      imgs = col0.toList(list_range, offset=start).slice(0, list_range, stride)
+      imgs = self.store.image_collection.toList(list_range, offset=start).slice(
+          0, list_range, stride
+      )
 
     col = ee.ImageCollection(imgs)
 
@@ -1006,6 +1029,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       ee_init_kwargs: Optional[Dict[str, Any]] = None,
       executor_kwargs: Optional[Dict[str, Any]] = None,
       getitem_kwargs: Optional[Dict[str, int]] = None,
+      fast_time_slicing: bool = False,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -1084,6 +1108,10 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         - 'max_retries', the maximum number of retry attempts. Defaults to 6.
         - 'initial_delay', the initial delay in milliseconds before the first
           retry. Defaults to 500.
+      fast_time_slicing (optional): Whether to perform an optimization that
+        makes slicing an ImageCollection across time faster. This optimization
+        loads EE images in a slice by ID, so any modifications to images in a
+        computed ImageCollection will not be reflected.
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
     """
@@ -1114,6 +1142,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
         getitem_kwargs=getitem_kwargs,
+        fast_time_slicing=fast_time_slicing,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
