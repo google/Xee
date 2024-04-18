@@ -65,14 +65,14 @@ class EEBackendArrayTest(absltest.TestCase):
     super().setUp()
     init_ee_for_tests()
     self.store = xee.EarthEngineStore(
-        ee.ImageCollection('LANDSAT/LC08/C01/T1').filterDate(
+        ee.ImageCollection('LANDSAT/LC08/C02/T1').filterDate(
             '2017-01-01', '2017-01-03'
         ),
         n_images=64,
         getitem_kwargs={'max_retries': 10, 'initial_delay': 1500},
     )
     self.store_with_neg_mask_value = xee.EarthEngineStore(
-        ee.ImageCollection('LANDSAT/LC08/C01/T1').filterDate(
+        ee.ImageCollection('LANDSAT/LC08/C02/T1').filterDate(
             '2017-01-01', '2017-01-03'
         ),
         n_images=64,
@@ -91,7 +91,7 @@ class EEBackendArrayTest(absltest.TestCase):
         getitem_kwargs={'max_retries': 9},
     )
     self.all_img_store = xee.EarthEngineStore(
-        ee.ImageCollection('LANDSAT/LC08/C01/T1').filterDate(
+        ee.ImageCollection('LANDSAT/LC08/C02/T1').filterDate(
             '2017-01-01', '2017-01-03'
         )
     )
@@ -271,7 +271,7 @@ class EEBackendArrayTest(absltest.TestCase):
 
   def test_geometry_bounds_with_and_without_projection(self):
     image = (
-        ee.ImageCollection('LANDSAT/LC08/C01/T1')
+        ee.ImageCollection('LANDSAT/LC08/C02/T1')
         .filterDate('2017-01-01', '2017-01-03')
         .first()
     )
@@ -317,16 +317,16 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.entry = xee.EarthEngineBackendEntrypoint()
 
   def test_guess_can_open__collection_name(self):
-    self.assertTrue(self.entry.guess_can_open('LANDSAT/LC08/C01/T1'))
+    self.assertTrue(self.entry.guess_can_open('LANDSAT/LC08/C02/T1'))
     self.assertFalse(
         self.entry.guess_can_open('LANDSAT/SomeRandomCollection/C01/T1')
     )
-    self.assertTrue(self.entry.guess_can_open('ee://LANDSAT/LC08/C01/T1'))
-    self.assertTrue(self.entry.guess_can_open('ee:LANDSAT/LC08/C01/T1'))
-    self.assertFalse(self.entry.guess_can_open('ee::LANDSAT/LC08/C01/T1'))
+    self.assertTrue(self.entry.guess_can_open('ee://LANDSAT/LC08/C02/T1'))
+    self.assertTrue(self.entry.guess_can_open('ee:LANDSAT/LC08/C02/T1'))
+    self.assertFalse(self.entry.guess_can_open('ee::LANDSAT/LC08/C02/T1'))
 
   def test_guess_can_open__image_collection(self):
-    ic = ee.ImageCollection('LANDSAT/LC08/C01/T1').filterDate(
+    ic = ee.ImageCollection('LANDSAT/LC08/C02/T1').filterDate(
         '2017-01-01', '2017-01-03'
     )
 
@@ -372,7 +372,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
   def test_open_dataset__n_images(self):
     ds = self.entry.open_dataset(
-        pathlib.Path('LANDSAT') / 'LC08' / 'C01' / 'T1',
+        pathlib.Path('LANDSAT') / 'LC08' / 'C02' / 'T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         n_images=1,
         scale=25.0,  # in degrees
@@ -469,14 +469,14 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
   def test_parses_ee_url(self):
     ds = self.entry.open_dataset(
-        'ee://LANDSAT/LC08/C01/T1',
+        'ee://LANDSAT/LC08/C02/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=25.0,  # in degrees
         n_images=3,
     )
     self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
     ds = self.entry.open_dataset(
-        'ee:LANDSAT/LC08/C01/T1',
+        'ee:LANDSAT/LC08/C02/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=25.0,  # in degrees
         n_images=3,
@@ -498,7 +498,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
   def test_validate_band_attrs(self):
     ds = self.entry.open_dataset(
-        'ee:LANDSAT/LC08/C01/T1',
+        'ee:LANDSAT/LC08/C02/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=25.0,  # in degrees
         n_images=3,
