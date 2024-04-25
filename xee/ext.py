@@ -752,7 +752,7 @@ def _parse_dtype(data_type: types.DataType):
   return np.dtype(dt)
 
 
-def _ee_bounds_to_bounds(bounds: ee.Bounds) -> types.Bounds:
+def _ee_bounds_to_bounds(bounds: Dict[str, Any]) -> types.Bounds:
   coords = np.array(bounds['coordinates'], dtype=np.float64)[0]
   x_min, y_min, x_max, y_max = (
       min(coords[:, 0]),
