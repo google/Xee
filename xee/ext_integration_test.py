@@ -319,7 +319,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
   def test_guess_can_open__collection_name(self):
     self.assertTrue(self.entry.guess_can_open('LANDSAT/LC08/C02/T1'))
     self.assertFalse(
-        self.entry.guess_can_open('LANDSAT/SomeRandomCollection/C01/T1')
+        self.entry.guess_can_open('LANDSAT/SomeRandomCollection/C02/T1')
     )
     self.assertTrue(self.entry.guess_can_open('ee://LANDSAT/LC08/C02/T1'))
     self.assertTrue(self.entry.guess_can_open('ee:LANDSAT/LC08/C02/T1'))
@@ -336,7 +336,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
   def test_open_dataset__sanity_check(self):
     ds = self.entry.open_dataset(
-        pathlib.Path('LANDSAT') / 'LC08' / 'C01' / 'T1',
+        pathlib.Path('LANDSAT') / 'LC08' / 'C02' / 'T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         n_images=3,
         projection=ee.Projection('EPSG:4326', [25, 0, 0, 0, -25, 0]),
@@ -345,7 +345,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
         list(ds.data_vars.keys()),
-        [f'B{i}' for i in range(1, 3)] + ['BQA'],
+        [f'B{i}' for i in range(1, 3)]
+        + ['QA_PIXEL', 'QA_RADSAT', 'SAA', 'SZA', 'VAA', 'VZA'],
     )
     for v in ds.values():
       self.assertIsNotNone(v.data)
@@ -354,7 +355,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
   def test_open_dataset__sanity_check_with_negative_scale(self):
     ds = self.entry.open_dataset(
-        pathlib.Path('LANDSAT') / 'LC08' / 'C01' / 'T1',
+        pathlib.Path('LANDSAT') / 'LC08' / 'C02' / 'T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=-25.0,  # in degrees
         n_images=3,
@@ -363,7 +364,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
         list(ds.data_vars.keys()),
-        [f'B{i}' for i in range(1, 3)] + ['BQA'],
+        [f'B{i}' for i in range(1, 3)]
+        + ['QA_PIXEL', 'QA_RADSAT', 'SAA', 'SZA', 'VAA', 'VZA'],
     )
     for v in ds.values():
       self.assertIsNotNone(v.data)
