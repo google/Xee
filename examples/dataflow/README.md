@@ -104,7 +104,7 @@ This example is focused on pulling data from Earth Engine, transforming the data
 ```shell
 python ee_to_zarr_dataflow.py \
   --input NASA/GPM_L3/IMERG_V06 \
-  --output gs://xee-out-${PROJECT} \
+  --output gs://xee-out-${PROJECT}/output/ \
   --target_chunks='time=6' \
   --runner DataflowRunner \
   --project $PROJECT \
