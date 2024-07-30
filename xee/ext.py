@@ -234,7 +234,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
     self.crs_arg = crs or proj.get('crs', proj.get('wkt', 'EPSG:4326'))
     self.crs = CRS(self.crs_arg)
-    
+
     is_crs_geographic = self.crs.is_geographic
     # Gets the unit i.e. meter, degree etc.
     self.scale_units = 'degree' if is_crs_geographic else 'meter'
