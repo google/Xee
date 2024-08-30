@@ -293,14 +293,12 @@ class EarthEngineStore(common.AbstractDataStore):
     if isinstance(self.geometry, ee.Geometry):
       rpcs.append(('bounds', self.geometry.bounds(1, proj=self.projection)))
     else:
-      rpcs.append(
-          (
-              'bounds',
-              self.image_collection.first()
-              .geometry()
-              .bounds(1, proj=self.projection),
-          )
-      )
+      rpcs.append((
+          'bounds',
+          self.image_collection.first()
+          .geometry()
+          .bounds(1, proj=self.projection),
+      ))
 
     # TODO(#29, #30): This RPC call takes the longest time to compute. This
     # requires a full scan of the images in the collection, which happens on the
@@ -313,16 +311,14 @@ class EarthEngineStore(common.AbstractDataStore):
     # client-side. Ideally, this would live behind a xarray-backend-specific
     # feature flag, since it's not guaranteed that data is this consistent.
     columns = ['system:id', self.primary_dim_property]
-    rpcs.append(
+    rpcs.append((
+        'properties',
         (
-            'properties',
-            (
-                self.image_collection.reduceColumns(
-                    ee.Reducer.toList().repeat(len(columns)), columns
-                ).get('list')
-            ),
-        )
-    )
+            self.image_collection.reduceColumns(
+                ee.Reducer.toList().repeat(len(columns)), columns
+            ).get('list')
+        ),
+    ))
 
     info = ee.List([rpc for _, rpc in rpcs]).getInfo()
 
@@ -1033,6 +1029,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       getitem_kwargs: Optional[Dict[str, int]] = None,
       fast_time_slicing: bool = False,
   ) -> xarray.Dataset:  # type: ignore
+    # fmt: off
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
     Args:
@@ -1085,9 +1082,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         system is set by the the `crs` and `scale` arguments.
       geometry (optional): Specify an `ee.Geometry` to define the regional
         bounds when opening the data or a bbox specifying [x_min, y_min, x_max,
-        y_max] in EPSG:4326. When not set, the bounds are defined by
-        the CRS's 'area_of_use` boundaries. If those aren't present, the bounds
-        are derived from the geometry of the first image of the collection.
+        y_max] in EPSG:4326. When not set, the bounds are defined by the CRS's
+        'area_of_use` boundaries. If those aren't present, the bounds are
+        derived from the geometry of the first image of the collection.
       primary_dim_name (optional): Override the name of the primary dimension of
         the output Dataset. By default, the name is 'time'.
       primary_dim_property (optional): Override the `ee.Image` property for
@@ -1114,10 +1111,11 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         makes slicing an ImageCollection across time faster. This optimization
         loads EE images in a slice by ID, so any modifications to images in a
         computed ImageCollection will not be reflected.
+
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
     """
-
+    # fmt: on
     user_agent = f'Xee/{__version__}'
     if ee.data.getUserAgent() != user_agent:
       ee.data.setUserAgent(user_agent)
