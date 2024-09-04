@@ -65,4 +65,7 @@ preview = true
 pyink-indentation = 2
 pyink-use-majority-quotes = true
 
+[tools.setuptools.dynamic]
+version = {attr = "xee.__version__"}
+
 [tool.setuptools_scm]

@@ -47,11 +47,7 @@ import ee
 
 
 assert sys.version_info >= (3, 8)
-try:
-  __version__ = importlib.metadata.version('xee') or 'unknown'
-except importlib.metadata.PackageNotFoundError:
-  __version__ = 'unknown'
-
+__version__ = "0.0.14"
 
 # Chunks type definition taken from Xarray
 # https://github.com/pydata/xarray/blob/f13da94db8ab4b564938a5e67435ac709698f1c9/xarray/core/types.py#L173
