@@ -47,9 +47,6 @@ dataflow = [
   "gcsfs<=2024.2.0",
   "xarray-beam",
 ]
-examples = [
-  "xee[dataflow]",
-]
 
 [project.urls]
 Homepage = "https://github.com/google/xee"
