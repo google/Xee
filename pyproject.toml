@@ -50,6 +50,11 @@ dataflow = [
 examples = [
   "xee[dataflow]",
 ]
+docs = [
+  "myst-parser",
+  "sphinx_rtd_theme",
+  "sphinx",
+]
 
 [project.urls]
 Homepage = "https://github.com/google/xee"
