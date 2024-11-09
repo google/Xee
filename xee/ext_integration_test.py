@@ -341,7 +341,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         n_images=3,
         projection=ee.Projection('EPSG:4326', [25, 0, 0, 0, -25, 0]),
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
+    self.assertEqual(dict(ds.sizes), {'time': 3, 'lon': 14, 'lat': 7})
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
         list(ds.data_vars.keys()),
@@ -360,7 +360,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=-25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
+    self.assertEqual(dict(ds.sizes), {'time': 3, 'lon': 14, 'lat': 7})
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
         list(ds.data_vars.keys()),
@@ -410,8 +410,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine=xee.EarthEngineBackendEntrypoint,
     )
 
-    self.assertEqual(ds.dims, {'time': 4248, 'lon': 40, 'lat': 35})
-    self.assertNotEqual(ds.dims, standard_ds.dims)
+    self.assertEqual(ds.sizes, {'time': 4248, 'lon': 40, 'lat': 35})
+    self.assertNotEqual(ds.sizes, standard_ds.sizes)
 
   def test_honors_projection(self):
     ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
@@ -427,8 +427,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine=xee.EarthEngineBackendEntrypoint,
     )
 
-    self.assertEqual(ds.dims, {'time': 4248, 'lon': 3600, 'lat': 1800})
-    self.assertNotEqual(ds.dims, standard_ds.dims)
+    self.assertEqual(ds.sizes, {'time': 4248, 'lon': 3600, 'lat': 1800})
+    self.assertNotEqual(ds.sizes, standard_ds.sizes)
 
   @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
   def test_expected_precise_transform(self):
@@ -476,14 +476,14 @@ class EEBackendEntrypointTest(absltest.TestCase):
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
+    self.assertEqual(dict(ds.sizes), {'time': 3, 'lon': 14, 'lat': 7})
     ds = self.entry.open_dataset(
         'ee:LANDSAT/LC08/C02/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         scale=25.0,  # in degrees
         n_images=3,
     )
-    self.assertEqual(dict(ds.dims), {'time': 3, 'lon': 14, 'lat': 7})
+    self.assertEqual(dict(ds.sizes), {'time': 3, 'lon': 14, 'lat': 7})
 
   def test_data_sanity_check(self):
     # This simple test uncovered a bug with the default definition of `scale`.
