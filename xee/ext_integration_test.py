@@ -384,7 +384,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
   def test_can_chunk__opened_dataset(self):
     ds = xr.open_dataset(
-        'NASA/GPM_L3/IMERG_V06',
+        'NASA/GPM_L3/IMERG_V07',
         crs='EPSG:4326',
         scale=0.25,
         engine=xee.EarthEngineBackendEntrypoint,
