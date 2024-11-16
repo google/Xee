@@ -382,6 +382,14 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
     self.assertLen(ds.time, 1)
 
+  def test_open_dataset_image_to_imagecollection(self):
+    """Ensure that opening a ee.Image is the same as opening a single image ee.ImageCollection"""
+    img = ee.Image('CGIAR/SRTM90_V4')
+    ic = ee.ImageCollection(img)
+    ds1 = xr.open_dataset(img, engine='ee')
+    ds2 = xr.open_dataset(ic, engine='ee')
+    self.assertTrue(ds1.identical(ds2))
+
   def test_can_chunk__opened_dataset(self):
     ds = xr.open_dataset(
         'NASA/GPM_L3/IMERG_V07',

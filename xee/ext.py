@@ -1122,11 +1122,12 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
     if ee.data.getUserAgent() != user_agent:
       ee.data.setUserAgent(user_agent)
 
-    collection = (
-        filename_or_obj
-        if isinstance(filename_or_obj, ee.ImageCollection)
-        else ee.ImageCollection(self._parse(filename_or_obj))
-    )
+    if isinstance(filename_or_obj, ee.ImageCollection):
+      collection = filename_or_obj
+    elif isinstance(filename_or_obj, ee.Image):
+      collection = ee.ImageCollection(filename_or_obj)
+    else:
+      collection = ee.ImageCollection(self._parse(filename_or_obj))
 
     store = EarthEngineStore.open(
         collection,
