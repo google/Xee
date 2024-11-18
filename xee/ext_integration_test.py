@@ -383,7 +383,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertLen(ds.time, 1)
 
   def test_open_dataset_image_to_imagecollection(self):
-    """Ensure that opening a ee.Image is the same as opening a single image ee.ImageCollection"""
+    """Ensure that opening an ee.Image is the same as opening a single image ee.ImageCollection."""
     img = ee.Image('CGIAR/SRTM90_V4')
     ic = ee.ImageCollection(img)
     ds1 = xr.open_dataset(img, engine='ee')
