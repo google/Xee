@@ -106,6 +106,13 @@ ds = xr.open_dataset(
 
 See [examples](https://github.com/google/Xee/tree/main/examples) or [docs](https://github.com/google/Xee/tree/main/docs) for more uses and integrations.
 
+## Getting help
+
+If you encounter issues using Xee, you can:
+
+1. Open a new or add to an existing [Xee discussion topic](https://github.com/google/Xee/discussions)
+2. Open a [Xee issue](https://github.com/google/Xee/issues). To increase the likelihood of the issue being resolved, use this [template Colab notebook](https://colab.research.google.com/drive/1vAgfAPhKGJd4G9ZUOzciqZ7MbqJjlMLR) to create a reproducible script.
+
 ## How to run integration tests
 
 The Xee integration tests only pass on Xee branches (no forks). Please run the
