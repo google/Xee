@@ -1,0 +1,23 @@
+name: Feature Request (enhancement)
+description: File a feature request for Xee.
+title: "[FR]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this feature enhancement request!
+  - type: textarea
+    id: feature-summary
+    attributes:
+      label: Feature Summary
+      description: Describe this feature.
+    validations:
+      required: true
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Provide details about situations or use cases where this feature would be valuable.
+    validations:
+      required: true
