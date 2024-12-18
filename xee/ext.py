@@ -291,14 +291,14 @@ class EarthEngineStore(common.AbstractDataStore):
       rpcs.append(('projection', self.projection))
 
     if isinstance(self.geometry, ee.Geometry):
-      rpcs.append(('bounds', self.geometry.bounds(1, proj=self.projection)))
+      rpcs.append(('bounds', self.geometry.bounds(1)))
     else:
       rpcs.append(
           (
               'bounds',
               self.image_collection.first()
               .geometry()
-              .bounds(1, proj=self.projection),
+              .bounds(1),
           )
       )
 
