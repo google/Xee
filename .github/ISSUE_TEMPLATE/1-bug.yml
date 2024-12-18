@@ -20,7 +20,7 @@ body:
     attributes:
       label: Steps to Reproduce
       description: |
-        1. Create a minimal reproducible example in Colab, using this [template](https://colab.research.google.com/drive/1vAgfAPhKGJd4G9ZUOzciqZ7MbqJjlMLR).
+        1. Create a [minimal reproducible](https://stackoverflow.com/help/minimal-reproducible-example) example in Colab, using this [template](https://colab.research.google.com/drive/1vAgfAPhKGJd4G9ZUOzciqZ7MbqJjlMLR).
         2. Make the notebook publicly accessible.
         3. Make sure that any datasets needed to reproduce the bug are publicly shared. If the datasets are sensitive and cannot be made public, replace them with other public datasets.
         4. Copy the notebook URL below.
