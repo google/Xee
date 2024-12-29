@@ -44,6 +44,9 @@ from xarray.core import utils
 from xee import types
 
 import ee
+# MOE:begin_strip
+from google3.third_party.earthengine_api.python.ee.cli import borg_util
+# MOE:end_strip
 
 
 assert sys.version_info >= (3, 8)
@@ -802,8 +805,13 @@ class EarthEngineBackendArray(backends.BackendArray):
           'Earth Engine is not initialized on worker. '
           'Attempting to initialize using application default credentials.'
       )
-
-      ee.Initialize(**(self.store.ee_init_kwargs or {}))
+      ee_init_kwargs = self.store.ee_init_kwargs or {}
+      # MOE:begin_strip
+      # Initialize with robot credentials if running on borg.
+      if 'credentials' not in ee_init_kwargs:
+        ee_init_kwargs['credentials'] = borg_util.GetCredentials()
+      # MOE:end_strip
+      ee.Initialize(**ee_init_kwargs)
 
   def __getitem__(self, key: indexing.ExplicitIndexer) -> np.typing.ArrayLike:
     return indexing.explicit_indexing_adapter(
