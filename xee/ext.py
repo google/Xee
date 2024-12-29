@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import copy
 import functools
 import importlib
 import itertools
@@ -26,7 +27,7 @@ import logging
 import math
 import os
 import sys
-from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Sequence, Tuple, Union
 from urllib import parse
 import warnings
 
@@ -803,7 +804,20 @@ class EarthEngineBackendArray(backends.BackendArray):
           'Attempting to initialize using application default credentials.'
       )
 
-      ee.Initialize(**(self.store.ee_init_kwargs or {}))
+      ee_init_kwargs = copy.copy(self.store.ee_init_kwargs) or {}
+      if (
+          'credentials' in ee_init_kwargs
+          and 'credentials_function' in ee_init_kwargs
+      ):
+        raise ValueError(
+            'Cannot specify both credentials and credentials_function.'
+        )
+      if 'credentials_function' in ee_init_kwargs:
+        credentials_function: Callable[[], Any] = ee_init_kwargs.pop(
+            'credentials_function'
+        )
+        ee_init_kwargs['credentials'] = credentials_function()
+      ee.Initialize(**ee_init_kwargs)
 
   def __getitem__(self, key: indexing.ExplicitIndexer) -> np.typing.ArrayLike:
     return indexing.explicit_indexing_adapter(
