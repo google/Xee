@@ -37,10 +37,13 @@ import ee
 import xarray
 ```
 
-Next, initialize the EE client with the high volume API:
+Next, specify your EE-registered cloud project ID and initialize the EE client
+with the high volume API:
 
 ```python
-ee.Initialize(opt_url='https://earthengine-highvolume.googleapis.com')
+ee.Initialize(
+    project='my-project-id'
+    opt_url='https://earthengine-highvolume.googleapis.com')
 ```
 
 Open any Earth Engine ImageCollection by specifying the Xarray engine as `'ee'`:

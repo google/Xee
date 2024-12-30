@@ -30,5 +30,6 @@ between these tools.
 ```{toctree}
 :maxdepth: 1
 why-xee.md
+installation.md
 api.md
 ```
