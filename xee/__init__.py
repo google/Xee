@@ -14,3 +14,4 @@
 # ==============================================================================
 """A Google Earth Engine extension for Xarray."""
 from .ext import *
+from .ext import __version__
