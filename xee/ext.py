@@ -67,10 +67,8 @@ _BUILTIN_DTYPES = {
     'double': np.float64,
 }
 
-# While this documentation says that the limit is 10 MB...
-# https://developers.google.com/earth-engine/guides/usage#request_payload_size
-# actual byte limit seems to depend on other factors. This has been found via
-# trial & error.
+# Earth Engine image:computePixels request is limited to 48 MB
+# https://developers.google.com/earth-engine/reference/rest/v1/projects.image/computePixels
 REQUEST_BYTE_LIMIT = 2**20 * 48  # 48 MBs
 
 # Xee uses the ee.ImageCollection.toList function for slicing into an
@@ -80,10 +78,12 @@ REQUEST_BYTE_LIMIT = 2**20 * 48  # 48 MBs
 _TO_LIST_WARNING_LIMIT = 10000
 
 
+# Used in ext_test.py.
 def _check_request_limit(chunks: Dict[str, int], dtype_size: int, limit: int):
   """Checks that the actual number of bytes exceeds the limit."""
   index, width, height = chunks['index'], chunks['width'], chunks['height']
-  actual_bytes = index * width * height * dtype_size
+  # Add one for the mask byte (Earth Engine bytes-per-pixel accounting).
+  actual_bytes = index * width * height * (dtype_size + 1)
   if actual_bytes > limit:
     raise ValueError(
         f'`chunks="auto"` failed! Actual bytes {actual_bytes!r} exceeds limit'
@@ -105,7 +105,7 @@ class EarthEngineStore(common.AbstractDataStore):
   # "Safe" default chunks that won't exceed the request limit.
   PREFERRED_CHUNKS: Dict[str, int] = {
       'index': 48,
-      'width': 512,
+      'width': 256,
       'height': 256,
   }
 
@@ -352,20 +352,22 @@ class EarthEngineStore(common.AbstractDataStore):
     # height and width follow round numbers (powers of two) and allocate the
     # remaining bytes available for the index length. To illustrate this logic,
     # let's follow through with an example where:
-    #   request_byte_limit = 2 ** 20 * 10  # = 10 MBs
+    #   request_byte_limit = 2 ** 20 * 48  # = 48 MBs
     #   dtype_bytes = 8
-    log_total = np.log2(request_byte_limit)  # e.g.=23.32...
-    log_dtype = np.log2(dtype_bytes)  # e.g.=3
+
+    log_total = np.log2(request_byte_limit)  # e.g.=25.58...
+    # Add one for the mask byte (Earth Engine bytes-per-pixel accounting).
+    log_dtype = np.log2(dtype_bytes + 1)  # e.g.=3.16...
     log_limit = 10 * (log_total // 10)  # e.g.=20
-    log_index = log_total - log_limit  # e.g.=3.32...
+    log_index = log_total - log_limit  # e.g.=5.58...
 
     # Motivation: How do we divide a number N into the closest sum of two ints?
-    d = (log_limit - np.ceil(log_dtype)) / 2  # e.g.=17/2=8.5
-    wd, ht = np.ceil(d), np.floor(d)  # e.g. wd=9, ht=8
+    d = (log_limit - np.ceil(log_dtype)) / 2  # e.g.=16/2=8.0
+    wd, ht = np.ceil(d), np.floor(d)  # e.g. wd=8, ht=8
 
     # Put back to byte space, then round to the nearst integer number of bytes.
-    index = int(np.rint(2**log_index))  # e.g.=10
-    width = int(np.rint(2**wd))  # e.g.=512
+    index = int(np.rint(2**log_index))  # e.g.=48
+    width = int(np.rint(2**wd))  # e.g.=256
     height = int(np.rint(2**ht))  # e.g.=256
 
     return {'index': index, 'width': width, 'height': height}
