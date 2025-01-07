@@ -1,0 +1,72 @@
+name: Bug Report
+description: File a bug report for Xee.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Bug Summary
+      description: At a high level, described what happened.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: |
+        1. Create a [minimal reproducible](https://stackoverflow.com/help/minimal-reproducible-example) example in Colab, using this [template](https://colab.research.google.com/drive/1vAgfAPhKGJd4G9ZUOzciqZ7MbqJjlMLR).
+        2. Make the notebook publicly accessible.
+        3. Make sure that any datasets needed to reproduce the bug are publicly shared. If the datasets are sensitive and cannot be made public, replace them with other public datasets.
+        4. Copy the notebook URL below.
+      placeholder: Provide a Colab notebook URL and/or a detailed description of how to reproduce the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current Behavior
+      description: Describe what is currently happening.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: Describe what you expect to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Xee Version
+      description: What version of Xee are you running?
+    validations:
+      required: true
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Details
+      description: (OPTIONAL) How can we get in touch with you if we need more info?
+      placeholder: ex. email@example.com
+    validations:
+      required: false
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://example.com). 
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
