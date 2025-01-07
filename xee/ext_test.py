@@ -13,32 +13,32 @@ class EEStoreStandardDatatypesTest(parameterized.TestCase):
       dict(
           testcase_name='int8',
           dtype=np.dtype('int8'),
-          expected_chunks={'index': 48, 'width': 1024, 'height': 1024},
+          expected_chunks={'index': 48, 'width': 1024, 'height': 512},
       ),
       dict(
           testcase_name='int32',
           dtype=np.dtype('int32'),
-          expected_chunks={'index': 48, 'width': 512, 'height': 512},
+          expected_chunks={'index': 48, 'width': 512, 'height': 256},
       ),
       dict(
           testcase_name='int64',
           dtype=np.dtype('int64'),
-          expected_chunks={'index': 48, 'width': 512, 'height': 256},
+          expected_chunks={'index': 48, 'width': 256, 'height': 256},
       ),
       dict(
           testcase_name='float32',
           dtype=np.dtype('float32'),
-          expected_chunks={'index': 48, 'width': 512, 'height': 512},
+          expected_chunks={'index': 48, 'width': 512, 'height': 256},
       ),
       dict(
           testcase_name='float64',
           dtype=np.dtype('float64'),
-          expected_chunks={'index': 48, 'width': 512, 'height': 256},
+          expected_chunks={'index': 48, 'width': 256, 'height': 256},
       ),
       dict(
           testcase_name='complex64',
           dtype=np.dtype('complex64'),
-          expected_chunks={'index': 48, 'width': 512, 'height': 256},
+          expected_chunks={'index': 48, 'width': 256, 'height': 256},
       ),
   )
   def test_auto_chunks__handles_standard_dtypes(self, dtype, expected_chunks):
@@ -49,7 +49,7 @@ class EEStoreStandardDatatypesTest(parameterized.TestCase):
     )
 
 
-class EEStoreTest(absltest.TestCase):
+class EEStoreTest(parameterized.TestCase):
 
   def test_auto_chunks__handles_range_of_dtype_sizes(self):
     dt = 0
@@ -59,18 +59,36 @@ class EEStoreTest(absltest.TestCase):
     except ValueError:
       self.fail(f'Could not handle data type size {dt}.')
 
-  def test_auto_chunks__is_optimal_for_powers_of_two(self):
-    for p in range(10):
-      dt = 2**p
-      chunks = xee.EarthEngineStore._auto_chunks(dt)
+  def test_auto_chunks__matches_observed_values(self):
+    observed_results = {
+        1: 50331648,
+        2: 37748736,
+        4: 31457280,
+        8: 28311552,
+        16: 26738688,
+        32: 25952256,
+        64: 25559040,
+        128: 25362432,
+        256: 25264128,
+        512: 25214976,
+    }
+
+    for dtype_bytes, expected_bytes in observed_results.items():
+      chunks = xee.EarthEngineStore._auto_chunks(dtype_bytes)
+      actual_bytes = np.prod(list(chunks.values())) * (
+          dtype_bytes + 1
+      )  # added +1 to account for the mask byte
       self.assertEqual(
-          xee.REQUEST_BYTE_LIMIT, np.prod(list(chunks.values())) * dt
+          expected_bytes,
+          actual_bytes,
+          f'dtype_bytes: {dtype_bytes}, Expected: {expected_bytes}, '
+          f'Actual: {actual_bytes}, Chunks: {chunks}',
       )
 
   def test_exceeding_byte_limit__raises_error(self):
     dtype_size = 8
     # does not fail
-    chunks = {'index': 48, 'width': 512, 'height': 256}
+    chunks = {'index': 48, 'width': 256, 'height': 256}
     ext._check_request_limit(chunks, dtype_size, xee.REQUEST_BYTE_LIMIT)
 
     # fails
