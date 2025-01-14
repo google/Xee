@@ -74,9 +74,9 @@ html_static_path = ['_static']
 
 autosummary_generate = True
 
-# https://myst-nb.readthedocs.io/en/latest/use/execute.html
-jupyter_execute_notebooks = 'cache'
-# https://myst-nb.readthedocs.io/en/latest/use/formatting_outputs.html#removing-stdout-and-stderr
+# https://myst-nb.readthedocs.io/en/latest/computation/execute.html#notebook-execution-modes
+nb_execution_mode = 'off'
+# https://myst-nb.readthedocs.io/en/latest/render/format_code_cells.html#remove-stdout-or-stderr
 nb_output_stderr = 'remove-warn'
 
 # https://stackoverflow.com/a/66295922/809705
