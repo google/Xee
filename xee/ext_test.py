@@ -97,5 +97,49 @@ class EEStoreTest(parameterized.TestCase):
       ext._check_request_limit(chunks, dtype_size, xee.REQUEST_BYTE_LIMIT)
 
 
+class ParseEEInitKwargsTest(absltest.TestCase):
+
+  def test_parse_ee_init_kwargs__empty(self):
+    self.assertDictEqual(ext._parse_ee_init_kwargs(None), {})
+
+  def test_parse_ee_init_kwargs__credentials(self):
+    self.assertDictEqual(
+        ext._parse_ee_init_kwargs(
+            {
+                'credentials': 'foo',
+                'other': 'bar',
+            }
+        ),
+        {
+            'credentials': 'foo',
+            'other': 'bar',
+        },
+    )
+
+  def test_parse_ee_init_kwargs__credentials_function(self):
+    self.assertDictEqual(
+        ext._parse_ee_init_kwargs(
+            {
+                'credentials_function': lambda: 'foo',
+                'other': 'bar',
+            }
+        ),
+        {
+            'credentials': 'foo',
+            'other': 'bar',
+        },
+    )
+
+  def test_parse_ee_init_kwargs__credentials_and_credentials_function(self):
+    with self.assertRaises(ValueError):
+      ext._parse_ee_init_kwargs(
+          {
+              'credentials': 'foo',
+              'credentials_function': lambda: 'foo',
+              'other': 'bar',
+          }
+      )
+
+
 if __name__ == '__main__':
   absltest.main()

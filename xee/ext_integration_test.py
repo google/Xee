@@ -55,7 +55,9 @@ def init_ee_for_tests():
       'opt_url': ee.data.HIGH_VOLUME_API_BASE_URL,
   }
   if not os.environ.get(_USE_ADC_CREDENTIALS_KEY, False):
-    init_params['credentials'] = _read_identity_pool_creds()
+    credentials = _read_identity_pool_creds()
+    init_params['credentials'] = credentials
+    init_params['project'] = credentials.project_number
   ee.Initialize(**init_params)
 
 

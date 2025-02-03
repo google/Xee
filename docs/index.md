@@ -31,5 +31,6 @@ between these tools.
 :maxdepth: 1
 why-xee.md
 installation.md
+client-vs-server.ipynb
 api.md
 ```
