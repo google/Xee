@@ -3,7 +3,7 @@ name = "xee"
 dynamic = ["version"]
 description = "A Google Earth Engine extension for Xarray."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.8,<3.13"
 license = {text = "Apache-2.0"}
 authors = [
   {name = "Google LLC", email = "noreply@google.com"},
@@ -85,3 +85,7 @@ examples = { features = ["examples", "dataflow"], solve-group = "default" }
 tests = { features = ["tests"], solve-group = "default" }
 
 [tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+proj = ">=9.5.1,<10"
+gdal = ">=3.10.1,<4"
