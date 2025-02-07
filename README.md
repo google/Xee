@@ -123,8 +123,15 @@ integration tests locally before sending a PR. To run the tests locally,
 authenticate using `earthengine authenticate` and run the following:
 
 ```bash
-USE_ADC_CREDENTIALS=1 python -m unittest xee/ext_integration_test.py
+python -m unittest xee/ext_integration_test.py
 ```
+
+or
+
+```bash
+python -m pytest xee/ext_integration_test.py
+```
+
 
 ## License
 
