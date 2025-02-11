@@ -39,7 +39,6 @@ _SCOPES = [
     'https://www.googleapis.com/auth/cloud-platform',
     'https://www.googleapis.com/auth/earthengine',
 ]
-_USE_ADC_CREDENTIALS_KEY = 'USE_ADC_CREDENTIALS'
 
 
 def _read_identity_pool_creds() -> identity_pool.Credentials:
@@ -54,7 +53,7 @@ def init_ee_for_tests():
   init_params = {
       'opt_url': ee.data.HIGH_VOLUME_API_BASE_URL,
   }
-  if not os.environ.get(_USE_ADC_CREDENTIALS_KEY, False):
+  if _CREDENTIALS_PATH_KEY in os.environ:
     credentials = _read_identity_pool_creds()
     init_params['credentials'] = credentials
     init_params['project'] = credentials.project_number

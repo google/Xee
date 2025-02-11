@@ -6,9 +6,11 @@ _An Xarray extension for Google Earth Engine._
 
 [![image](https://img.shields.io/pypi/v/xee.svg)](https://pypi.python.org/pypi/xee)
 [![image](https://static.pepy.tech/badge/xee)](https://pepy.tech/project/xee)
-[![Conda Recipe](https://img.shields.io/badge/recipe-xee-green.svg)](https://github.com/conda-forge/xee-feedstock)
+[![Conda
+Recipe](https://img.shields.io/badge/recipe-xee-green.svg)](https://github.com/conda-forge/xee-feedstock)
 [![image](https://img.shields.io/conda/vn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
-[![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
+[![Conda
+Downloads](https://img.shields.io/conda/dn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
 
 ## How to use
 
@@ -62,14 +64,16 @@ ds = xarray.open_dataset('ee://ECMWF/ERA5_LAND/HOURLY', engine='ee',
 Open an ImageCollection (maybe, with EE-side filtering or processing):
 
 ```python
-ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
+    '1992-10-05', '1993-03-31')
 ds = xarray.open_dataset(ic, engine='ee', crs='EPSG:4326', scale=0.25)
 ```
 
 Open an ImageCollection with a specific EE projection or geometry:
 
 ```python
-ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
+    '1992-10-05', '1993-03-31')
 leg1 = ee.Geometry.Rectangle(113.33, -43.63, 153.56, -10.66)
 ds = xarray.open_dataset(
     ic,
@@ -79,17 +83,19 @@ ds = xarray.open_dataset(
 )
 ```
 
-Open multiple ImageCollections into one `xarray.Dataset`, all with the same projection:
+Open multiple ImageCollections into one `xarray.Dataset`, all with the same
+projection:
 
 ```python
-ds = xarray.open_mfdataset(['ee://ECMWF/ERA5_LAND/HOURLY', 'ee://NASA/GDDP-CMIP6'],
-                           engine='ee', crs='EPSG:4326', scale=0.25)
+ds = xarray.open_mfdataset(
+    ['ee://ECMWF/ERA5_LAND/HOURLY', 'ee://NASA/GDDP-CMIP6'],
+    engine='ee', crs='EPSG:4326', scale=0.25)
 ```
 
 Open a single Image by passing it to an ImageCollection:
 
 ```python
-i = ee.ImageCollection(ee.Image("LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318"))
+i = ee.ImageCollection(ee.Image('LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318'))
 ds = xarray.open_dataset(i, engine='ee')
 ```
 
@@ -107,14 +113,20 @@ ds = xr.open_dataset(
 )
 ```
 
-See [examples](https://github.com/google/Xee/tree/main/examples) or [docs](https://github.com/google/Xee/tree/main/docs) for more uses and integrations.
+See [examples](https://github.com/google/Xee/tree/main/examples) or
+[docs](https://github.com/google/Xee/tree/main/docs) for more uses and
+integrations.
 
 ## Getting help
 
 If you encounter issues using Xee, you can:
 
-1. Open a new or add to an existing [Xee discussion topic](https://github.com/google/Xee/discussions)
-2. Open an [Xee issue](https://github.com/google/Xee/issues). To increase the likelihood of the issue being resolved, use this [template Colab notebook](https://colab.research.google.com/drive/1vAgfAPhKGJd4G9ZUOzciqZ7MbqJjlMLR) to create a reproducible script.
+1. Open a new or add to an existing [Xee discussion
+   topic](https://github.com/google/Xee/discussions)
+2. Open an [Xee issue](https://github.com/google/Xee/issues). To increase the
+   likelihood of the issue being resolved, use this [template Colab
+   notebook](https://colab.research.google.com/drive/1vAgfAPhKGJd4G9ZUOzciqZ7MbqJjlMLR)
+   to create a reproducible script.
 
 ## How to run integration tests
 
@@ -123,7 +135,13 @@ integration tests locally before sending a PR. To run the tests locally,
 authenticate using `earthengine authenticate` and run the following:
 
 ```bash
-USE_ADC_CREDENTIALS=1 python -m unittest xee/ext_integration_test.py
+python -m unittest xee/ext_integration_test.py
+```
+
+or
+
+```bash
+python -m pytest xee/ext_integration_test.py
 ```
 
 ## License
