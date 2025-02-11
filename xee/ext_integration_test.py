@@ -422,6 +422,68 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertEqual(ds.sizes, {'time': 4248, 'lon': 40, 'lat': 35})
     self.assertNotEqual(ds.sizes, standard_ds.sizes)
 
+  def test_honors_geometry_simple_1(self):
+    ic = ee.ImageCollection([ee.Image.pixelLonLat()])
+    min_x, max_x = 10, 13
+    min_y, max_y = 0, 2
+    leg1 = ee.Geometry.Rectangle(min_x, min_y, max_x, max_y)
+    ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+        geometry=leg1,
+    )
+    standard_ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+    )
+
+    self.assertEqual(ds.sizes, {'time': 1, 'lon': max_x - min_x, 'lat': max_y - min_y})
+    self.assertEqual(standard_ds.sizes, {'time': 1, 'lon': 360, 'lat': 180})
+    self.assertNotEqual(ds.sizes, standard_ds.sizes)
+    print(f'{ds.values()=}')
+    lon_values = list(ds.values())[0]
+    self.assertTrue(np.array_equal(
+        lon_values, 
+        np.array([[[10.5, 10.5], [11.5, 11.5], [12.5, 12.5]]])
+    ))
+    lat_values = list(ds.values())[1]
+    self.assertTrue(np.array_equal(
+        lat_values, 
+        np.array([[[0.5, 1.5], [0.5, 1.5], [0.5, 1.5]]])
+    ))
+  
+
+  def test_honors_geometry_simple_2(self):
+    ic = ee.ImageCollection([ee.Image.pixelLonLat()])
+    min_x, max_x = 10, 13
+    min_y, max_y = -2, 0
+    leg1 = ee.Geometry.Rectangle(min_x, min_y, max_x, max_y)
+    ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+        geometry=leg1,
+    )
+    standard_ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+    )
+
+    self.assertEqual(ds.sizes, {'time': 1, 'lon': max_x - min_x, 'lat': max_y - min_y})
+    self.assertEqual(standard_ds.sizes, {'time': 1, 'lon': 360, 'lat': 180})
+    self.assertNotEqual(ds.sizes, standard_ds.sizes)
+    print(f'{ds.values()=}')
+    lon_values = list(ds.values())[0]
+    self.assertTrue(np.array_equal(
+        lon_values, 
+        np.array([[[10.5, 10.5], [11.5, 11.5], [12.5, 12.5]]])
+    ))
+    lat_values = list(ds.values())[1]
+    self.assertTrue(np.array_equal(
+        lat_values, 
+        np.array([[[-0.5, -1.5], [-0.5, -1.5], [-0.5, -1.5]]])
+    ))
+
+
   def test_honors_projection(self):
     ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
         '1992-10-05', '1993-03-31'
