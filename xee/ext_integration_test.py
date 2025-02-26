@@ -41,6 +41,7 @@ _SCOPES = [
     'https://www.googleapis.com/auth/cloud-platform',
     'https://www.googleapis.com/auth/earthengine',
 ]
+
 # Define grid parameters for tests 
 _TEST_GRID_PARAMS = {
   'crs': 'EPSG:4326',
