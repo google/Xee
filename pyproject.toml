@@ -40,6 +40,7 @@ tests = [
   "pyink",
   "rasterio",
   "rioxarray",
+  "shapely",
 ]
 dataflow = [
   "absl-py",
@@ -89,3 +90,4 @@ tests = { features = ["tests"], solve-group = "default" }
 [tool.pixi.dependencies]
 proj = ">=9.5.1,<10"
 gdal = ">=3.10.1,<4"
+pytest = ">=8.3.4,<9"

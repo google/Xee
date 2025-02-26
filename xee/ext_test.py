@@ -3,8 +3,10 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
+import shapely
 import xee
 from xee import ext
+from xee import helpers
 
 
 class EEStoreStandardDatatypesTest(parameterized.TestCase):
@@ -139,6 +141,76 @@ class ParseEEInitKwargsTest(absltest.TestCase):
               'other': 'bar',
           }
       )
+
+
+class GridHelpersTest(absltest.TestCase):
+  """Test grid helper functions that do not require GEE access."""
+
+  def test_set_scale(self): 
+    """Test that the scale values of the CRS transform can be updated."""
+    crs_transform = [1, 0, 100, 0, 5, 200]
+    scaling = (123, 456)
+    crs_transform_new = helpers.set_scale(crs_transform, scaling)
+    np.testing.assert_allclose(
+        crs_transform_new,
+        [123, 0, 100, 0, 456, 200]
+    )
+
+
+  def test_fit_geometry_specify_scale(self):
+    """Test generating grid parameters to match a geometry, specifying the scale."""
+    grid_dict = helpers.fit_geometry(
+      geometry=shapely.Polygon([(10.1, 10.1),
+                                (10.1, 10.9),
+                                (11.9, 10.1)]),
+      grid_crs='EPSG:4326',
+      grid_scale=0.5
+    )
+    self.assertEqual(
+      grid_dict['crs_transform'],
+      [0.5, 0, 10, 0, -0.5, 11.0]
+    )
+    self.assertEqual(
+      grid_dict['shape_2d'],
+      (4, 2)
+    )
+
+
+  def test_fit_geometry_specify_scale_utm(self):
+    """Test generating grid parameters to match a UTM geometry, specifying the scale."""
+    grid_dict = helpers.fit_geometry(
+      geometry=shapely.Polygon([(551000, 4179000),
+                                (551000, 4179000),
+                                (552000, 4180000),
+                                (552000, 4180000)]),  # over San Francisco                       
+      geometry_crs='EPSG:32610',                      
+      grid_crs='EPSG:4326',
+      grid_scale=0.01
+    )
+    self.assertEqual(
+      grid_dict['crs_transform'],
+      [0.01, 0.0, -122.43, 0.0, -0.01, 37.77]
+    )
+    self.assertEqual(
+      grid_dict['shape_2d'],
+      (3, 2)
+    )
+
+
+  def test_fit_geometry_specify_shape(self):
+    """Test generating grid parameters to match a geometry, specifying the shape."""
+    grid_dict = helpers.fit_geometry(
+      geometry=shapely.Polygon([(10.0, 2.0),
+                                (10.0, 3.0),
+                                (12.0, 2.0)]),
+      grid_crs='EPSG:4326',
+      grid_shape=(4, 2)
+    )
+    np.testing.assert_allclose(
+      grid_dict['crs_transform'],
+      [0.5, 0, 10, 0, -0.5, 3],
+      rtol=1e-4,
+    )
 
 
 if __name__ == '__main__':
