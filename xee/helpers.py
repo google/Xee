@@ -103,40 +103,11 @@ def fit_geometry(
   )
 
 
-
-def update_grid_translation(
-    crs,
-    crs_transform,
-    shape,
-    geometry
-    ):
-  """Update the grid's translateX and translateY parameters to center on the geometry."""
-
-  return crs, crs_transform, shape
-
-
-
-def update_shape(
-    crs,
-    crs_transform,
-    shape,
-    geometry
-  ):
-  # Update the shape to cover the geometry.
-  return crs, crs_transform, shape
-
-
-def extract_projection(
+def extract_grid_params(
     ee_obj
   ):
-  # Estimate the CRS and transform from an ee.Image or ee.ImageCollection object
+  # Extract the pixel grid parameters from an ee.Image or ee.ImageCollection object
   
-  # proj_info = ee_obj.projection().getInfo()
-
-  # return dict(
-  #   crs=proj_info['crs'],
-  #   crs_transform=proj_info['transform']
-  # )
   match ee_obj:
     case ee.Image():
       print('Its an image')
@@ -152,5 +123,5 @@ def extract_projection(
   return dict(
     crs=first_band_info['crs'],
     crs_transform=first_band_info['crs_transform'],
-    shape_2d=first_band_info['dimensions']
+    shape_2d=tuple(first_band_info['dimensions'])
   )
