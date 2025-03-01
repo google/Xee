@@ -36,7 +36,7 @@ Now, in your Python environment, make the following imports:
 
 ```python
 import ee
-import xarray
+import xarray as xr
 ```
 
 Next, specify your EE-registered cloud project ID and initialize the EE client
@@ -48,68 +48,73 @@ ee.Initialize(
     opt_url='https://earthengine-highvolume.googleapis.com')
 ```
 
+We specify the desired pixel grid using three parameters: `crs`, `crs_transform`, and `shape_2d`. Xee contains a helper function `extract_grid_params` that can extract these parameters from an Earth Engine Image or ImageCollection object.
+```python
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY')
+grid_params = helpers.extract_grid_params(ic)
+```
+
 Open any Earth Engine ImageCollection by specifying the Xarray engine as `'ee'`:
 
 ```python
-ds = xarray.open_dataset('ee://ECMWF/ERA5_LAND/HOURLY', engine='ee')
+ds = xr.open_dataset(
+    'ee://ECMWF/ERA5_LAND/HOURLY',
+    engine='ee',
+    **grid_params
+)
 ```
 
-Open all bands in a specific projection (not the Xee default):
+Open all bands in a specific projection:
 
 ```python
-ds = xarray.open_dataset('ee://ECMWF/ERA5_LAND/HOURLY', engine='ee',
-                         crs='EPSG:4326', scale=0.25)
+ds = xr.open_dataset(
+    'ee://ECMWF/ERA5_LAND/HOURLY',
+    engine='ee',
+    crs="EPSG:32610",
+    crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
+    shape_2d=(64, 64),
+)
 ```
 
 Open an ImageCollection (maybe, with EE-side filtering or processing):
 
 ```python
-ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
-    '1992-10-05', '1993-03-31')
-ds = xarray.open_dataset(ic, engine='ee', crs='EPSG:4326', scale=0.25)
+ds = xr.open_dataset(
+    ic,
+    engine='ee',
+    crs="EPSG:32610",
+    crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
+    shape_2d=(64, 64),
+)
 ```
 
 Open an ImageCollection with a specific EE projection or geometry:
 
 ```python
-ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
-    '1992-10-05', '1993-03-31')
-leg1 = ee.Geometry.Rectangle(113.33, -43.63, 153.56, -10.66)
-ds = xarray.open_dataset(
+import shapely
+
+grid_params = helpers.fit_geometry(
+    geometry=shapely.geometry.box(113.33, -43.63, 153.56, -10.66),
+    grid_crs='EPSG:4326',
+    grid_shape=(256, 256)
+)
+
+ds = xr.open_dataset(
     ic,
     engine='ee',
-    projection=ic.first().select(0).projection(),
-    geometry=leg1
+    **grid_params
 )
 ```
 
-Open multiple ImageCollections into one `xarray.Dataset`, all with the same
-projection:
+Open a single Image:
 
 ```python
-ds = xarray.open_mfdataset(
-    ['ee://ECMWF/ERA5_LAND/HOURLY', 'ee://NASA/GDDP-CMIP6'],
-    engine='ee', crs='EPSG:4326', scale=0.25)
-```
-
-Open a single Image by passing it to an ImageCollection:
-
-```python
-i = ee.ImageCollection(ee.Image('LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318'))
-ds = xarray.open_dataset(i, engine='ee')
-```
-
-Open any Earth Engine ImageCollection to match an existing transform:
-
-```python
-raster = rioxarray.open_rasterio(...) # assume crs + transform is set
+img = ee.Image("LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318")
+grid_params = helpers.extract_grid_params(img)
 ds = xr.open_dataset(
-    'ee://ECMWF/ERA5_LAND/HOURLY',
+    img,
     engine='ee',
-    geometry=tuple(raster.rio.bounds()), # must be in EPSG:4326
-    projection=ee.Projection(
-        crs=str(raster.rio.crs), transform=raster.rio.transform()[:6]
-    ),
+    **grid_params
 )
 ```
 

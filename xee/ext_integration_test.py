@@ -602,18 +602,82 @@ class GridHelpersTest(absltest.TestCase):
     init_ee_for_tests()
     self.entry = xee.EarthEngineBackendEntrypoint()
   
-  def test_extract_projection_from_image(self):
+  def test_extract_grid_params_from_image(self):
     img = ee.Image('LANDSAT/LT05/C02/T1_TOA/LT05_031034_20110619')
-    grid_params = helpers.extract_projection(img)
-    self.assertEqual(grid_params['shape_2d'], [7881, 6981])
+    grid_params = helpers.extract_grid_params(img)
+    self.assertEqual(grid_params['shape_2d'], (7881, 6981))
     self.assertEqual(grid_params['crs'], 'EPSG:32613')
     np.allclose(grid_params['crs_transform'], [30, 0, 643185, 0, -30, 4255815])
 
+  def test_extract_grid_params_from_image_collection(self):
     dem = ee.ImageCollection("COPERNICUS/DEM/GLO30");
-    grid_params = helpers.extract_projection(dem)
-    self.assertEqual(grid_params['shape_2d'], [3601, 3601])
+    grid_params = helpers.extract_grid_params(dem)
+    self.assertEqual(grid_params['shape_2d'], (3601, 3601))
     self.assertEqual(grid_params['crs'], 'EPSG:4326')
     np.allclose(grid_params['crs_transform'], [0.000278, 0, 5.999861, 0, -0.000278, 1.000139])
+
+
+class ReadmeCodeTest(absltest.TestCase):
+  """Tests a copy of code contained in the Xee README."""
+
+  def setUp(self):
+    super().setUp()
+    init_ee_for_tests()
+    self.entry = xee.EarthEngineBackendEntrypoint()
+
+  def test_extract_projection_from_image(self):
+
+    ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
+    grid_params = helpers.extract_grid_params(ic)
+
+    # Open any Earth Engine ImageCollection by specifying the Xarray engine as 'ee':
+    ds = xr.open_dataset(
+      'ee://ECMWF/ERA5_LAND/HOURLY',
+      engine='ee',
+      **grid_params
+    )
+    
+    # Open all bands in a specific projection:
+    ds = xr.open_dataset(
+      'ee://ECMWF/ERA5_LAND/HOURLY',
+      engine='ee',
+      crs="EPSG:32610",
+      crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
+      shape_2d=(64, 64),
+    )
+
+    # Open an ImageCollection (maybe, with EE-side filtering or processing):
+    ds = xr.open_dataset(
+      ic,
+      engine='ee',
+      crs="EPSG:32610",
+      crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
+      shape_2d=(64, 64),
+    )
+
+    # Open an ImageCollection with a specific EE projection or geometry:
+    import shapely
+
+    grid_params = helpers.fit_geometry(
+      geometry=shapely.geometry.box(113.33, -43.63, 153.56, -10.66),
+      grid_crs='EPSG:4326',
+      grid_shape=(256, 256)
+    )
+
+    ds = xr.open_dataset(
+        ic,
+        engine='ee',
+        **grid_params
+    )
+
+    # Open a single Image:
+    img = ee.Image("LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318")
+    grid_params = helpers.extract_grid_params(img)
+    ds = xr.open_dataset(
+      img,
+      engine='ee',
+      **grid_params
+    )
 
 
 if __name__ == '__main__':
