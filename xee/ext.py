@@ -61,7 +61,7 @@ Chunks = Union[int, Dict[Any, Any], Literal['auto'], None]
 
 # Types for type hints
 CrsType = str
-TransformType = Union[affine.Affine, Tuple[float, float, float, float, float, float]]
+TransformType = Tuple[float, float, float, float, float, float]
 ShapeType = Tuple[int, int]
 
 _BUILTIN_DTYPES = {
