@@ -70,7 +70,7 @@ Open all bands in a specific projection:
 ds = xr.open_dataset(
     'ee://ECMWF/ERA5_LAND/HOURLY',
     engine='ee',
-    crs="EPSG:32610",
+    crs='EPSG:32610',
     crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
     shape_2d=(64, 64),
 )
@@ -82,8 +82,8 @@ Open an ImageCollection (maybe, with EE-side filtering or processing):
 ds = xr.open_dataset(
     ic,
     engine='ee',
-    crs="EPSG:32610",
-    crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
+    crs='EPSG:32610',
+    crs_transform=[30, 0, 551485, 0, -30, 4179915],  # In San Francisco, California
     shape_2d=(64, 64),
 )
 ```
@@ -109,7 +109,7 @@ ds = xr.open_dataset(
 Open a single Image:
 
 ```python
-img = ee.Image("LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318")
+img = ee.Image('LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318')
 grid_params = helpers.extract_grid_params(img)
 ds = xr.open_dataset(
     img,
