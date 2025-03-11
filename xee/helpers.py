@@ -21,9 +21,24 @@ from rasterio.transform import Affine
 import shapely
 from shapely.ops import transform
 from shapely.geometry import box
-from typing import Literal
+from typing import TypedDict, Tuple, Union
 
-def set_scale(crs_transform, scaling):
+
+TransformType = Tuple[float, float, float, float, float, float]
+ShapeType = Tuple[int, int]
+ScalingType = Union[float, Tuple[float, float]]
+
+
+class PixelGridParams(TypedDict):
+    crs: str
+    crs_transform: TransformType
+    shape_d2: ShapeType
+
+
+def set_scale(
+    crs_transform: TransformType,
+    scaling: ScalingType,
+  ) -> list:
   """Update the CRS transform's scale parameters."""
   match scaling:
     case int(xy_scale) | float(xy_scale):
@@ -39,15 +54,15 @@ def set_scale(crs_transform, scaling):
 
 
 def fit_geometry(
-  geometry,
+  geometry: shapely.geometry,
   *,
-  geometry_crs='EPSG:4326',
-  buffer=0,
-  grid_crs='EPSG:4326',
-  grid_scale=None,
-  grid_scale_digits=None,
-  grid_shape=None,
-):
+  geometry_crs: str = 'EPSG:4326',
+  buffer: float = 0,
+  grid_crs: str = 'EPSG:4326',
+  grid_scale: float = None,
+  grid_scale_digits: int = None,
+  grid_shape: ShapeType = None,
+) -> PixelGridParams: 
   """Return grid parameters that fit the geometry."""
   
   # Check that exactly one of the arguments is specified
@@ -104,19 +119,16 @@ def fit_geometry(
 
 
 def extract_grid_params(
-    ee_obj
-  ):
+    ee_obj: Union[ee.Image, ee.ImageCollection]
+  ) -> PixelGridParams:
   # Extract the pixel grid parameters from an ee.Image or ee.ImageCollection object
   
-  match ee_obj:
-    case ee.Image():
-      print('Its an image')
-      img_obj = ee_obj
-    case ee.ImageCollection():
-      print('Its an image collection')
-      img_obj = ee_obj.first()
-    case _:
-      raise TypeError
+  if isinstance(ee_obj, ee.Image):
+    img_obj = ee_obj
+  elif isinstance(ee_obj, ee.ImageCollection):
+    img_obj = ee_obj.first()
+  else:
+    raise TypeError(f'Expected ee.Image or ee.ImageCollection, got {type(ee_obj)}')
   
   first_band_info = img_obj.select(0).getInfo()['bands'][0]
 
