@@ -131,7 +131,3 @@ cython_debug/
 
 # pixi environments
 .pixi
-*.egg-info
-
-# temporary work files
-temp/
