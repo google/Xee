@@ -333,7 +333,6 @@ class EEBackendEntrypointTest(absltest.TestCase):
         crs_transform=[12.0, 0, -180.0, 0, -25.0, 90.0],
         shape_2d=(width, height),
     )
-    print(f'{ds=}')
     self.assertEqual(dict(ds.sizes), {'time': 3, 'x': width, 'y': height})
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
@@ -616,6 +615,10 @@ class GridHelpersTest(absltest.TestCase):
     self.assertEqual(grid_params['crs'], 'EPSG:4326')
     np.allclose(grid_params['crs_transform'], [0.000278, 0, 5.999861, 0, -0.000278, 1.000139])
 
+  def test_extract_grid_params_from_invalid_object(self):
+    with self.assertRaises(TypeError):
+      helpers.extract_grid_params("a string object")
+
 
 class ReadmeCodeTest(absltest.TestCase):
   """Tests a copy of code contained in the Xee README."""
@@ -656,7 +659,6 @@ class ReadmeCodeTest(absltest.TestCase):
     )
 
     # Open an ImageCollection with a specific EE projection or geometry:
-    import shapely
 
     grid_params = helpers.fit_geometry(
       geometry=shapely.geometry.box(113.33, -43.63, 153.56, -10.66),
