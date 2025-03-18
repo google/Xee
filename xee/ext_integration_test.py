@@ -351,7 +351,6 @@ class EEBackendEntrypointTest(absltest.TestCase):
     )
     # Loop through the data variables.
     for v in ds.values():
-      print(f'{v = }')
       self.assertIsNotNone(v.data)
       self.assertFalse(v.isnull().all(), 'All values are null!')
       self.assertEqual(v.shape, (n_images, width, height))
