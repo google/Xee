@@ -399,7 +399,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     ds = xr.open_dataset(
         ic,
         engine=xee.EarthEngineBackendEntrypoint,
-        crs="EPSG:32610",
+        crs='EPSG:32610',
         crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # Origin over SF
         shape_2d=(width, height),
     )
@@ -480,8 +480,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertEqual(dict(ds1.sizes), {'time': n_images, 'x': width, 'y': height})
     self.assertEqual(dict(ds2.sizes), {'time': n_images, 'x': width, 'y': height})
     np.testing.assert_allclose(
-      ds1["B1"].compute().values,
-      ds2["B1"].compute().values
+      ds1['B1'].compute().values,
+      ds2['B1'].compute().values
     )
 
   def test_data_sanity_check(self):
@@ -608,7 +608,7 @@ class GridHelpersTest(absltest.TestCase):
     np.allclose(grid_params['crs_transform'], [30, 0, 643185, 0, -30, 4255815])
 
   def test_extract_grid_params_from_image_collection(self):
-    dem = ee.ImageCollection("COPERNICUS/DEM/GLO30");
+    dem = ee.ImageCollection('COPERNICUS/DEM/GLO30');
     grid_params = helpers.extract_grid_params(dem)
     self.assertEqual(grid_params['shape_2d'], (3601, 3601))
     self.assertEqual(grid_params['crs'], 'EPSG:4326')
@@ -616,7 +616,7 @@ class GridHelpersTest(absltest.TestCase):
 
   def test_extract_grid_params_from_invalid_object(self):
     with self.assertRaises(TypeError):
-      helpers.extract_grid_params("a string object")
+      helpers.extract_grid_params('a string object')
 
 
 class ReadmeCodeTest(absltest.TestCase):
@@ -643,7 +643,7 @@ class ReadmeCodeTest(absltest.TestCase):
     ds = xr.open_dataset(
       'ee://ECMWF/ERA5_LAND/HOURLY',
       engine='ee',
-      crs="EPSG:32610",
+      crs='EPSG:32610',
       crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
       shape_2d=(64, 64),
     )
@@ -652,7 +652,7 @@ class ReadmeCodeTest(absltest.TestCase):
     ds = xr.open_dataset(
       ic,
       engine='ee',
-      crs="EPSG:32610",
+      crs='EPSG:32610',
       crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
       shape_2d=(64, 64),
     )
@@ -672,7 +672,7 @@ class ReadmeCodeTest(absltest.TestCase):
     )
 
     # Open a single Image:
-    img = ee.Image("LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318")
+    img = ee.Image('LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318')
     grid_params = helpers.extract_grid_params(img)
     ds = xr.open_dataset(
       img,

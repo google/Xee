@@ -705,7 +705,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     else:
       if self.store.fast_time_slicing:
         logging.warning(
-            "fast_time_slicing is enabled but ImageCollection images don't have"
+            'fast_time_slicing is enabled but ImageCollection images don't have'
             ' IDs. Reverting to default behavior.'
         )
       if stop > _TO_LIST_WARNING_LIMIT:
