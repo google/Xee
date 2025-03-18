@@ -40,15 +40,13 @@ def set_scale(
     scaling: ScalingType,
   ) -> list:
   """Update the CRS transform's scale parameters."""
-  match scaling:
-    case int(xy_scale) | float(xy_scale):
-      crs_transform[0] = xy_scale
-      crs_transform[4] = xy_scale
-    case (int(x_scale) | float(x_scale), int(y_scale) | float(y_scale)):
-      crs_transform[0] = x_scale
-      crs_transform[4] = y_scale
-    case _:
-      raise TypeError
+  print(f'{type(scaling)=}')
+  if isinstance(scaling, tuple) and len(scaling) == 2:
+    x_scale, y_scale = scaling
+    crs_transform[0] = x_scale
+    crs_transform[4] = y_scale
+  else:
+    raise TypeError(f'Expected a tuple of length 2 for scaling, got {scaling}')
   affine_transform = Affine(*crs_transform)
   return list(affine_transform)[:6]
 
