@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 import concurrent.futures
 import copy
 import functools
@@ -27,7 +28,7 @@ import logging
 import math
 import os
 import sys
-from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Literal, Union
 from urllib import parse
 import warnings
 
@@ -59,7 +60,7 @@ except importlib.metadata.PackageNotFoundError:
 #
 # The 'int' case let's users specify `io_chunks=-1`, which means to load the
 # data as a single chunk.
-Chunks = Union[int, Dict[Any, Any], Literal['auto'], None]
+Chunks = Union[int, dict[Any, Any], Literal['auto'], None]
 
 
 _BUILTIN_DTYPES = {
@@ -80,7 +81,7 @@ _TO_LIST_WARNING_LIMIT = 10000
 
 
 # Used in ext_test.py.
-def _check_request_limit(chunks: Dict[str, int], dtype_size: int, limit: int):
+def _check_request_limit(chunks: dict[str, int], dtype_size: int, limit: int):
   """Checks that the actual number of bytes exceeds the limit."""
   index, width, height = chunks['index'], chunks['width'], chunks['height']
   # Add one for the mask byte (Earth Engine bytes-per-pixel accounting).
@@ -104,25 +105,25 @@ class EarthEngineStore(common.AbstractDataStore):
   """Read-only Data Store for Google Earth Engine."""
 
   # "Safe" default chunks that won't exceed the request limit.
-  PREFERRED_CHUNKS: Dict[str, int] = {
+  PREFERRED_CHUNKS: dict[str, int] = {
       'index': 48,
       'width': 256,
       'height': 256,
   }
 
-  GETITEM_KWARGS: Dict[str, int] = {
+  GETITEM_KWARGS: dict[str, int] = {
       'max_retries': 6,
       'initial_delay': 500,
   }
 
-  SCALE_UNITS: Dict[str, int] = {
+  SCALE_UNITS: dict[str, int] = {
       'degree': 1,
       'metre': 10_000,
       'meter': 10_000,
       'm': 10_000,
   }
 
-  DIMENSION_NAMES: Dict[str, Tuple[str, str]] = {
+  DIMENSION_NAMES: dict[str, tuple[str, str]] = {
       'degree': ('lon', 'lat'),
       'metre': ('X', 'Y'),
       'meter': ('X', 'Y'),
@@ -149,20 +150,20 @@ class EarthEngineStore(common.AbstractDataStore):
       mode: Literal['r'] = 'r',
       chunk_store: Chunks = None,
       n_images: int = -1,
-      crs: Optional[str] = None,
-      scale: Optional[float] = None,
-      projection: Optional[ee.Projection] = None,
-      geometry: ee.Geometry | Tuple[float, float, float, float] | None = None,
-      primary_dim_name: Optional[str] = None,
-      primary_dim_property: Optional[str] = None,
-      mask_value: Optional[float] = None,
+      crs: str | None = None,
+      scale: float | None = None,
+      projection: ee.Projection | None = None,
+      geometry: ee.Geometry | tuple[float, float, float, float] | None = None,
+      primary_dim_name: str | None = None,
+      primary_dim_property: str | None = None,
+      mask_value: float | None = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
-      ee_init_kwargs: Optional[Dict[str, Any]] = None,
+      ee_init_kwargs: dict[str, Any] | None = None,
       ee_init_if_necessary: bool = False,
-      executor_kwargs: Optional[Dict[str, Any]] = None,
-      getitem_kwargs: Optional[Dict[str, int]] = None,
+      executor_kwargs: dict[str, Any] | None = None,
+      getitem_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
-  ) -> 'EarthEngineStore':
+  ) -> EarthEngineStore:
     if mode != 'r':
       raise ValueError(
           f'mode {mode!r} is invalid: data can only be read from Earth Engine.'
@@ -192,18 +193,18 @@ class EarthEngineStore(common.AbstractDataStore):
       image_collection: ee.ImageCollection,
       chunks: Chunks = None,
       n_images: int = -1,
-      crs: Optional[str] = None,
-      scale: Union[float, int, None] = None,
-      projection: Optional[ee.Projection] = None,
-      geometry: ee.Geometry | Tuple[float, float, float, float] | None = None,
-      primary_dim_name: Optional[str] = None,
-      primary_dim_property: Optional[str] = None,
-      mask_value: Optional[float] = None,
+      crs: str | None = None,
+      scale: float | int | None = None,
+      projection: ee.Projection | None = None,
+      geometry: ee.Geometry | tuple[float, float, float, float] | None = None,
+      primary_dim_name: str | None = None,
+      primary_dim_property: str | None = None,
+      mask_value: float | None = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
-      ee_init_kwargs: Optional[Dict[str, Any]] = None,
+      ee_init_kwargs: dict[str, Any] | None = None,
       ee_init_if_necessary: bool = False,
-      executor_kwargs: Optional[Dict[str, Any]] = None,
-      getitem_kwargs: Optional[Dict[str, int]] = None,
+      executor_kwargs: dict[str, Any] | None = None,
+      getitem_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
   ):
     self.ee_init_kwargs = ee_init_kwargs
@@ -279,7 +280,7 @@ class EarthEngineStore(common.AbstractDataStore):
       self.mask_value = mask_value
 
   @functools.cached_property
-  def get_info(self) -> Dict[str, Any]:
+  def get_info(self) -> dict[str, Any]:
     """Make all getInfo() calls to EE at once."""
 
     rpcs = [
@@ -330,12 +331,12 @@ class EarthEngineStore(common.AbstractDataStore):
     return dict(zip((name for name, _ in rpcs), info))
 
   @property
-  def image_collection_properties(self) -> Tuple[List[str], List[str]]:
+  def image_collection_properties(self) -> tuple[list[str], list[str]]:
     system_ids, primary_coord = self.get_info['properties']
     return (system_ids, primary_coord)
 
   @property
-  def image_ids(self) -> List[str]:
+  def image_ids(self) -> list[str]:
     image_ids, _ = self.image_collection_properties
     return image_ids
 
@@ -347,7 +348,7 @@ class EarthEngineStore(common.AbstractDataStore):
   @classmethod
   def _auto_chunks(
       cls, dtype_bytes: int, request_byte_limit: int = REQUEST_BYTE_LIMIT
-  ) -> Dict[str, int]:
+  ) -> dict[str, int]:
     """Given the data type size and request limit, calculate optimal chunks."""
     # Taking the data type number of bytes into account, let's try to have the
     # height and width follow round numbers (powers of two) and allocate the
@@ -374,8 +375,8 @@ class EarthEngineStore(common.AbstractDataStore):
     return {'index': index, 'width': width, 'height': height}
 
   def _assign_index_chunks(
-      self, input_chunk_store: Dict[Any, Any]
-  ) -> Dict[Any, Any]:
+      self, input_chunk_store: dict[Any, Any]
+  ) -> dict[Any, Any]:
     """Assigns values of 'index', 'width', and 'height' to `self.chunks`.
 
     This method first attempts to retrieve values for 'index', 'width',
@@ -416,7 +417,7 @@ class EarthEngineStore(common.AbstractDataStore):
       chunks[y_dim_name] = self.chunks['height']
     return chunks
 
-  def transform(self, xs: float, ys: float) -> Tuple[float, float]:
+  def transform(self, xs: float, ys: float) -> tuple[float, float]:
     transformer = pyproj.Transformer.from_crs(
         self.crs.geodetic_crs, self.crs, always_xy=True
     )
@@ -539,22 +540,29 @@ class EarthEngineStore(common.AbstractDataStore):
     data = np.where(data == current_mask_value, np.nan, data)
     return data
 
-  @functools.lru_cache()
+  @functools.lru_cache
   def _band_attrs(self, band_name: str) -> types.BandInfo:
     try:
-      return next((b for b in self._img_info['bands'] if b['id'] == band_name))
+      return next(b for b in self._img_info['bands'] if b['id'] == band_name)
     except StopIteration as e:
       raise ValueError(f'Band {band_name!r} not found.') from e
 
-  @functools.lru_cache()
-  def _bands(self) -> List[str]:
+  @functools.lru_cache
+  def _bands(self) -> list[str]:
     return [b['id'] for b in self._img_info['bands']]
 
-  def _make_attrs_valid(self, attrs: Dict[str, Any]) -> Dict[
+  def _make_attrs_valid(self, attrs: dict[str, Any]) -> dict[
       str,
-      Union[
-          str, int, float, complex, np.ndarray, np.number, List[Any], Tuple[Any]
-      ],
+      (
+          str
+          | int
+          | float
+          | complex
+          | np.ndarray
+          | np.number
+          | list[Any]
+          | tuple[Any]  # pylint: disable=g-one-element-tuple
+      ),
   ]:
     return {
         key: (
@@ -590,7 +598,7 @@ class EarthEngineStore(common.AbstractDataStore):
   def get_attrs(self) -> utils.Frozen[Any, Any]:
     return utils.FrozenDict(self._props)
 
-  def _get_primary_coordinates(self) -> List[Any]:
+  def _get_primary_coordinates(self) -> list[Any]:
     """Gets the primary dimension coordinate values from an ImageCollection."""
     _, primary_coords = self.image_collection_properties
 
@@ -607,8 +615,8 @@ class EarthEngineStore(common.AbstractDataStore):
     return primary_coords
 
   def _get_tile_from_ee(
-      self, tile_and_band: Tuple[Tuple[int, int, int], str]
-  ) -> Tuple[int, np.ndarray[Any, np.dtype]]:
+      self, tile_and_band: tuple[tuple[int, int, int], str]
+  ) -> tuple[int, np.ndarray[Any, np.dtype]]:
     """Get a numpy array from EE for a specific bounding box (a 'tile')."""
     (tile_index, tile_coords_start, tile_coords_end), band_id = tile_and_band
     bbox = self.project(
@@ -644,8 +652,8 @@ class EarthEngineStore(common.AbstractDataStore):
 
   def _determine_bounds(
       self,
-      geometry: ee.Geometry | Tuple[float, float, float, float] | None = None,
-  ) -> Tuple[float, float, float, float]:
+      geometry: ee.Geometry | tuple[float, float, float, float] | None = None,
+  ) -> tuple[float, float, float, float]:
     if geometry is None:
       try:
         x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
@@ -757,7 +765,7 @@ def _parse_dtype(data_type: types.DataType):
   return np.dtype(dt)
 
 
-def _ee_bounds_to_bounds(bounds: Dict[str, Any]) -> types.Bounds:
+def _ee_bounds_to_bounds(bounds: dict[str, Any]) -> types.Bounds:
   coords = np.array(bounds['coordinates'], dtype=np.float64)[0]
   x_min, y_min, x_max, y_max = (
       min(coords[:, 0]),
@@ -818,8 +826,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     )
 
   def _key_to_slices(
-      self, key: Tuple[Union[int, slice], ...]
-  ) -> Tuple[Tuple[slice, ...], Tuple[int, ...]]:
+      self, key: tuple[int | slice, ...]
+  ) -> tuple[tuple[slice, ...], tuple[int, ...]]:
     """Convert all key indexes to slices.
 
     If any keys are integers, convert them to a slice (i.e. with a range of 1
@@ -889,7 +897,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     return target_image
 
   def _raw_indexing_method(
-      self, key: Tuple[Union[int, slice], ...]
+      self, key: tuple[int | slice, ...]
   ) -> np.typing.ArrayLike:
     key, squeeze_axes = self._key_to_slices(key)
 
@@ -955,8 +963,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     return out
 
   def _make_tile(
-      self, tile_index: Tuple[types.TileIndex, types.BBox3d]
-  ) -> Tuple[types.TileIndex, np.ndarray]:
+      self, tile_index: tuple[types.TileIndex, types.BBox3d]
+  ) -> tuple[types.TileIndex, np.ndarray]:
     """Get a numpy array from EE for a specific 3D bounding box (a 'tile')."""
     tile_idx, (istart, iend, *bbox) = tile_index
     target_image = self._slice_collection(slice(istart, iend))
@@ -966,7 +974,7 @@ class EarthEngineBackendArray(backends.BackendArray):
 
   def _tile_indexes(
       self, index_range: slice, bbox: types.BBox
-  ) -> Iterable[Tuple[types.TileIndex, types.BBox3d]]:
+  ) -> Iterable[tuple[types.TileIndex, types.BBox3d]]:
     """Calculate indexes to break up a (3D) bounding box into chunks."""
     tstep = self._apparent_chunks['index']
     wstep = self._apparent_chunks['width']
@@ -988,7 +996,7 @@ class EarthEngineBackendArray(backends.BackendArray):
 class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
   """Backend for Earth Engine."""
 
-  def _parse(self, filename_or_obj: Union[str, os.PathLike[Any]]) -> str:
+  def _parse(self, filename_or_obj: str | os.PathLike[Any]) -> str:
     parsed = parse.urlparse(str(filename_or_obj))
     if parsed.scheme and parsed.scheme != 'ee':
       raise ValueError(
@@ -998,7 +1006,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
     return f'{parsed.netloc}{parsed.path}'
 
   def guess_can_open(
-      self, filename_or_obj: Union[str, os.PathLike[Any], ee.ImageCollection]
+      self, filename_or_obj: str | os.PathLike[Any] | ee.ImageCollection
   ) -> bool:  # type: ignore
     """Returns True if the candidate is a valid ImageCollection."""
     if isinstance(filename_or_obj, ee.ImageCollection):
@@ -1013,28 +1021,28 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
 
   def open_dataset(
       self,
-      filename_or_obj: Union[str, os.PathLike[Any], ee.ImageCollection],
-      drop_variables: Optional[Tuple[str, ...]] = None,
-      io_chunks: Optional[Any] = None,
+      filename_or_obj: str | os.PathLike[Any] | ee.ImageCollection,
+      drop_variables: tuple[str, ...] | None = None,
+      io_chunks: Any | None = None,
       n_images: int = -1,
       mask_and_scale: bool = True,
       decode_times: bool = True,
-      decode_timedelta: Optional[bool] = None,
-      use_cftime: Optional[bool] = None,
+      decode_timedelta: bool | None = None,
+      use_cftime: bool | None = None,
       concat_characters: bool = True,
       decode_coords: bool = True,
-      crs: Optional[str] = None,
-      scale: Union[float, int, None] = None,
-      projection: Optional[ee.Projection] = None,
-      geometry: ee.Geometry | Tuple[float, float, float, float] | None = None,
-      primary_dim_name: Optional[str] = None,
-      primary_dim_property: Optional[str] = None,
-      ee_mask_value: Optional[float] = None,
+      crs: str | None = None,
+      scale: float | int | None = None,
+      projection: ee.Projection | None = None,
+      geometry: ee.Geometry | tuple[float, float, float, float] | None = None,
+      primary_dim_name: str | None = None,
+      primary_dim_property: str | None = None,
+      ee_mask_value: float | None = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_if_necessary: bool = False,
-      ee_init_kwargs: Optional[Dict[str, Any]] = None,
-      executor_kwargs: Optional[Dict[str, Any]] = None,
-      getitem_kwargs: Optional[Dict[str, int]] = None,
+      ee_init_kwargs: dict[str, Any] | None = None,
+      executor_kwargs: dict[str, Any] | None = None,
+      getitem_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
@@ -1170,8 +1178,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
 
 
 def _parse_ee_init_kwargs(
-    ee_init_kwargs: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
+    ee_init_kwargs: dict[str, Any] | None,
+) -> dict[str, Any]:
   """Parses Earth Engine Initialize kwargs.
 
   Generate credentials if credentials_function is specified.

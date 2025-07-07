@@ -16,7 +16,6 @@ r"""Exports EE ImageCollections to Zarr using Xarray-Beam."""
 
 
 import logging
-from typing import Dict, List
 
 from absl import app
 from absl import flags
@@ -55,7 +54,7 @@ _RUNNER = flags.DEFINE_string('runner', None, help='beam.runners.Runner')
 
 
 # pylint: disable=unused-argument
-def _parse_dataflow_flags(argv: List[str]) -> List[str]:
+def _parse_dataflow_flags(argv: list[str]) -> list[str]:
   parser = flags.argparse_flags.ArgumentParser(
       description='parser for dataflow flags',
       allow_abbrev=False,
@@ -66,7 +65,7 @@ def _parse_dataflow_flags(argv: List[str]) -> List[str]:
 
 # Borrowed from the xbeam examples:
 # https://github.com/google/xarray-beam/blob/4f4fcb965a65b5d577601af311d0e0142ee38076/examples/xbeam_rechunk.py#L41
-def _parse_chunks_str(chunks_str: str) -> Dict[str, int]:
+def _parse_chunks_str(chunks_str: str) -> dict[str, int]:
   chunks = {}
   parts = chunks_str.split(',')
   for part in parts:
