@@ -998,10 +998,8 @@ class EarthEngineBackendArray(backends.BackendArray):
         math.ceil(w_range / self._apparent_chunks['width']),
         math.ceil(h_range / self._apparent_chunks['height']),
     )
-    tiles = [
-        [[None for _ in range(shape[2])] for _ in range(shape[1])]
-        for _ in range(shape[0])
-    ]
+    # Pre-allocate tiles with numpy array instead of nested lists
+    tiles = np.empty(shape, dtype=object)
 
     with concurrent.futures.ThreadPoolExecutor(
         **self.store.executor_kwargs
@@ -1009,7 +1007,7 @@ class EarthEngineBackendArray(backends.BackendArray):
       for (i, j, k), arr in pool.map(
           self._make_tile, self._tile_indexes(key[0], bbox)
       ):
-        tiles[i][j][k] = arr
+        tiles[i, j, k] = arr
 
     out = np.block(tiles)
 
