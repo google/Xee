@@ -564,22 +564,22 @@ class EEBackendEntrypointTest(absltest.TestCase):
         '1992-10-05', '1992-10-06')  # Using a smaller date range for the test
         
     # Open dataset with lazy loading
-    start_time = time.time()
+    start_time = time.perf_counter()
     lazy_ds = xr.open_dataset(
         ic,
         engine=xee.EarthEngineBackendEntrypoint,
         lazy_load=True,
     )
-    lazy_open_time = time.time() - start_time
+    lazy_open_time = time.perf_counter() - start_time
     
     # Open dataset without lazy loading
-    start_time = time.time()
+    start_time = time.perf_counter()
     regular_ds = xr.open_dataset(
         ic,
         engine=xee.EarthEngineBackendEntrypoint,
         lazy_load=False,
     )
-    regular_open_time = time.time() - start_time
+    regular_open_time = time.perf_counter() - start_time
     
     # Verify that lazy opening is faster than regular opening
     self.assertLess(lazy_open_time, regular_open_time, 
