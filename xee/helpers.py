@@ -15,9 +15,9 @@
 """Helper functions for grid parameters."""
 import math
 
+import affine
 import ee
 from pyproj import Transformer
-from rasterio.transform import Affine
 import shapely
 from shapely.ops import transform
 from shapely.geometry import box
@@ -47,7 +47,7 @@ def set_scale(
     crs_transform[4] = y_scale
   else:
     raise TypeError(f'Expected a tuple of length 2 for scaling, got {scaling}')
-  affine_transform = Affine(*crs_transform)
+  affine_transform = affine.Affine(*crs_transform)
   return list(affine_transform)[:6]
 
 
@@ -106,7 +106,11 @@ def fit_geometry(
   grid_x_min = math.floor(x_min / x_scale) * x_scale
   grid_y_max = math.ceil(y_max / y_scale) * y_scale
   
-  affine_transform = Affine.translation(grid_x_min, grid_y_max) * Affine.scale(x_scale, -y_scale)
+  affine_transform = (
+    affine.Affine.translation(grid_x_min, grid_y_max)
+    * affine.Affine.scale(x_scale, -y_scale)
+  )
+
   crs_transform = list(affine_transform)[:6]
 
   return dict(
