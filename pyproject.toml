@@ -28,6 +28,7 @@ dependencies = [
   "earthengine-api>=0.1.374",
   "pyproj",
   "affine",
+  "shapely",
 ]
 
 [project.entry-points."xarray.backends"]
@@ -40,7 +41,6 @@ tests = [
   "pyink",
   "rasterio",
   "rioxarray",
-  "shapely",
 ]
 dataflow = [
   "absl-py",

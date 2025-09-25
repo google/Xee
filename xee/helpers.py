@@ -20,7 +20,6 @@ import ee
 from pyproj import Transformer
 import shapely
 from shapely.ops import transform
-from shapely.geometry import box
 from typing import TypedDict, Tuple, Union
 
 
@@ -124,7 +123,7 @@ def extract_grid_params(
     ee_obj: Union[ee.Image, ee.ImageCollection]
   ) -> PixelGridParams:
   # Extract the pixel grid parameters from an ee.Image or ee.ImageCollection object
-  
+
   if isinstance(ee_obj, ee.Image):
     img_obj = ee_obj
   elif isinstance(ee_obj, ee.ImageCollection):
