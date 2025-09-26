@@ -44,7 +44,7 @@ with the high volume API:
 
 ```python
 ee.Initialize(
-    project='my-project-id'
+    project='my-project-id',
     opt_url='https://earthengine-highvolume.googleapis.com')
 ```
 
