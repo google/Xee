@@ -61,7 +61,9 @@ Chunks = Union[int, Dict[Any, Any], Literal['auto'], None]
 
 # Types for type hints
 CrsType = str
-TransformType = Tuple[float, float, float, float, float, float]
+TransformType = Union[
+    Tuple[float, float, float, float, float, float], affine.Affine
+]
 ShapeType = Tuple[int, int]
 
 _BUILTIN_DTYPES = {
@@ -206,6 +208,19 @@ class EarthEngineStore(common.AbstractDataStore):
       getitem_kwargs: Optional[Dict[str, int]] = None,
       fast_time_slicing: bool = False,
   ):
+    # Allow affine.Affine objects to be passed in for crs_transform.
+    if isinstance(crs_transform, affine.Affine):
+      crs_transform = (
+          crs_transform.a,
+          crs_transform.b,
+          crs_transform.c,
+          crs_transform.d,
+          crs_transform.e,
+          crs_transform.f,
+      )
+    elif not isinstance(crs_transform, tuple):
+      raise TypeError('crs_transform must be an affine.Affine object or a tuple.')
+
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
     self.fast_time_slicing = fast_time_slicing

@@ -3,7 +3,9 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
+import affine
 import shapely
+from unittest import mock
 import xee
 from xee import ext
 from xee import helpers
@@ -97,6 +99,74 @@ class EEStoreTest(parameterized.TestCase):
     chunks = {'index': 1024, 'width': 1024, 'height': 1024}
     with self.assertRaises(ValueError):
       ext._check_request_limit(chunks, dtype_size, xee.REQUEST_BYTE_LIMIT)
+
+  @mock.patch(
+      'xee.ext.EarthEngineStore.get_info',
+      new_callable=mock.PropertyMock,
+  )
+  def test_init_with_affine_transform(self, mock_get_info):
+    """Test that an affine.Affine object can be passed for crs_transform."""
+    mock_get_info.return_value = {
+        'size': 1,
+        'props': {},
+        'first': {
+            'bands': [{
+                'id': 'b1',
+                'data_type': {'type': 'PixelType', 'precision': 'float'}
+            }]
+        },
+    }
+    transform_tuple = (1.0, 0.0, -180.0, 0.0, -1.0, 90.0)
+    transform_affine = affine.Affine(*transform_tuple)
+
+    store = xee.EarthEngineStore(
+        image_collection=mock.MagicMock(),
+        crs='EPSG:4326',
+        crs_transform=transform_affine,
+        shape_2d=(360, 180),
+    )
+
+    self.assertIsInstance(store.crs_transform, tuple)
+    self.assertEqual(store.crs_transform, transform_tuple)
+    self.assertEqual(store.scale_x, 1.0)
+    self.assertEqual(store.scale_y, -1.0)
+    self.assertEqual(store.scale, 1.0)
+
+  @mock.patch(
+      'xee.ext.EarthEngineStore.get_info',
+      new_callable=mock.PropertyMock,
+  )
+  def test_init_with_tuple_transform(self, mock_get_info):
+      """Test that a tuple object can be passed for crs_transform."""
+      # (Setup the mock_get_info.return_value just like in the other test)
+      mock_get_info.return_value = {
+          'size': 1, 'props': {},
+          'first': {'bands': [{'id': 'b1', 'data_type': {'type': 'PixelType', 'precision': 'float'}}]}
+      }
+      transform_tuple = (1.0, 0.0, -180.0, 0.0, -1.0, 90.0)
+
+      # Pass the tuple directly
+      store = xee.EarthEngineStore(
+          image_collection=mock.MagicMock(),
+          crs='EPSG:4326',
+          crs_transform=transform_tuple,
+          shape_2d=(360, 180),
+      )
+
+      # Assert that the tuple was stored correctly
+      self.assertEqual(store.crs_transform, transform_tuple)
+
+  def test_init_with_invalid_transform_type(self):
+      """Test that a TypeError is raised for invalid crs_transform types."""
+      with self.assertRaises(TypeError):
+          # Pass a list, which is an invalid type
+          invalid_transform = [1.0, 0.0, -180.0, 0.0, -1.0, 90.0]
+          xee.EarthEngineStore(
+              image_collection=mock.MagicMock(),
+              crs='EPSG:4326',
+              crs_transform=invalid_transform,
+              shape_2d=(360, 180),
+          )
 
 
 class ParseEEInitKwargsTest(absltest.TestCase):
