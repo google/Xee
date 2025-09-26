@@ -25,7 +25,7 @@ from typing import TypedDict, Tuple, Union
 
 TransformType = Tuple[float, float, float, float, float, float]
 ShapeType = Tuple[int, int]
-ScalingType = Union[float, Tuple[float, float]]
+ScalingType = Tuple[float, float]
 
 
 class PixelGridParams(TypedDict):
@@ -39,7 +39,6 @@ def set_scale(
     scaling: ScalingType,
   ) -> list:
   """Update the CRS transform's scale parameters."""
-  print(f'{type(scaling)=}')
   if isinstance(scaling, tuple) and len(scaling) == 2:
     x_scale, y_scale = scaling
     crs_transform[0] = x_scale
@@ -56,22 +55,17 @@ def fit_geometry(
   geometry_crs: str = 'EPSG:4326',
   buffer: float = 0,
   grid_crs: str = 'EPSG:4326',
-  grid_scale: float = None,
+  grid_scale: ScalingType = None,
   grid_scale_digits: int = None,
   grid_shape: ShapeType = None,
-) -> PixelGridParams: 
+) -> PixelGridParams:
   """Return grid parameters that fit the geometry."""
-  
-  # Check that exactly one of the arguments is specified
+
   if (grid_scale is None) == (grid_shape is None):
     raise ValueError("Exactly one of 'grid_scale' or 'grid_shape' must be specified.")
 
-  # Reproject geometry to the grid CRS. If the grids are the same this
-  # is a no-op.
   transformer = Transformer.from_crs(
-    crs_from=geometry_crs,
-    crs_to=grid_crs,
-    always_xy=True
+    crs_from=geometry_crs, crs_to=grid_crs, always_xy=True
   )
   reprojected_geometry = transform(transformer.transform, geometry)
   if buffer and buffer > 0:
@@ -81,33 +75,29 @@ def fit_geometry(
   x_min, y_min, x_max, y_max = buffered_geom.bounds
 
   if grid_scale:
-    # Given scale & geometry, determine the translation & shape parameters. 
-    x_scale = y_scale = grid_scale
-    
-    x_shape = math.ceil(
-      (x_max / x_scale - math.floor(x_min / x_scale)) 
-    )
-    y_shape = math.ceil(
-      (-y_min / y_scale + math.ceil(y_max / y_scale)) 
-    )
-  
-  if grid_shape:
-    # Given shape & geometry, determine the translation & scale parameters. 
+    if isinstance(grid_scale, tuple) and len(grid_scale) == 2:
+      x_scale, y_scale = grid_scale
+    else:
+      raise TypeError(f'Expected a tuple of length 2 for grid_scale, got {grid_scale}')
+
+    # REVERTED to the more direct and robust shape calculation.
+    x_shape = int(math.ceil(x_max / x_scale) - math.floor(x_min / x_scale))
+    y_shape = int(math.ceil(y_max / abs(y_scale)) - math.floor(y_min / abs(y_scale)))
+  else:  # grid_shape is not None
     x_shape, y_shape = grid_shape
-    
     x_scale = (x_max - x_min) / x_shape
-    y_scale = (y_max - y_min) / y_shape
+    y_scale = -(y_max - y_min) / y_shape
 
     if grid_scale_digits:
       x_scale = round(x_scale, grid_scale_digits)
       y_scale = round(y_scale, grid_scale_digits)
-  
+
   grid_x_min = math.floor(x_min / x_scale) * x_scale
-  grid_y_max = math.ceil(y_max / y_scale) * y_scale
-  
+  grid_y_max = math.ceil(y_max / abs(y_scale)) * abs(y_scale)
+
   affine_transform = (
     affine.Affine.translation(grid_x_min, grid_y_max)
-    * affine.Affine.scale(x_scale, -y_scale)
+    * affine.Affine.scale(x_scale, y_scale)
   )
 
   crs_transform = list(affine_transform)[:6]

@@ -268,11 +268,11 @@ class GridHelpersTest(absltest.TestCase):
                                 (10.1, 10.9),
                                 (11.9, 10.1)]),
       grid_crs='EPSG:4326',
-      grid_scale=0.5
+      grid_scale=(0.5, -0.5),
     )
     self.assertEqual(
       grid_dict['crs_transform'],
-      [0.5, 0, 10, 0, -0.5, 11.0]
+      [0.5, 0.0, 10.0, 0.0, -0.5, 11.0],
     )
     self.assertEqual(
       grid_dict['shape_2d'],
@@ -280,16 +280,42 @@ class GridHelpersTest(absltest.TestCase):
     )
 
 
+  def test_fit_geometry_specify_scale_scalar_fails(self):
+    """Test that a scalar grid_scale raises a TypeError."""
+    with self.assertRaises(TypeError):
+      helpers.fit_geometry(
+          geometry=shapely.Polygon(
+              [(10.1, 10.1), (10.1, 10.9), (11.9, 10.1)]
+          ),
+          grid_crs='EPSG:4326',
+          grid_scale=0.5,  # A scalar should fail
+      )
+
+  def test_fit_geometry_specify_scale_positive_y(self):
+    """Test fit_geometry with an explicit positive y-scale."""
+    grid_dict = helpers.fit_geometry(
+        geometry=shapely.Polygon(
+            [(10.1, 10.1), (10.1, 10.9), (11.9, 10.1)]
+        ),
+        grid_crs='EPSG:4326',
+        grid_scale=(0.5, 0.5),  # Note the positive y-scale
+    )
+    # The transform should now reflect the positive y-scale.
+    self.assertEqual(
+        grid_dict['crs_transform'], [0.5, 0.0, 10.0, 0.0, 0.5, 11.0]
+    )
+    self.assertEqual(
+        grid_dict['shape_2d'], (4, 2)
+    )
+
+
   def test_fit_geometry_specify_scale_utm(self):
     """Test generating grid parameters to match a UTM geometry, specifying the scale."""
     grid_dict = helpers.fit_geometry(
-      geometry=shapely.Polygon([(551000, 4179000),
-                                (551000, 4179000),
-                                (552000, 4180000),
-                                (552000, 4180000)]),  # over San Francisco                       
+      geometry=shapely.geometry.box(551000, 4179000, 552000, 4180000),  # over San Francisco                       
       geometry_crs='EPSG:32610',                      
       grid_crs='EPSG:4326',
-      grid_scale=0.01
+      grid_scale=(0.01, -0.01),
     )
     self.assertEqual(
       grid_dict['crs_transform'],
@@ -315,6 +341,51 @@ class GridHelpersTest(absltest.TestCase):
       [0.5, 0, 10, 0, -0.5, 3],
       rtol=1e-4,
     )
+
+  def test_fit_geometry_value_error(self):
+    """Test that a ValueError is raised for invalid scale/shape combinations."""
+    geom = shapely.geometry.box(0, 0, 1, 1) # Use a valid polygon
+    # Test when both grid_scale and grid_shape are provided
+    with self.assertRaisesRegex(
+        ValueError, "Exactly one of 'grid_scale' or 'grid_shape' must be"
+    ):
+      helpers.fit_geometry(
+          geometry=geom, grid_scale=(0.1, -0.1), grid_shape=(10, 10)
+      )
+
+    # Test when neither grid_scale nor grid_shape are provided
+    with self.assertRaisesRegex(
+        ValueError, "Exactly one of 'grid_scale' or 'grid_shape' must be"
+    ):
+      helpers.fit_geometry(geometry=geom)
+
+  def test_fit_geometry_with_buffer(self):
+    """Test that the buffer parameter correctly expands the grid."""
+    grid_dict = helpers.fit_geometry(
+        geometry=shapely.Point(10.5, 10.5),
+        buffer=0.5,  # Creates a 1x1 degree box around the point
+        grid_crs='EPSG:4326',
+        grid_shape=(10, 10),
+    )
+    # The origin should be at (10.0, 11.0) for a 1x1 box centered at 10.5, 10.5
+    self.assertAlmostEqual(grid_dict['crs_transform'][2], 10.0)
+    self.assertAlmostEqual(grid_dict['crs_transform'][5], 11.0)
+    self.assertEqual(grid_dict['shape_2d'], (10, 10))
+
+  def test_fit_geometry_with_rounding(self):
+    """Test that grid_scale_digits correctly rounds the scale."""
+    grid_dict = helpers.fit_geometry(
+        geometry=shapely.Polygon(
+            [(0, 0), (0, 1.001), (1.001, 1.001), (1.001, 0)]
+        ),
+        grid_crs='EPSG:4326',
+        grid_shape=(10, 10),
+        grid_scale_digits=2,  # Round scale to 2 decimal places
+    )
+    # x_scale = 1.001 / 10 = 0.1001, rounded to 0.1
+    # y_scale = -1.001 / 10 = -0.1001, rounded to -0.1
+    self.assertAlmostEqual(grid_dict['crs_transform'][0], 0.1)
+    self.assertAlmostEqual(grid_dict['crs_transform'][4], -0.1)
 
 
 if __name__ == '__main__':
