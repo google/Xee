@@ -251,8 +251,8 @@ class EarthEngineStore(common.AbstractDataStore):
     self.dimension_names = ('x', 'y')
     self._props = self._make_attrs_valid(self._props)
     self.scale_x, self.scale_y = crs_transform[0], crs_transform[4]
-    affine_transform = affine.Affine(*crs_transform)
-    self.scale = np.sqrt(np.abs(affine_transform.determinant))
+    self.affine_transform = affine.Affine(*crs_transform)
+    self.scale = np.sqrt(np.abs(self.affine_transform.determinant))
 
     max_dtype = self._max_itemsize()
 
@@ -412,11 +412,10 @@ class EarthEngineStore(common.AbstractDataStore):
     x_start, y_start, x_end, y_end = bbox
 
     # Translate the crs_transform to the origin of the bounding box
-    transform_image = affine.Affine(*self.crs_transform)
     transform_grid_cell = affine.Affine.translation(
-      xoff=x_start * transform_image.a,
-      yoff=y_start * transform_image.e
-    ) * transform_image
+        xoff=x_start * self.affine_transform.a,
+        yoff=y_start * self.affine_transform.e
+    ) * self.affine_transform
 
     return {
         # The size of the bounding box. The affine transform and project will be

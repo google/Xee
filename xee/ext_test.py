@@ -136,6 +136,40 @@ class EEStoreTest(parameterized.TestCase):
       'xee.ext.EarthEngineStore.get_info',
       new_callable=mock.PropertyMock,
   )
+  def test_project(self, mock_get_info):
+    """Test that the project method correctly calculates the grid."""
+    mock_get_info.return_value = {
+        'size': 1,
+        'props': {},
+        'first': {
+            'bands': [{
+                'id': 'b1',
+                'data_type': {'type': 'PixelType', 'precision': 'float'}
+            }]
+        },
+    }
+    transform_tuple = (0.25, 0.0, -180.0, 0.0, -0.5, 90.0)
+    store = xee.EarthEngineStore(
+        image_collection=mock.MagicMock(),
+        crs='EPSG:4326',
+        crs_transform=transform_tuple,
+        shape_2d=(1440, 720),
+    )
+
+    bbox = (10, 20, 30, 40)  # x_start, y_start, x_end, y_end
+    grid = store.project(bbox)
+
+    self.assertEqual(grid['dimensions']['width'], 20)
+    self.assertEqual(grid['dimensions']['height'], 20)
+    self.assertEqual(grid['crsCode'], 'EPSG:4326')
+    # Check that the translation is correct: c + (x_start * a), f + (y_start * e)
+    self.assertAlmostEqual(grid['affineTransform']['translateX'], -180.0 + (10 * 0.25))
+    self.assertAlmostEqual(grid['affineTransform']['translateY'], 90.0 + (20 * -0.5))
+
+  @mock.patch(
+      'xee.ext.EarthEngineStore.get_info',
+      new_callable=mock.PropertyMock,
+  )
   def test_init_with_tuple_transform(self, mock_get_info):
       """Test that a tuple object can be passed for crs_transform."""
       # (Setup the mock_get_info.return_value just like in the other test)
