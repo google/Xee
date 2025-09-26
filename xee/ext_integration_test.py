@@ -45,7 +45,7 @@ _SCOPES = [
 # Define grid parameters for tests 
 _TEST_GRID_PARAMS = {
   'crs': 'EPSG:4326',
-  'crs_transform': [1.0, 0, -180.0, 0, -1.0, 90.0],
+  'crs_transform': (1.0, 0, -180.0, 0, -1.0, 90.0),
   'shape_2d': (360, 180)
 }
 
@@ -330,7 +330,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         pathlib.Path('ECMWF') / 'ERA5' / 'MONTHLY',
         n_images=n_images,
         crs='EPSG:4326',
-        crs_transform=[12.0, 0, -180.0, 0, -25.0, 90.0],
+        crs_transform=(12.0, 0, -180.0, 0, -25.0, 90.0),
         shape_2d=(width, height),
     )
     self.assertEqual(dict(ds.sizes), {'time': 3, 'x': width, 'y': height})
@@ -399,8 +399,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
     ds = xr.open_dataset(
         ic,
         engine=xee.EarthEngineBackendEntrypoint,
-        crs='EPSG:32610',
-        crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # Origin over SF
+        crs='EPSG:32610', 
+        crs_transform=(30, 0, 448485+103000, 0, -30, 4263915-84000),  # Origin over SF
         shape_2d=(width, height),
     )
 
@@ -472,7 +472,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     test_params = {
       'n_images': n_images,
       'crs': 'EPSG:4326',
-      'crs_transform': [12.0, 0, -180.0, 0, -25.0, 90.0],
+      'crs_transform': (12.0, 0, -180.0, 0, -25.0, 90.0),
       'shape_2d': (width, height)
     }
     ds1 = self.entry.open_dataset('ee://LANDSAT/LC08/C02/T1', **test_params)
@@ -535,7 +535,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         filename_or_obj=fake_collection,
         engine=xee.EarthEngineBackendEntrypoint,
         crs='EPSG:4326',
-        crs_transform=[1, 0, -100, 0, 1, 50],
+        crs_transform=(1, 0, -100, 0, 1, 50),
         shape_2d=(3, 4),
     )
 
@@ -571,7 +571,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
       grid_dict = helpers.fit_geometry(
         geometry=point.buffer(0.1),
         grid_crs=crs,
-        grid_scale=100
+        grid_scale=(100, -100)
       )
 
       ds = xr.open_dataset(
@@ -644,7 +644,7 @@ class ReadmeCodeTest(absltest.TestCase):
       'ee://ECMWF/ERA5_LAND/HOURLY',
       engine='ee',
       crs='EPSG:32610',
-      crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
+      crs_transform=(30, 0, 448485 + 103000, 0, -30, 4263915 - 84000),  # In San Francisco, California
       shape_2d=(64, 64),
     )
 
@@ -653,7 +653,7 @@ class ReadmeCodeTest(absltest.TestCase):
       ic,
       engine='ee',
       crs='EPSG:32610',
-      crs_transform=[30, 0, 448485+103000, 0, -30, 4263915-84000],  # In San Francisco, California
+      crs_transform=(30, 0, 448485 + 103000, 0, -30, 4263915 - 84000),  # In San Francisco, California
       shape_2d=(64, 64),
     )
 

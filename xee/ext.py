@@ -208,8 +208,9 @@ class EarthEngineStore(common.AbstractDataStore):
       getitem_kwargs: Optional[Dict[str, int]] = None,
       fast_time_slicing: bool = False,
   ):
-    # Allow affine.Affine objects to be passed in for crs_transform.
+    # Ensure crs_transform is a tuple and create the affine.Affine object.
     if isinstance(crs_transform, affine.Affine):
+      self.affine_transform = crs_transform
       crs_transform = (
           crs_transform.a,
           crs_transform.b,
@@ -220,7 +221,8 @@ class EarthEngineStore(common.AbstractDataStore):
       )
     elif not isinstance(crs_transform, tuple):
       raise TypeError('crs_transform must be an affine.Affine object or a tuple.')
-
+    else:
+      self.affine_transform = affine.Affine(*crs_transform)
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
     self.fast_time_slicing = fast_time_slicing
@@ -251,7 +253,6 @@ class EarthEngineStore(common.AbstractDataStore):
     self.dimension_names = ('x', 'y')
     self._props = self._make_attrs_valid(self._props)
     self.scale_x, self.scale_y = crs_transform[0], crs_transform[4]
-    self.affine_transform = affine.Affine(*crs_transform)
     self.scale = np.sqrt(np.abs(self.affine_transform.determinant))
 
     max_dtype = self._max_itemsize()

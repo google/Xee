@@ -272,7 +272,7 @@ class GridHelpersTest(absltest.TestCase):
     )
     self.assertEqual(
       grid_dict['crs_transform'],
-      [0.5, 0.0, 10.0, 0.0, -0.5, 11.0],
+      (0.5, 0.0, 10.0, 0.0, -0.5, 11.0),
     )
     self.assertEqual(
       grid_dict['shape_2d'],
@@ -302,7 +302,7 @@ class GridHelpersTest(absltest.TestCase):
     )
     # The transform should now reflect the positive y-scale.
     self.assertEqual(
-        grid_dict['crs_transform'], [0.5, 0.0, 10.0, 0.0, 0.5, 11.0]
+        grid_dict['crs_transform'], (0.5, 0.0, 10.0, 0.0, 0.5, 11.0)
     )
     self.assertEqual(
         grid_dict['shape_2d'], (4, 2)
@@ -319,7 +319,7 @@ class GridHelpersTest(absltest.TestCase):
     )
     self.assertEqual(
       grid_dict['crs_transform'],
-      [0.01, 0.0, -122.43, 0.0, -0.01, 37.77]
+      (0.01, 0.0, -122.43, 0.0, -0.01, 37.77)
     )
     self.assertEqual(
       grid_dict['shape_2d'],
@@ -338,7 +338,7 @@ class GridHelpersTest(absltest.TestCase):
     )
     np.testing.assert_allclose(
       grid_dict['crs_transform'],
-      [0.5, 0, 10, 0, -0.5, 3],
+      (0.5, 0, 10, 0, -0.5, 3),
       rtol=1e-4,
     )
 

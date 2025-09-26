@@ -100,7 +100,7 @@ def fit_geometry(
     * affine.Affine.scale(x_scale, y_scale)
   )
 
-  crs_transform = list(affine_transform)[:6]
+  crs_transform = affine_transform[:6]
 
   return dict(
     crs=grid_crs,
@@ -125,6 +125,6 @@ def extract_grid_params(
 
   return dict(
     crs=first_band_info['crs'],
-    crs_transform=first_band_info['crs_transform'],
+    crs_transform=tuple(first_band_info['crs_transform']),
     shape_2d=tuple(first_band_info['dimensions'])
   )
