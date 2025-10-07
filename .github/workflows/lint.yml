@@ -30,16 +30,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: [
+          # Lint only with the newest version of Python.
+          "3.13"
+        ]
     steps:
     - name: Cancel previous
-      uses: styfle/cancel-workflow-action@0.7.0
+      uses: styfle/cancel-workflow-action@0.12.1
       with:
         access_token: ${{ github.token }}
       if: ${{github.ref != 'refs/head/main'}}
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Get pip cache dir
@@ -48,7 +51,7 @@ jobs:
         python -m pip install --upgrade pip wheel
         echo "dir=$(pip cache dir)" >> "$GITHUB_OUTPUT"
     - name: pip cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ${{ steps.pip-cache.outputs.dir }}
         key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
