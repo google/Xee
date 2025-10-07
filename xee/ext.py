@@ -885,7 +885,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
 
   def open_dataset(
       self,
-      filename_or_obj: Union[str, os.PathLike[Any], ee.ImageCollection],
+      filename_or_obj: str | os.PathLike[Any] | ee.ImageCollection,
       crs: CrsType,
       crs_transform: TransformType,
       shape_2d: ShapeType,

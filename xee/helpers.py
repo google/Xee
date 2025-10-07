@@ -20,12 +20,12 @@ import ee
 from pyproj import Transformer
 import shapely
 from shapely.ops import transform
-from typing import TypedDict, Tuple, Union
+from typing import TypedDict, Union
 
 
-TransformType = Tuple[float, float, float, float, float, float]
-ShapeType = Tuple[int, int]
-ScalingType = Tuple[float, float]
+TransformType = tuple[float, float, float, float, float, float]
+ShapeType = tuple[int, int]
+ScalingType = tuple[float, float]
 
 
 class PixelGridParams(TypedDict):
