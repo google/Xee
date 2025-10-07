@@ -46,7 +46,7 @@ from xee import types
 import ee
 
 
-assert sys.version_info >= (3, 8)
+assert sys.version_info >= (3, 9)
 try:
   __version__ = importlib.metadata.version('xee') or 'unknown'
 except importlib.metadata.PackageNotFoundError:
