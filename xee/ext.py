@@ -62,10 +62,8 @@ Chunks = Union[int, dict[Any, Any], Literal['auto'], None]
 
 # Types for type hints
 CrsType = str
-TransformType = Union[
-    Tuple[float, float, float, float, float, float], affine.Affine
-]
-ShapeType = Tuple[int, int]
+TransformType = Union[tuple[float, float, float, float, float, float], affine.Affine]
+ShapeType = tuple[int, int]
 
 _BUILTIN_DTYPES = {
     'int': np.int32,
@@ -158,9 +156,9 @@ class EarthEngineStore(common.AbstractDataStore):
       mode: Literal['r'] = 'r',
       chunk_store: Chunks = None,
       n_images: int = -1,
-      primary_dim_name: Optional[str] = None,
-      primary_dim_property: Optional[str] = None,
-      mask_value: Optional[float] = None,
+      primary_dim_name: str | None = None,
+      primary_dim_property: str | None = None,
+      mask_value: float | None = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: dict[str, Any] | None = None,
       ee_init_if_necessary: bool = False,
@@ -199,9 +197,9 @@ class EarthEngineStore(common.AbstractDataStore):
       shape_2d: ShapeType,
       chunks: Chunks = None,
       n_images: int = -1,
-      primary_dim_name: Optional[str] = None,
-      primary_dim_property: Optional[str] = None,
-      mask_value: Optional[float] = None,
+      primary_dim_name: str | None = None,
+      primary_dim_property: str | None = None,
+      mask_value: float | None = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_kwargs: dict[str, Any] | None = None,
       ee_init_if_necessary: bool = False,
@@ -888,9 +886,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       filename_or_obj: str | os.PathLike[Any] | ee.ImageCollection,
       crs: CrsType,
       crs_transform: TransformType,
-      shape_2d: ShapeType,
-      drop_variables: Optional[Tuple[str, ...]] = None,
-      io_chunks: Optional[Any] = None,
+      shape_2d: ShapeType, 
+      drop_variables: tuple[str, ...] | None = None,
+      io_chunks: Any | None = None,
       n_images: int = -1,
       mask_and_scale: bool = True,
       decode_times: bool = True,
@@ -898,9 +896,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       use_cftime: bool | None = None,
       concat_characters: bool = True,
       decode_coords: bool = True,
-      primary_dim_name: Optional[str] = None,
-      primary_dim_property: Optional[str] = None,
-      ee_mask_value: Optional[float] = None,
+      primary_dim_name: str | None = None,
+      primary_dim_property: str | None = None,
+      ee_mask_value: float | None = None,
       request_byte_limit: int = REQUEST_BYTE_LIMIT,
       ee_init_if_necessary: bool = False,
       ee_init_kwargs: dict[str, Any] | None = None,
