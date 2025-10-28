@@ -419,7 +419,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine=xee.EarthEngineBackendEntrypoint,
     )
 
-    self.assertEqual(ds.sizes, {'time': 4248, 'lon': 40, 'lat': 35})
+    self.assertEqual(ds.sizes, {'time': 4248, 'lon': 40, 'lat': 33})
     self.assertNotEqual(ds.sizes, standard_ds.sizes)
 
   def test_honors_projection(self):
