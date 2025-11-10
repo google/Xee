@@ -333,7 +333,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         crs_transform=(12.0, 0, -180.0, 0, -25.0, 90.0),
         shape_2d=(width, height),
     )
-    self.assertEqual(dict(ds.sizes), {'time': 3, 'x': width, 'y': height})
+    self.assertEqual(dict(ds.sizes), {'time': 3, 'y': height, 'x': width})
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
       list(ds.data_vars.keys()),
@@ -404,7 +404,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         shape_2d=(width, height),
     )
 
-    self.assertEqual(ds.sizes, {'time': 1, 'x': width, 'y': height})
+    self.assertEqual(ds.sizes, {'time': 1, 'y': height, 'x': width})
     np.testing.assert_allclose(
         ds['latitude'].values, 
         np.array([[
@@ -477,8 +477,8 @@ class EEBackendEntrypointTest(absltest.TestCase):
     }
     ds1 = self.entry.open_dataset('ee://LANDSAT/LC08/C02/T1', **test_params)
     ds2 = self.entry.open_dataset('ee:LANDSAT/LC08/C02/T1', **test_params)
-    self.assertEqual(dict(ds1.sizes), {'time': n_images, 'x': width, 'y': height})
-    self.assertEqual(dict(ds2.sizes), {'time': n_images, 'x': width, 'y': height})
+    self.assertEqual(dict(ds1.sizes), {'time': n_images, 'y': height, 'x': width})
+    self.assertEqual(dict(ds2.sizes), {'time': n_images, 'y': height, 'x': width})
     np.testing.assert_allclose(
       ds1['B1'].compute().values,
       ds2['B1'].compute().values
@@ -580,7 +580,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
           **grid_dict
       )
 
-      ds = ds.isel(time=0).transpose('y', 'x')
+      ds = ds.isel(time=0)
       ds.rio.write_crs(crs, inplace=True)
       ds.rio.reproject(crs, inplace=True)
       ds.rio.to_raster(temp_file)
