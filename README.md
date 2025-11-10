@@ -216,7 +216,7 @@ If you don't have it installed, you can add it with pip:
 pip install matplotlib
 ```
 
-Xarray's plotting functions expect dimensions in `(y, x)` order for 2D plots. Since the data is in `(x, y)` order, we use `.transpose()` to swap the axes for correct visualization.
+Xarray's plotting functions work directly with the data, which now follows the standard `(y, x)` dimension ordering convention used by NetCDF-CF and matplotlib.
 
 ```python
 
@@ -232,8 +232,8 @@ ds = xr.open_dataset('ECMWF/ERA5_LAND/MONTHLY_AGGR', engine='ee', **grid_params)
 # Select the 2m air temperature for the first time step
 temp_slice = ds['temperature_2m'].isel(time=0)
 
-# Transpose from (x, y) to (y, x) for correct plotting orientation and plot
-temp_slice.transpose('y', 'x').plot()
+# Plot directly - no transpose needed!
+temp_slice.plot()
 ```
 
 See [examples](https://github.com/google/Xee/tree/main/examples) or
