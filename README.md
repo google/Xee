@@ -216,7 +216,7 @@ If you don't have it installed, you can add it with pip:
 pip install matplotlib
 ```
 
-Xarray's plotting functions work directly with the data, which now follows the standard `(y, x)` dimension ordering convention used by NetCDF-CF and matplotlib.
+Then you can use Xarray's plotting functions to visualize the data.
 
 ```python
 
@@ -232,7 +232,7 @@ ds = xr.open_dataset('ECMWF/ERA5_LAND/MONTHLY_AGGR', engine='ee', **grid_params)
 # Select the 2m air temperature for the first time step
 temp_slice = ds['temperature_2m'].isel(time=0)
 
-# Plot directly - no transpose needed!
+# Plot the data
 temp_slice.plot()
 ```
 

@@ -113,14 +113,14 @@ class EEBackendArrayTest(absltest.TestCase):
 
   def test_creates_lat_long_array(self):
     arr = xee.EarthEngineBackendArray('longitude', self.lnglat_store)
-    self.assertEqual((1, 360, 180), arr.shape)
+    self.assertEqual((1, 180, 360), arr.shape)
 
   def test_can_create_object(self):
     arr = xee.EarthEngineBackendArray('B4', self.store)
 
     self.assertIsNotNone(arr)
 
-    self.assertEqual((64, 360, 180), arr.shape)
+    self.assertEqual((64, 180, 360), arr.shape)
     self.assertEqual(np.float32, arr.dtype)
     self.assertEqual('B4', arr.variable_name)
 
@@ -180,8 +180,8 @@ class EEBackendArrayTest(absltest.TestCase):
     self.assertEqual(
         [
             ((0, 0, 0), (0, 1, 500, 500, 1012, 1012)),
-            ((0, 0, 1), (0, 1, 500, 1012, 1012, 1025)),
-            ((0, 1, 0), (0, 1, 1012, 500, 1025, 1012)),
+            ((0, 0, 1), (0, 1, 1012, 500, 1025, 1012)),
+            ((0, 1, 0), (0, 1, 500, 1012, 1012, 1025)),
             ((0, 1, 1), (0, 1, 1012, 1012, 1025, 1025)),
         ],
         actual,
@@ -353,7 +353,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     for v in ds.values():
       self.assertIsNotNone(v.data)
       self.assertFalse(v.isnull().all(), 'All values are null!')
-      self.assertEqual(v.shape, (n_images, width, height))
+      self.assertEqual(v.shape, (n_images, height, width))
 
 
   def test_open_dataset__n_images(self):
@@ -408,22 +408,28 @@ class EEBackendEntrypointTest(absltest.TestCase):
     np.testing.assert_allclose(
         ds['latitude'].values, 
         np.array([[
-          [37.764977, 37.764706, 37.764435, 37.764164],
-          [37.764973, 37.7647  , 37.76443 , 37.764164]
+          [37.764977, 37.764973],
+          [37.764706, 37.7647  ],
+          [37.764435, 37.76443 ],
+          [37.764164, 37.764164]
         ]])
     )
     np.testing.assert_allclose(
         ds['longitude'].values, 
         np.array([[
-          [-122.41528, -122.41529, -122.41529, -122.41529],
-          [-122.41495, -122.41495, -122.41495, -122.41495]
+          [-122.41528, -122.41495],
+          [-122.41529, -122.41495],
+          [-122.41529, -122.41495],
+          [-122.41529, -122.41495]
         ]])
     )
     np.testing.assert_allclose(
         ds['SR_B1'].values, 
         np.array([[
-          [14332., 13622., 12058., 11264.],
-          [12254., 10379., 10701., 11150.]
+          [14332., 12254.],
+          [13622., 10379.],
+          [12058., 10701.],
+          [11264., 11150.]
         ]])
     )
 
