@@ -249,7 +249,7 @@ class EarthEngineStore(common.AbstractDataStore):
     #  Metadata should apply to all imgs.
     self._img_info: types.ImageInfo = self.get_info['first']
 
-    self.dimension_names = ('x', 'y')
+    self.dimension_names = ('y', 'x')
     self._props = self._make_attrs_valid(self._props)
     self.scale_x, self.scale_y = crs_transform[0], crs_transform[4]
     self.scale = np.sqrt(np.abs(self.affine_transform.determinant))
@@ -368,7 +368,7 @@ class EarthEngineStore(common.AbstractDataStore):
       dict: A dictionary containing 'index', 'width', and 'height' values.
     """
     chunks = {}
-    x_dim_name, y_dim_name = self.dimension_names
+    y_dim_name, x_dim_name = self.dimension_names
     for key, dim_name in [
         ('index', self.primary_dim_name),
         ('width', x_dim_name),
@@ -383,7 +383,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
   def _assign_preferred_chunks(self) -> Chunks:
     chunks = {}
-    x_dim_name, y_dim_name = self.dimension_names
+    y_dim_name, x_dim_name = self.dimension_names
     if self.chunks == -1:
       chunks[self.primary_dim_name] = self.PREFERRED_CHUNKS['index']
       chunks[x_dim_name] = self.PREFERRED_CHUNKS['width']
@@ -488,7 +488,7 @@ class EarthEngineStore(common.AbstractDataStore):
           f'falling back to returned dtype from EE {np.dtype(raw.dtype[0])}'
       )
 
-    data = arr.T
+    data = arr.transpose(2, 0, 1)
     current_mask_value = np.array(self.mask_value, dtype=data.dtype)
     # Sets EE nodata masked value to NaNs.
     data = np.where(data == current_mask_value, np.nan, data)
@@ -531,8 +531,8 @@ class EarthEngineStore(common.AbstractDataStore):
     arr = EarthEngineBackendArray(name, self)
     data = indexing.LazilyIndexedArray(arr)
 
-    x_dim_name, y_dim_name = self.dimension_names
-    dimensions = [self.primary_dim_name, x_dim_name, y_dim_name]
+    y_dim_name, x_dim_name = self.dimension_names
+    dimensions = [self.primary_dim_name, y_dim_name, x_dim_name]
     attrs = self._make_attrs_valid(self._band_attrs(name))
     attrs['crs'] = str(self.crs)
     encoding = {
@@ -593,15 +593,15 @@ class EarthEngineStore(common.AbstractDataStore):
     if height_coord.ndim == 0:
       height_coord = height_coord[None, ...]
 
-    x_dim_name, y_dim_name = self.dimension_names
+    y_dim_name, x_dim_name = self.dimension_names
 
     coords = [
         (
             self.primary_dim_name,
             xarray.Variable(self.primary_dim_name, primary_coord),
         ),
-        (x_dim_name, xarray.Variable(x_dim_name, width_coord)),
         (y_dim_name, xarray.Variable(y_dim_name, height_coord)),
+        (x_dim_name, xarray.Variable(x_dim_name, width_coord)),
     ]
 
     return utils.FrozenDict(vars_ + coords)
@@ -664,7 +664,7 @@ class EarthEngineBackendArray(backends.BackendArray):
     self._info = ee_store._band_attrs(variable_name)
     self.dtype = np.dtype(np.float32)
 
-    self.shape = (ee_store.n_images, ) + ee_store.shape_2d
+    self.shape = (ee_store.n_images, ) + (ee_store.shape_2d[1], ee_store.shape_2d[0])
     self._apparent_chunks = {k: 1 for k in self.store.PREFERRED_CHUNKS.keys()}
     if isinstance(self.store.chunks, dict):
       self._apparent_chunks = self.store.chunks.copy()
@@ -765,8 +765,8 @@ class EarthEngineBackendArray(backends.BackendArray):
 
     # TODO(#13): honor step increments
     strt, stop, _ = key[0].indices(self.shape[0])
-    wmin, wmax, _ = key[1].indices(self.shape[1])
-    hmin, hmax, _ = key[2].indices(self.shape[2])
+    hmin, hmax, _ = key[1].indices(self.shape[1])
+    wmin, wmax, _ = key[2].indices(self.shape[2])
     bbox = wmin, hmin, wmax, hmax
     i_range = stop - strt
     h_range = hmax - hmin
@@ -801,8 +801,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     # TODO(#10): can this be a np.array of objects?
     shape = (
         math.ceil(i_range / self._apparent_chunks['index']),
-        math.ceil(w_range / self._apparent_chunks['width']),
         math.ceil(h_range / self._apparent_chunks['height']),
+        math.ceil(w_range / self._apparent_chunks['width']),
     )
     tiles = [
         [[None for _ in range(shape[2])] for _ in range(shape[1])]
@@ -846,8 +846,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     wmin, hmin, wmax, hmax = bbox
 
     for i, t0 in enumerate(range(start, stop + 1, tstep)):
-      for j, w0 in enumerate(range(wmin, wmax + 1, wstep)):
-        for k, h0 in enumerate(range(hmin, hmax + 1, hstep)):
+      for j, h0 in enumerate(range(hmin, hmax + 1, hstep)):
+        for k, w0 in enumerate(range(wmin, wmax + 1, wstep)):
           t1 = min(t0 + tstep, stop)
           w1 = min(w0 + wstep, wmax)
           h1 = min(h0 + hstep, hmax)
