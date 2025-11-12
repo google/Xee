@@ -23,6 +23,8 @@ import apache_beam as beam
 import xarray as xr
 import xarray_beam as xbeam
 import xee
+from xee import helpers
+import shapely
 
 import ee
 
@@ -38,7 +40,7 @@ _CRS = flags.DEFINE_string(
     'EPSG:4326',
     help='Coordinate Reference System for output Zarr.',
 )
-_SCALE = flags.DEFINE_float('scale', 0.25, help='Scale factor for output Zarr.')
+_SCALE = flags.DEFINE_float('scale', 0.25, help='Scale factor in degrees for output Zarr.')
 _TARGET_CHUNKS = flags.DEFINE_string(
     'target_chunks',
     '',
@@ -89,11 +91,21 @@ def main(argv: list[str]) -> None:
       .select('precipitationCal')
   )
 
+  # Define grid parameters
+  # Create a global geometry (-180 to 180 longitude, -90 to 90 latitude)
+  global_geom = shapely.geometry.box(-180, -90, 180, 90)
+  
+  # Use grid_scale to define pixel size - fit_geometry will calculate the shape
+  grid_params = helpers.fit_geometry(
+      geometry=global_geom,
+      grid_crs=_CRS.value,
+      grid_scale=(_SCALE.value, -_SCALE.value)  # negative y-scale for north-up orientation
+  )
+
   ds = xr.open_dataset(
       input_coll,
-      crs=_CRS.value,
-      scale=_SCALE.value,
       engine=xee.EarthEngineBackendEntrypoint,
+      **grid_params
   )
   template = xbeam.make_template(ds)
   itemsize = max(variable.dtype.itemsize for variable in template.values())
