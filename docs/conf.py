@@ -66,23 +66,23 @@ intersphinx_mapping = {
 html_theme = 'sphinx_rtd_theme'
 
 # Keep the left-hand navigation consistent on every page. In particular,
-# - titles_only=True prevents page section headings (e.g., "Goals", "Approach")
-#   from appearing in the sidebar when viewing that page.
+# - titles_only=False allows page section headings to appear in the sidebar,
+#   making them collapsible/expandable for easy navigation.
 # - collapse_navigation=False expands the full toctree instead of focusing only
 #   on the current page branch (which makes the list look different per page).
 # - sticky_navigation=False avoids auto-scrolling the sidebar to keep the
 #   current entry near the top, which can give the impression of different
 #   ordering between pages.
-# - navigation_depth controls how deep the tree expands. With titles_only=True,
-#   this is the depth of documents, not their internal sections.
+# - navigation_depth controls how deep the tree expands. Set to 2 to show
+#   documents plus one level of section headers.
 html_theme_options = {
-    'titles_only': True,
+    'titles_only': False,
     'collapse_navigation': False,
     'sticky_navigation': False,
     # Do not include hidden local toctrees (e.g., autosummary children) in the
-    # sidebar, and limit the sidebar to top-level only.
+    # sidebar, and show documents plus one level of sections.
     'includehidden': False,
-    'navigation_depth': 1,
+    'navigation_depth': 2,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
