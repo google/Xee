@@ -74,7 +74,7 @@ ds['temperature_2m'].isel(time=0).plot()
 | Learn grid parameter patterns | [Concepts](concepts.md) |
 | Fit a custom area or scale | [User Guide](guide.md) |
 | API signatures | [API Reference](api.md) |
-| Migrate 0.x code | [Migration Guide](migration-guide-v1.md) |
+| Migrate 0.0.x code | [Migration Guide](migration-guide-v0.1.0.md) |
 | Performance tips | [Performance & Limits](performance.md) |
 | Troubleshooting common issues | [FAQ](faq.md) |
 

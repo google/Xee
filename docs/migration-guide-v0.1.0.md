@@ -31,7 +31,7 @@ ds = xr.open_dataset(
 )
 ```
 
-### New API (v1.0)
+### New API (v0.1.0)
 
 The new API requires explicit grid parameters: `crs`, `crs_transform`, and `shape_2d`. We provide helper functions to make this easy:
 
@@ -107,7 +107,7 @@ ds = xr.open_dataset(
 )
 ```
 
-**After (v1.0):**
+**After (v0.1.0):**
 ```python
 import shapely
 from xee import helpers
@@ -142,7 +142,7 @@ ds = xr.open_dataset(
 )
 ```
 
-**After (v1.0):**
+**After (v0.1.0):**
 ```python
 import ee
 import shapely
@@ -179,7 +179,7 @@ ds = xr.open_dataset(
 )
 ```
 
-**After (v1.0):**
+**After (v0.1.0):**
 ```python
 from xee import helpers
 import shapely
@@ -209,7 +209,7 @@ ds = xr.open_dataset(ic, engine='ee', **grid_params)
 
 ### What Changed
 
-Xee v1.0 outputs dimensions in `[time, y, x]` order (matching CF conventions and most geospatial tools), instead of the previous `[time, x, y]` order.
+Xee v0.1.0 outputs dimensions in `[time, y, x]` order (matching CF conventions and most geospatial tools), instead of the previous `[time, x, y]` order.
 
 ### Impact on Your Code
 
@@ -221,7 +221,7 @@ Xee v1.0 outputs dimensions in `[time, y, x]` order (matching CF conventions and
 ds['temperature_2m'].isel(time=0).transpose().plot()
 ```
 
-**After (v1.0):**
+**After (v0.1.0):**
 ```python
 # No transpose needed - plots correctly by default
 ds['temperature_2m'].isel(time=0).plot()
@@ -238,7 +238,7 @@ data_array = ds['temperature_2m'].transpose('time', 'y', 'x')
 export_to_geotiff(data_array)
 ```
 
-**After (v1.0):**
+**After (v0.1.0):**
 ```python
 # Dimension order is already correct
 data_array = ds['temperature_2m']
@@ -258,7 +258,7 @@ width = ds['temperature_2m'].shape[1]   # x dimension
 height = ds['temperature_2m'].shape[2]  # y dimension
 ```
 
-**After (v1.0):**
+**After (v0.1.0):**
 ```python
 # Dimensions are now [time, y, x]
 time_dim, y_dim, x_dim = ds['temperature_2m'].dims
@@ -481,13 +481,13 @@ ds = xr.open_dataset(collection, engine='ee', **grid_params)
 
 **Problem:** You're still using `.transpose()` from v0.x code
 
-**Solution:** Remove the `.transpose()` call - v1.0 outputs in the correct orientation by default
+**Solution:** Remove the `.transpose()` call - v0.1.0 outputs in the correct orientation by default
 
 ### Issue: "Dimension order is wrong for my export"
 
 **Check:** What order does your export library expect?
 
-Most modern geospatial tools expect `[time, y, x]` (which v1.0 provides). If you have legacy code expecting `[time, x, y]`, you can still transpose:
+Most modern geospatial tools expect `[time, y, x]` (which v0.1.0 provides). If you have legacy code expecting `[time, x, y]`, you can still transpose:
 
 ```python
 # Only if your downstream tool requires the old ordering
@@ -496,13 +496,13 @@ data = ds['variable'].transpose('time', 'x', 'y')
 
 ### Issue: "I need the old behavior"
 
-If you must maintain the old API temporarily, you can pin to v0.x:
+If you must maintain the old API temporarily, you can pin to v0.0.x:
 
 ```bash
-pip install "xee<1.0.0"
+pip install "xee<0.1.0"
 ```
 
-However, we strongly recommend migrating to v1.0 for better CF compliance and ecosystem compatibility.
+However, we strongly recommend migrating to v0.1.0 for better CF compliance and ecosystem compatibility.
 
 ## 6. Testing Your Migration
 
@@ -539,7 +539,7 @@ print("Shape:", grid_params['shape_2d'])
 
 - [Main README](https://github.com/google/Xee/tree/main/README.md) - Complete usage guide with examples
 - [API Documentation](api.md) - Detailed API reference
-- [Client vs Server Guide](client-vs-server.ipynb) - Examples using v1.0 API
+- [Client vs Server Guide](client-vs-server.ipynb) - Examples using v0.1.0 API
 - [GitHub Issues](https://github.com/google/Xee/issues) - Report problems or ask questions
 
 ## Need Help?
@@ -553,4 +553,5 @@ If you encounter issues during migration:
 
 ---
 
-**Welcome to Xee v1.0!** We believe these changes make the library more powerful, standards-compliant, and easier to integrate with the broader scientific Python ecosystem.
+**Welcome to Xee v0.1.0!** We believe these changes make the library more powerful, standards-compliant, and easier to integrate with the broader scientific Python ecosystem.
+

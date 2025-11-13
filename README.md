@@ -1,3 +1,13 @@
+---
+**⚠️ Breaking Change in v0.1.0!**
+
+A major refactor was released in v0.1.0, introducing breaking changes to the Xee API. In most cases,
+existing code written for pre-v0.1.0 versions will require updates to remain compatible.
+
+- See the [Migration Guide](docs/migration-guide-v0.1.0.md) for details on updating your code.
+- If you need more time to migrate, you can pin your environment to the latest pre-v0.1.0 release.
+---
+
 # Xee: Xarray + Google Earth Engine
 
 ![Xee Logo](https://raw.githubusercontent.com/google/Xee/main/docs/xee-logo.png)
