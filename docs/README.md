@@ -1,13 +1,11 @@
 # Xee Documentation (source files)
 
-```{admonition} Breaking Change in v0.1.0!
-:class: warning
-
-A major refactor was released in v0.1.0, introducing breaking changes to the Xee API. In most cases, existing code written for pre-v0.1.0 versions will require updates to remain compatible.
-
-- See the [Migration Guide](migration-guide-v0.1.0.md) for details on updating your code.
-- If you need more time to migrate, you can pin your environment to the latest pre-v0.1.0 release.
-```
+> **⚠️ Breaking Change in v0.1.0!**
+>
+> A major refactor was released in v0.1.0, introducing breaking changes to the Xee API. In most cases, existing code written for pre-v0.1.0 versions will require updates to remain compatible.
+>
+> - See the [Migration Guide](migration-guide-v0.1.0.md) for details on updating your code.
+> - If you need more time to migrate, you can pin your environment to the latest pre-v0.1.0 release.
 
 ## For nicely rendered documentation
 
