@@ -52,7 +52,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', '_templates', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', '_templates', 'Thumbs.db', '.DS_Store', 'README.md', 'user-guide.md']
 
 intersphinx_mapping = {
     'xarray': ('https://xarray.pydata.org/en/latest/', None),
@@ -64,6 +64,26 @@ intersphinx_mapping = {
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
+
+# Keep the left-hand navigation consistent on every page. In particular,
+# - titles_only=True prevents page section headings (e.g., "Goals", "Approach")
+#   from appearing in the sidebar when viewing that page.
+# - collapse_navigation=False expands the full toctree instead of focusing only
+#   on the current page branch (which makes the list look different per page).
+# - sticky_navigation=False avoids auto-scrolling the sidebar to keep the
+#   current entry near the top, which can give the impression of different
+#   ordering between pages.
+# - navigation_depth controls how deep the tree expands. With titles_only=True,
+#   this is the depth of documents, not their internal sections.
+html_theme_options = {
+    'titles_only': True,
+    'collapse_navigation': False,
+    'sticky_navigation': False,
+    # Do not include hidden local toctrees (e.g., autosummary children) in the
+    # sidebar, and limit the sidebar to top-level only.
+    'includehidden': False,
+    'navigation_depth': 1,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -81,3 +101,6 @@ nb_output_stderr = 'remove-warn'
 
 # https://stackoverflow.com/a/66295922/809705
 autodoc_typehints = 'description'
+
+# Note: We exclude README.md from Sphinx to avoid duplicate toctree references,
+# since the landing page content is provided by index.md.

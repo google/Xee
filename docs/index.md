@@ -1,36 +1,26 @@
-# Xee: A Google Earth Engine extension for Xarray
+# Xee Documentation
 
-Xee is an Xarray extension for Google Earth Engine. It aims to help users view
-Earth Engine's [data catalog](https://developers.google.com/earth-engine/datasets)
-through the lense of arrays.
+Xee is an Xarray extension for Google Earth Engine that lets you open `ee.Image` and `ee.ImageCollection` objects as lazy `xarray.Dataset`s.
 
-In this documentation, we assume readers have some familiarity with
-[Earth Engine](https://earthengine.google.com/), [Xarray](https://xarray.dev/),
-and Python. Here, we'll dive into core concepts related to the integration
-between these tools.
-
-## Contents
-
-<!-- TODO(#38): Documentation Plan
-- Why Xee?
-- Core features
-  - `open_dataset()`
-  - `open_mfdatasets()`
-  - Projections & Geometry
-  - Xarray slicing & indexing 101
-  - Combining ee.ImageCollection and Xarray APIs.
-  - Plotting
-  - Lazy Evaluation & `load()`
-- Advanced projections
-- Performance tuning: A tale of two chunks
-- Walkthrough: calculating NDVI
-- Integration with Xarray-Beam
-- Integration with ML pipeline clients -->
+```{admonition} Upgrading to Xee v1.0?
+:class: important
+See the [Migration Guide](migration-guide-v1.md) for grid parameter changes and new `[time, y, x]` dimension ordering.
+```
 
 ```{toctree}
-:maxdepth: 1
-why-xee.md
-installation.md
-client-vs-server.ipynb
-api.md
+:maxdepth: 2
+
+quickstart
+installation
+concepts
+guide
+performance
+api
+migration-guide-v1
+faq
+why-xee
+client-vs-server
+contributing
+code-of-conduct
 ```
+

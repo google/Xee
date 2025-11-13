@@ -12,6 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A Google Earth Engine extension for Xarray."""
-from .ext import *
-from .ext import __version__
+"""Public Xee API.
+
+End users typically:
+
+1. Define pixel grid parameters using helper functions like :func:`fit_geometry`
+	or :func:`extract_grid_params`.
+2. Call :func:`xarray.open_dataset` with ``engine='ee'`` and the returned
+	``grid_params``.
+
+The backend classes are exposed for advanced or library integration use, but
+most workflows only need the helpers and the xarray interface.
+"""
+
+from .ext import *  # noqa: F401,F403  (backend classes)
+from .ext import __version__  # noqa: F401
+from .helpers import fit_geometry, extract_grid_params, set_scale, PixelGridParams  # noqa: F401
+
+__all__ = [
+	 # version
+	 '__version__',
+	 # helper functions
+	 'fit_geometry',
+	 'extract_grid_params',
+	 'set_scale',
+	 'PixelGridParams',
+	 # selected backend surface (avoid * pollution for autosummary ordering)
+	 'EarthEngineBackendEntrypoint',
+	 'EarthEngineStore',
+	 'EarthEngineBackendArray',
+]
