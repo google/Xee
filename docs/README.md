@@ -1,6 +1,6 @@
 # Xee Documentation (source files)
 
-> **⚠️ Breaking Change in v0.1.0!**
+> **⚠️ Breaking Change in v0.1.0**
 >
 > A major refactor was released in v0.1.0, introducing breaking changes to the Xee API. In most cases, existing code written for pre-v0.1.0 versions will require updates to remain compatible.
 >
