@@ -110,10 +110,12 @@ class EEStoreTest(parameterized.TestCase):
         'size': 1,
         'props': {},
         'first': {
-            'bands': [{
-                'id': 'b1',
-                'data_type': {'type': 'PixelType', 'precision': 'float'}
-            }]
+            'bands': [
+                {
+                    'id': 'b1',
+                    'data_type': {'type': 'PixelType', 'precision': 'float'},
+                }
+            ]
         },
     }
     transform_tuple = (1.0, 0.0, -180.0, 0.0, -1.0, 90.0)
@@ -142,10 +144,12 @@ class EEStoreTest(parameterized.TestCase):
         'size': 1,
         'props': {},
         'first': {
-            'bands': [{
-                'id': 'b1',
-                'data_type': {'type': 'PixelType', 'precision': 'float'}
-            }]
+            'bands': [
+                {
+                    'id': 'b1',
+                    'data_type': {'type': 'PixelType', 'precision': 'float'},
+                }
+            ]
         },
     }
     transform_tuple = (0.25, 0.0, -180.0, 0.0, -0.5, 90.0)
@@ -163,44 +167,56 @@ class EEStoreTest(parameterized.TestCase):
     self.assertEqual(grid['dimensions']['height'], 20)
     self.assertEqual(grid['crsCode'], 'EPSG:4326')
     # Check that the translation is correct: c + (x_start * a), f + (y_start * e)
-    self.assertAlmostEqual(grid['affineTransform']['translateX'], -180.0 + (10 * 0.25))
-    self.assertAlmostEqual(grid['affineTransform']['translateY'], 90.0 + (20 * -0.5))
+    self.assertAlmostEqual(
+        grid['affineTransform']['translateX'], -180.0 + (10 * 0.25)
+    )
+    self.assertAlmostEqual(
+        grid['affineTransform']['translateY'], 90.0 + (20 * -0.5)
+    )
 
   @mock.patch(
       'xee.ext.EarthEngineStore.get_info',
       new_callable=mock.PropertyMock,
   )
   def test_init_with_tuple_transform(self, mock_get_info):
-      """Test that a tuple object can be passed for crs_transform."""
-      # (Setup the mock_get_info.return_value just like in the other test)
-      mock_get_info.return_value = {
-          'size': 1, 'props': {},
-          'first': {'bands': [{'id': 'b1', 'data_type': {'type': 'PixelType', 'precision': 'float'}}]}
-      }
-      transform_tuple = (1.0, 0.0, -180.0, 0.0, -1.0, 90.0)
+    """Test that a tuple object can be passed for crs_transform."""
+    # (Setup the mock_get_info.return_value just like in the other test)
+    mock_get_info.return_value = {
+        'size': 1,
+        'props': {},
+        'first': {
+            'bands': [
+                {
+                    'id': 'b1',
+                    'data_type': {'type': 'PixelType', 'precision': 'float'},
+                }
+            ]
+        },
+    }
+    transform_tuple = (1.0, 0.0, -180.0, 0.0, -1.0, 90.0)
 
-      # Pass the tuple directly
-      store = xee.EarthEngineStore(
-          image_collection=mock.MagicMock(),
-          crs='EPSG:4326',
-          crs_transform=transform_tuple,
-          shape_2d=(360, 180),
-      )
+    # Pass the tuple directly
+    store = xee.EarthEngineStore(
+        image_collection=mock.MagicMock(),
+        crs='EPSG:4326',
+        crs_transform=transform_tuple,
+        shape_2d=(360, 180),
+    )
 
-      # Assert that the tuple was stored correctly
-      self.assertEqual(store.crs_transform, transform_tuple)
+    # Assert that the tuple was stored correctly
+    self.assertEqual(store.crs_transform, transform_tuple)
 
   def test_init_with_invalid_transform_type(self):
-      """Test that a TypeError is raised for invalid crs_transform types."""
-      with self.assertRaises(TypeError):
-          # Pass a list, which is an invalid type
-          invalid_transform = [1.0, 0.0, -180.0, 0.0, -1.0, 90.0]
-          xee.EarthEngineStore(
-              image_collection=mock.MagicMock(),
-              crs='EPSG:4326',
-              crs_transform=invalid_transform,
-              shape_2d=(360, 180),
-          )
+    """Test that a TypeError is raised for invalid crs_transform types."""
+    with self.assertRaises(TypeError):
+      # Pass a list, which is an invalid type
+      invalid_transform = [1.0, 0.0, -180.0, 0.0, -1.0, 90.0]
+      xee.EarthEngineStore(
+          image_collection=mock.MagicMock(),
+          crs='EPSG:4326',
+          crs_transform=invalid_transform,
+          shape_2d=(360, 180),
+      )
 
 
 class ParseEEInitKwargsTest(absltest.TestCase):
@@ -250,43 +266,31 @@ class ParseEEInitKwargsTest(absltest.TestCase):
 class GridHelpersTest(absltest.TestCase):
   """Test grid helper functions that do not require GEE access."""
 
-  def test_set_scale(self): 
+  def test_set_scale(self):
     """Test that the scale values of the CRS transform can be updated."""
     crs_transform = [1, 0, 100, 0, 5, 200]
     scaling = (123, 456)
     crs_transform_new = helpers.set_scale(crs_transform, scaling)
-    np.testing.assert_allclose(
-        crs_transform_new,
-        [123, 0, 100, 0, 456, 200]
-    )
-
+    np.testing.assert_allclose(crs_transform_new, [123, 0, 100, 0, 456, 200])
 
   def test_fit_geometry_specify_scale(self):
     """Test generating grid parameters to match a geometry, specifying the scale."""
     grid_dict = helpers.fit_geometry(
-      geometry=shapely.Polygon([(10.1, 10.1),
-                                (10.1, 10.9),
-                                (11.9, 10.1)]),
-      grid_crs='EPSG:4326',
-      grid_scale=(0.5, -0.5),
+        geometry=shapely.Polygon([(10.1, 10.1), (10.1, 10.9), (11.9, 10.1)]),
+        grid_crs='EPSG:4326',
+        grid_scale=(0.5, -0.5),
     )
     self.assertEqual(
-      grid_dict['crs_transform'],
-      (0.5, 0.0, 10.0, 0.0, -0.5, 11.0),
+        grid_dict['crs_transform'],
+        (0.5, 0.0, 10.0, 0.0, -0.5, 11.0),
     )
-    self.assertEqual(
-      grid_dict['shape_2d'],
-      (4, 2)
-    )
-
+    self.assertEqual(grid_dict['shape_2d'], (4, 2))
 
   def test_fit_geometry_specify_scale_scalar_fails(self):
     """Test that a scalar grid_scale raises a TypeError."""
     with self.assertRaises(TypeError):
       helpers.fit_geometry(
-          geometry=shapely.Polygon(
-              [(10.1, 10.1), (10.1, 10.9), (11.9, 10.1)]
-          ),
+          geometry=shapely.Polygon([(10.1, 10.1), (10.1, 10.9), (11.9, 10.1)]),
           grid_crs='EPSG:4326',
           grid_scale=0.5,  # A scalar should fail
       )
@@ -294,9 +298,7 @@ class GridHelpersTest(absltest.TestCase):
   def test_fit_geometry_specify_scale_positive_y(self):
     """Test fit_geometry with an explicit positive y-scale."""
     grid_dict = helpers.fit_geometry(
-        geometry=shapely.Polygon(
-            [(10.1, 10.1), (10.1, 10.9), (11.9, 10.1)]
-        ),
+        geometry=shapely.Polygon([(10.1, 10.1), (10.1, 10.9), (11.9, 10.1)]),
         grid_crs='EPSG:4326',
         grid_scale=(0.5, 0.5),  # Note the positive y-scale
     )
@@ -304,47 +306,39 @@ class GridHelpersTest(absltest.TestCase):
     self.assertEqual(
         grid_dict['crs_transform'], (0.5, 0.0, 10.0, 0.0, 0.5, 11.0)
     )
-    self.assertEqual(
-        grid_dict['shape_2d'], (4, 2)
-    )
-
+    self.assertEqual(grid_dict['shape_2d'], (4, 2))
 
   def test_fit_geometry_specify_scale_utm(self):
     """Test generating grid parameters to match a UTM geometry, specifying the scale."""
     grid_dict = helpers.fit_geometry(
-      geometry=shapely.geometry.box(551000, 4179000, 552000, 4180000),  # over San Francisco                       
-      geometry_crs='EPSG:32610',                      
-      grid_crs='EPSG:4326',
-      grid_scale=(0.01, -0.01),
+        geometry=shapely.geometry.box(
+            551000, 4179000, 552000, 4180000
+        ),  # over San Francisco
+        geometry_crs='EPSG:32610',
+        grid_crs='EPSG:4326',
+        grid_scale=(0.01, -0.01),
     )
     self.assertEqual(
-      grid_dict['crs_transform'],
-      (0.01, 0.0, -122.43, 0.0, -0.01, 37.77)
+        grid_dict['crs_transform'], (0.01, 0.0, -122.43, 0.0, -0.01, 37.77)
     )
-    self.assertEqual(
-      grid_dict['shape_2d'],
-      (3, 2)
-    )
-
+    self.assertEqual(grid_dict['shape_2d'], (3, 2))
 
   def test_fit_geometry_specify_shape(self):
     """Test generating grid parameters to match a geometry, specifying the shape."""
     grid_dict = helpers.fit_geometry(
-      geometry=shapely.Polygon([(10.0, 2.0),
-                                (10.0, 3.0),
-                                (12.0, 2.0)]),
-      grid_crs='EPSG:4326',
-      grid_shape=(4, 2)
+        geometry=shapely.Polygon([(10.0, 2.0), (10.0, 3.0), (12.0, 2.0)]),
+        grid_crs='EPSG:4326',
+        grid_shape=(4, 2),
     )
     np.testing.assert_allclose(
-      grid_dict['crs_transform'],
-      (0.5, 0, 10, 0, -0.5, 3),
-      rtol=1e-4,
+        grid_dict['crs_transform'],
+        (0.5, 0, 10, 0, -0.5, 3),
+        rtol=1e-4,
     )
 
   def test_fit_geometry_value_error(self):
     """Test that a ValueError is raised for invalid scale/shape combinations."""
-    geom = shapely.geometry.box(0, 0, 1, 1) # Use a valid polygon
+    geom = shapely.geometry.box(0, 0, 1, 1)  # Use a valid polygon
     # Test when both grid_scale and grid_shape are provided
     with self.assertRaisesRegex(
         ValueError, "Exactly one of 'grid_scale' or 'grid_shape' must be"

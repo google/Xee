@@ -61,6 +61,7 @@ class PixelGridParams(TypedDict):
       f = y origin (upper-left y)
   - ``shape_2d``: ``(width, height)`` pixel counts.
   """
+
   crs: str
   crs_transform: TransformType
   shape_2d: ShapeType
@@ -69,7 +70,7 @@ class PixelGridParams(TypedDict):
 def set_scale(
     crs_transform: TransformType,
     scaling: ScalingType,
-  ) -> list:
+) -> list:
   """Return a new CRS transform with updated scale components.
 
   Useful for adjusting an existing transform's pixel size while retaining its
@@ -97,14 +98,14 @@ def set_scale(
 
 
 def fit_geometry(
-  geometry: shapely.geometry.base.BaseGeometry,
-  *,
-  geometry_crs: str = 'EPSG:4326',
-  buffer: float = 0,
-  grid_crs: str = 'EPSG:4326',
-  grid_scale: ScalingType | None = None,
-  grid_scale_digits: int | None = None,
-  grid_shape: ShapeType | None = None,
+    geometry: shapely.geometry.base.BaseGeometry,
+    *,
+    geometry_crs: str = 'EPSG:4326',
+    buffer: float = 0,
+    grid_crs: str = 'EPSG:4326',
+    grid_scale: ScalingType | None = None,
+    grid_scale_digits: int | None = None,
+    grid_shape: ShapeType | None = None,
 ) -> PixelGridParams:
   """Derive grid parameters that *cover* a geometry.
 
@@ -134,10 +135,12 @@ def fit_geometry(
   """
 
   if (grid_scale is None) == (grid_shape is None):
-    raise ValueError("Exactly one of 'grid_scale' or 'grid_shape' must be specified.")
+    raise ValueError(
+        "Exactly one of 'grid_scale' or 'grid_shape' must be specified."
+    )
 
   transformer = Transformer.from_crs(
-    crs_from=geometry_crs, crs_to=grid_crs, always_xy=True
+      crs_from=geometry_crs, crs_to=grid_crs, always_xy=True
   )
   reprojected_geometry = transform(transformer.transform, geometry)
   if buffer and buffer > 0:
@@ -150,11 +153,15 @@ def fit_geometry(
     if isinstance(grid_scale, tuple) and len(grid_scale) == 2:
       x_scale, y_scale = grid_scale
     else:
-      raise TypeError(f'Expected a tuple of length 2 for grid_scale, got {grid_scale}')
+      raise TypeError(
+          f'Expected a tuple of length 2 for grid_scale, got {grid_scale}'
+      )
 
     # REVERTED to the more direct and robust shape calculation.
     x_shape = int(math.ceil(x_max / x_scale) - math.floor(x_min / x_scale))
-    y_shape = int(math.ceil(y_max / abs(y_scale)) - math.floor(y_min / abs(y_scale)))
+    y_shape = int(
+        math.ceil(y_max / abs(y_scale)) - math.floor(y_min / abs(y_scale))
+    )
   else:  # grid_shape is not None
     x_shape, y_shape = grid_shape
     x_scale = (x_max - x_min) / x_shape
@@ -167,23 +174,20 @@ def fit_geometry(
   grid_x_min = math.floor(x_min / x_scale) * x_scale
   grid_y_max = math.ceil(y_max / abs(y_scale)) * abs(y_scale)
 
-  affine_transform = (
-    affine.Affine.translation(grid_x_min, grid_y_max)
-    * affine.Affine.scale(x_scale, y_scale)
-  )
+  affine_transform = affine.Affine.translation(
+      grid_x_min, grid_y_max
+  ) * affine.Affine.scale(x_scale, y_scale)
 
   crs_transform = affine_transform[:6]
 
   return dict(
-    crs=grid_crs,
-    crs_transform=crs_transform,
-    shape_2d=(x_shape, y_shape)
+      crs=grid_crs, crs_transform=crs_transform, shape_2d=(x_shape, y_shape)
   )
 
 
 def extract_grid_params(
-    ee_obj: Union[ee.Image, ee.ImageCollection]
-  ) -> PixelGridParams:
+    ee_obj: Union[ee.Image, ee.ImageCollection],
+) -> PixelGridParams:
   """Return native pixel grid parameters for an EE Image or ImageCollection.
 
   For an ImageCollection, the first image's first band's grid definition is
@@ -205,12 +209,14 @@ def extract_grid_params(
   elif isinstance(ee_obj, ee.ImageCollection):
     img_obj = ee_obj.first()
   else:
-    raise TypeError(f'Expected ee.Image or ee.ImageCollection, got {type(ee_obj)}')
-  
+    raise TypeError(
+        f'Expected ee.Image or ee.ImageCollection, got {type(ee_obj)}'
+    )
+
   first_band_info = img_obj.select(0).getInfo()['bands'][0]
 
   return dict(
-    crs=first_band_info['crs'],
-    crs_transform=tuple(first_band_info['crs_transform']),
-    shape_2d=tuple(first_band_info['dimensions'])
+      crs=first_band_info['crs'],
+      crs_transform=tuple(first_band_info['crs_transform']),
+      shape_2d=tuple(first_band_info['dimensions']),
   )

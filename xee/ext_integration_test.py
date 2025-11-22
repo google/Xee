@@ -42,12 +42,13 @@ _SCOPES = [
     'https://www.googleapis.com/auth/earthengine',
 ]
 
-# Define grid parameters for tests 
+# Define grid parameters for tests
 _TEST_GRID_PARAMS = {
-  'crs': 'EPSG:4326',
-  'crs_transform': (1.0, 0, -180.0, 0, -1.0, 90.0),
-  'shape_2d': (360, 180)
+    'crs': 'EPSG:4326',
+    'crs_transform': (1.0, 0, -180.0, 0, -1.0, 90.0),
+    'shape_2d': (360, 180),
 }
+
 
 def _read_identity_pool_creds() -> identity_pool.Credentials:
   credentials_path = os.environ[_CREDENTIALS_PATH_KEY]
@@ -325,7 +326,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
   def test_open_dataset__sanity_check(self):
     """Test opening a simple image collection in geographic coordinates."""
-    n_images, width, height = 3, 4, 5 
+    n_images, width, height = 3, 4, 5
     ds = self.entry.open_dataset(
         pathlib.Path('ECMWF') / 'ERA5' / 'MONTHLY',
         n_images=n_images,
@@ -336,18 +337,18 @@ class EEBackendEntrypointTest(absltest.TestCase):
     self.assertEqual(dict(ds.sizes), {'time': 3, 'y': height, 'x': width})
     self.assertNotEmpty(dict(ds.coords))
     self.assertEqual(
-      list(ds.data_vars.keys()),
-      [
-        'mean_2m_air_temperature',
-        'minimum_2m_air_temperature',
-        'maximum_2m_air_temperature',
-        'dewpoint_2m_temperature',
-        'total_precipitation',
-        'surface_pressure',
-        'mean_sea_level_pressure',
-        'u_component_of_wind_10m',
-        'v_component_of_wind_10m'
-      ]
+        list(ds.data_vars.keys()),
+        [
+            'mean_2m_air_temperature',
+            'minimum_2m_air_temperature',
+            'maximum_2m_air_temperature',
+            'dewpoint_2m_temperature',
+            'total_precipitation',
+            'surface_pressure',
+            'mean_sea_level_pressure',
+            'u_component_of_wind_10m',
+            'v_component_of_wind_10m',
+        ],
     )
     # Loop through the data variables.
     for v in ds.values():
@@ -355,13 +356,12 @@ class EEBackendEntrypointTest(absltest.TestCase):
       self.assertFalse(v.isnull().all(), 'All values are null!')
       self.assertEqual(v.shape, (n_images, height, width))
 
-
   def test_open_dataset__n_images(self):
     ds = self.entry.open_dataset(
         pathlib.Path('LANDSAT') / 'LC08' / 'C02' / 'T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         n_images=1,
-        **_TEST_GRID_PARAMS
+        **_TEST_GRID_PARAMS,
     )
     self.assertLen(ds.time, 1)
 
@@ -377,7 +377,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     ds = xr.open_dataset(
         'NASA/GPM_L3/IMERG_V07',
         engine=xee.EarthEngineBackendEntrypoint,
-        **_TEST_GRID_PARAMS
+        **_TEST_GRID_PARAMS,
     ).isel(time=slice(0, 1))
 
     try:
@@ -387,10 +387,13 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
   def test_honors_geometry_simple_utm(self):
     """Test that a non-geographic projection can be used."""
-    ic = ee.ImageCollection([
-      ee.Image('LANDSAT/LC09/C02/T1_L2/LC09_043034_20211116').select(0)
-        .addBands(ee.Image.pixelLonLat()),
-    ])
+    ic = ee.ImageCollection(
+        [
+            ee.Image('LANDSAT/LC09/C02/T1_L2/LC09_043034_20211116')
+            .select(0)
+            .addBands(ee.Image.pixelLonLat()),
+        ]
+    )
     min_x, max_x = 10, 12
     min_y, max_y = -4, 0
     width = max_x - min_x
@@ -398,38 +401,57 @@ class EEBackendEntrypointTest(absltest.TestCase):
     ds = xr.open_dataset(
         ic,
         engine=xee.EarthEngineBackendEntrypoint,
-        crs='EPSG:32610', 
-        crs_transform=(30, 0, 448485+103000, 0, -30, 4263915-84000),  # Origin over SF
+        crs='EPSG:32610',
+        crs_transform=(
+            30,
+            0,
+            448485 + 103000,
+            0,
+            -30,
+            4263915 - 84000,
+        ),  # Origin over SF
         shape_2d=(width, height),
     )
 
     self.assertEqual(ds.sizes, {'time': 1, 'y': height, 'x': width})
     np.testing.assert_allclose(
-        ds['latitude'].values, 
-        np.array([[
-          [37.764977, 37.764973],
-          [37.764706, 37.7647  ],
-          [37.764435, 37.76443 ],
-          [37.764164, 37.764164]
-        ]])
+        ds['latitude'].values,
+        np.array(
+            [
+                [
+                    [37.764977, 37.764973],
+                    [37.764706, 37.7647],
+                    [37.764435, 37.76443],
+                    [37.764164, 37.764164],
+                ]
+            ]
+        ),
     )
     np.testing.assert_allclose(
-        ds['longitude'].values, 
-        np.array([[
-          [-122.41528, -122.41495],
-          [-122.41529, -122.41495],
-          [-122.41529, -122.41495],
-          [-122.41529, -122.41495]
-        ]])
+        ds['longitude'].values,
+        np.array(
+            [
+                [
+                    [-122.41528, -122.41495],
+                    [-122.41529, -122.41495],
+                    [-122.41529, -122.41495],
+                    [-122.41529, -122.41495],
+                ]
+            ]
+        ),
     )
     np.testing.assert_allclose(
-        ds['SR_B1'].values, 
-        np.array([[
-          [14332., 12254.],
-          [13622., 10379.],
-          [12058., 10701.],
-          [11264., 11150.]
-        ]])
+        ds['SR_B1'].values,
+        np.array(
+            [
+                [
+                    [14332.0, 12254.0],
+                    [13622.0, 10379.0],
+                    [12058.0, 10701.0],
+                    [11264.0, 11150.0],
+                ]
+            ]
+        ),
     )
 
   @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
@@ -462,7 +484,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         engine='ee',
         crs=str(raster.rio.crs),
         crs_transform=raster.rio.transform()[:6],
-        shape_2d=data.shape
+        shape_2d=data.shape,
     )
     self.assertNotEqual(abs(x_res), abs(y_res))
     np.testing.assert_allclose(
@@ -474,18 +496,21 @@ class EEBackendEntrypointTest(absltest.TestCase):
     """Test the ee: URL parsing."""
     n_images, width, height = 3, 10, 20
     test_params = {
-      'n_images': n_images,
-      'crs': 'EPSG:4326',
-      'crs_transform': (12.0, 0, -180.0, 0, -25.0, 90.0),
-      'shape_2d': (width, height)
+        'n_images': n_images,
+        'crs': 'EPSG:4326',
+        'crs_transform': (12.0, 0, -180.0, 0, -25.0, 90.0),
+        'shape_2d': (width, height),
     }
     ds1 = self.entry.open_dataset('ee://LANDSAT/LC08/C02/T1', **test_params)
     ds2 = self.entry.open_dataset('ee:LANDSAT/LC08/C02/T1', **test_params)
-    self.assertEqual(dict(ds1.sizes), {'time': n_images, 'y': height, 'x': width})
-    self.assertEqual(dict(ds2.sizes), {'time': n_images, 'y': height, 'x': width})
+    self.assertEqual(
+        dict(ds1.sizes), {'time': n_images, 'y': height, 'x': width}
+    )
+    self.assertEqual(
+        dict(ds2.sizes), {'time': n_images, 'y': height, 'x': width}
+    )
     np.testing.assert_allclose(
-      ds1['B1'].compute().values,
-      ds2['B1'].compute().values
+        ds1['B1'].compute().values, ds2['B1'].compute().values
     )
 
   def test_data_sanity_check(self):
@@ -496,7 +521,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         'ECMWF/ERA5_LAND/HOURLY',
         engine=xee.EarthEngineBackendEntrypoint,
         n_images=1,
-        **_TEST_GRID_PARAMS
+        **_TEST_GRID_PARAMS,
     )
     temperature_2m = era5.isel(time=0).temperature_2m
     self.assertNotEqual(temperature_2m.min(), 0.0)
@@ -507,7 +532,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
         'ee:LANDSAT/LC08/C02/T1',
         drop_variables=tuple(f'B{i}' for i in range(3, 12)),
         n_images=3,
-        **_TEST_GRID_PARAMS
+        **_TEST_GRID_PARAMS,
     )
     valid_types = (str, int, float, complex, np.ndarray, np.number, list, tuple)
 
@@ -550,7 +575,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
     # With fast slicing, the returned data should include the original image.
     fast_slicing = xr.open_dataset(**params, fast_time_slicing=True)
-    fast_slicing_data = getattr(fast_slicing[dict(time=0)], band).as_numpy()   
+    fast_slicing_data = getattr(fast_slicing[dict(time=0)], band).as_numpy()
     self.assertTrue(np.all(fast_slicing_data > 0))
 
   @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
@@ -562,7 +587,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
 
       crs = 'EPSG:32610'
       proj = ee.Projection(crs)
-      
+
       point = shapely.geometry.Point(-122.44, 37.78)
       ee_point = ee.Geometry.Point(list(point.coords)[0])
 
@@ -573,15 +598,11 @@ class EEBackendEntrypointTest(absltest.TestCase):
       col = col.limit(10)
 
       grid_dict = helpers.fit_geometry(
-        geometry=point.buffer(0.1),
-        grid_crs=crs,
-        grid_scale=(100, -100)
+          geometry=point.buffer(0.1), grid_crs=crs, grid_scale=(100, -100)
       )
 
       ds = xr.open_dataset(
-          col,
-          engine=xee.EarthEngineBackendEntrypoint,
-          **grid_dict
+          col, engine=xee.EarthEngineBackendEntrypoint, **grid_dict
       )
 
       ds = ds.isel(time=0)
@@ -603,7 +624,7 @@ class GridHelpersTest(absltest.TestCase):
     super().setUp()
     init_ee_for_tests()
     self.entry = xee.EarthEngineBackendEntrypoint()
-  
+
   def test_extract_grid_params_from_image(self):
     img = ee.Image('LANDSAT/LT05/C02/T1_TOA/LT05_031034_20110619')
     grid_params = helpers.extract_grid_params(img)
@@ -612,11 +633,14 @@ class GridHelpersTest(absltest.TestCase):
     np.allclose(grid_params['crs_transform'], [30, 0, 643185, 0, -30, 4255815])
 
   def test_extract_grid_params_from_image_collection(self):
-    dem = ee.ImageCollection('COPERNICUS/DEM/GLO30');
+    dem = ee.ImageCollection('COPERNICUS/DEM/GLO30')
     grid_params = helpers.extract_grid_params(dem)
     self.assertEqual(grid_params['shape_2d'], (3601, 3601))
     self.assertEqual(grid_params['crs'], 'EPSG:4326')
-    np.allclose(grid_params['crs_transform'], [0.000278, 0, 5.999861, 0, -0.000278, 1.000139])
+    np.allclose(
+        grid_params['crs_transform'],
+        [0.000278, 0, 5.999861, 0, -0.000278, 1.000139],
+    )
 
   def test_extract_grid_params_from_invalid_object(self):
     with self.assertRaises(TypeError):
@@ -633,56 +657,62 @@ class ReadmeCodeTest(absltest.TestCase):
 
   def test_extract_projection_from_image(self):
 
-    ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate('1992-10-05', '1993-03-31')
+    ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
+        '1992-10-05', '1993-03-31'
+    )
     grid_params = helpers.extract_grid_params(ic)
 
     # Open any Earth Engine ImageCollection by specifying the Xarray engine as 'ee':
     ds = xr.open_dataset(
-      'ee://ECMWF/ERA5_LAND/HOURLY',
-      engine='ee',
-      **grid_params
+        'ee://ECMWF/ERA5_LAND/HOURLY', engine='ee', **grid_params
     )
-    
+
     # Open all bands in a specific projection:
     ds = xr.open_dataset(
-      'ee://ECMWF/ERA5_LAND/HOURLY',
-      engine='ee',
-      crs='EPSG:32610',
-      crs_transform=(30, 0, 448485 + 103000, 0, -30, 4263915 - 84000),  # In San Francisco, California
-      shape_2d=(64, 64),
+        'ee://ECMWF/ERA5_LAND/HOURLY',
+        engine='ee',
+        crs='EPSG:32610',
+        crs_transform=(
+            30,
+            0,
+            448485 + 103000,
+            0,
+            -30,
+            4263915 - 84000,
+        ),  # In San Francisco, California
+        shape_2d=(64, 64),
     )
 
     # Open an ImageCollection (maybe, with EE-side filtering or processing):
     ds = xr.open_dataset(
-      ic,
-      engine='ee',
-      crs='EPSG:32610',
-      crs_transform=(30, 0, 448485 + 103000, 0, -30, 4263915 - 84000),  # In San Francisco, California
-      shape_2d=(64, 64),
+        ic,
+        engine='ee',
+        crs='EPSG:32610',
+        crs_transform=(
+            30,
+            0,
+            448485 + 103000,
+            0,
+            -30,
+            4263915 - 84000,
+        ),  # In San Francisco, California
+        shape_2d=(64, 64),
     )
 
     # Open an ImageCollection with a specific EE projection or geometry:
 
     grid_params = helpers.fit_geometry(
-      geometry=shapely.geometry.box(113.33, -43.63, 153.56, -10.66),
-      grid_crs='EPSG:4326',
-      grid_shape=(256, 256)
+        geometry=shapely.geometry.box(113.33, -43.63, 153.56, -10.66),
+        grid_crs='EPSG:4326',
+        grid_shape=(256, 256),
     )
 
-    ds = xr.open_dataset(
-        ic,
-        engine='ee',
-        **grid_params
-    )
+    ds = xr.open_dataset(ic, engine='ee', **grid_params)
 
     # Open a single Image:
     img = ee.Image('LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318')
     grid_params = helpers.extract_grid_params(img)
-    ds = xr.open_dataset(
-      img,
-      engine='ee',
-      **grid_params
-    )
+    ds = xr.open_dataset(img, engine='ee', **grid_params)
 
 
 if __name__ == '__main__':

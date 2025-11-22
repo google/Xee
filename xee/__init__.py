@@ -17,9 +17,9 @@
 End users typically:
 
 1. Define pixel grid parameters using helper functions like :func:`fit_geometry`
-	or :func:`extract_grid_params`.
+        or :func:`extract_grid_params`.
 2. Call :func:`xarray.open_dataset` with ``engine='ee'`` and the returned
-	``grid_params``.
+        ``grid_params``.
 
 The backend classes are exposed for advanced or library integration use, but
 most workflows only need the helpers and the xarray interface.
@@ -30,15 +30,15 @@ from .ext import __version__  # noqa: F401
 from .helpers import fit_geometry, extract_grid_params, set_scale, PixelGridParams  # noqa: F401
 
 __all__ = [
-	 # version
-	 '__version__',
-	 # helper functions
-	 'fit_geometry',
-	 'extract_grid_params',
-	 'set_scale',
-	 'PixelGridParams',
-	 # selected backend surface (avoid * pollution for autosummary ordering)
-	 'EarthEngineBackendEntrypoint',
-	 'EarthEngineStore',
-	 'EarthEngineBackendArray',
+    # version
+    '__version__',
+    # helper functions
+    'fit_geometry',
+    'extract_grid_params',
+    'set_scale',
+    'PixelGridParams',
+    # selected backend surface (avoid * pollution for autosummary ordering)
+    'EarthEngineBackendEntrypoint',
+    'EarthEngineStore',
+    'EarthEngineBackendArray',
 ]

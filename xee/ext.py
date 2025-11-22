@@ -62,7 +62,9 @@ Chunks = Union[int, dict[Any, Any], Literal['auto'], None]
 
 # Types for type hints
 CrsType = str
-TransformType = Union[tuple[float, float, float, float, float, float], affine.Affine]
+TransformType = Union[
+    tuple[float, float, float, float, float, float], affine.Affine
+]
 ShapeType = tuple[int, int]
 
 _BUILTIN_DTYPES = {
@@ -82,13 +84,14 @@ REQUEST_BYTE_LIMIT = 2**20 * 48  # 48 MBs
 _TO_LIST_WARNING_LIMIT = 10000
 
 EE_AFFINE_TRANSFORM_FIELDS = [
-  'scaleX',
-  'shearX',
-  'translateX',
-  'shearY',
-  'scaleY',
-  'translateY'
+    'scaleX',
+    'shearX',
+    'translateX',
+    'shearY',
+    'scaleY',
+    'translateY',
 ]
+
 
 # Used in ext_test.py.
 def _check_request_limit(chunks: dict[str, int], dtype_size: int, limit: int):
@@ -219,7 +222,9 @@ class EarthEngineStore(common.AbstractDataStore):
           crs_transform.f,
       )
     elif not isinstance(crs_transform, tuple):
-      raise TypeError('crs_transform must be an affine.Affine object or a tuple.')
+      raise TypeError(
+          'crs_transform must be an affine.Affine object or a tuple.'
+      )
     else:
       self.affine_transform = affine.Affine(*crs_transform)
     self.ee_init_kwargs = ee_init_kwargs
@@ -279,7 +284,6 @@ class EarthEngineStore(common.AbstractDataStore):
         ('props', self.image_collection.toDictionary()),
         ('first', self.image_collection.first()),
     ]
-
 
     # TODO(#29, #30): This RPC call takes the longest time to compute. This
     # requires a full scan of the images in the collection, which happens on the
@@ -394,7 +398,6 @@ class EarthEngineStore(common.AbstractDataStore):
       chunks[y_dim_name] = self.chunks['height']
     return chunks
 
-
   def project(self, bbox: types.BBox) -> types.Grid:
     """Translate a bounding box (pixel space) to a grid (projection space).
 
@@ -412,10 +415,13 @@ class EarthEngineStore(common.AbstractDataStore):
     x_start, y_start, x_end, y_end = bbox
 
     # Translate the crs_transform to the origin of the bounding box
-    transform_grid_cell = affine.Affine.translation(
-        xoff=x_start * self.affine_transform.a,
-        yoff=y_start * self.affine_transform.e
-    ) * self.affine_transform
+    transform_grid_cell = (
+        affine.Affine.translation(
+            xoff=x_start * self.affine_transform.a,
+            yoff=y_start * self.affine_transform.e,
+        )
+        * self.affine_transform
+    )
 
     return {
         # The size of the bounding box. The affine transform and project will be
@@ -424,7 +430,9 @@ class EarthEngineStore(common.AbstractDataStore):
             'width': x_end - x_start,
             'height': y_end - y_start,
         },
-        'affineTransform': dict(zip(EE_AFFINE_TRANSFORM_FIELDS, transform_grid_cell)),
+        'affineTransform': dict(
+            zip(EE_AFFINE_TRANSFORM_FIELDS, transform_grid_cell)
+        ),
         'crsCode': self.crs,
     }
 
@@ -566,7 +574,6 @@ class EarthEngineStore(common.AbstractDataStore):
       ]
     return primary_coords
 
-
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
     vars_ = [(name, self.open_store_variable(name)) for name in self._bands()]
 
@@ -584,8 +591,12 @@ class EarthEngineStore(common.AbstractDataStore):
 
     x_scale, _, x_translate, _, y_scale, y_translate = self.crs_transform
     width, height = self.shape_2d
-    width_coord = np.array([x_translate  + x_scale / 2 + ix * x_scale for ix in range(width)])
-    height_coord = np.array([y_translate  + y_scale / 2 + iy * y_scale for iy in range(height)])
+    width_coord = np.array(
+        [x_translate + x_scale / 2 + ix * x_scale for ix in range(width)]
+    )
+    height_coord = np.array(
+        [y_translate + y_scale / 2 + iy * y_scale for iy in range(height)]
+    )
 
     # Make sure there's at least a single point in each dimension.
     if width_coord.ndim == 0:
@@ -664,7 +675,10 @@ class EarthEngineBackendArray(backends.BackendArray):
     self._info = ee_store._band_attrs(variable_name)
     self.dtype = np.dtype(np.float32)
 
-    self.shape = (ee_store.n_images, ) + (ee_store.shape_2d[1], ee_store.shape_2d[0])
+    self.shape = (ee_store.n_images,) + (
+        ee_store.shape_2d[1],
+        ee_store.shape_2d[0],
+    )
     self._apparent_chunks = {k: 1 for k in self.store.PREFERRED_CHUNKS.keys()}
     if isinstance(self.store.chunks, dict):
       self._apparent_chunks = self.store.chunks.copy()
@@ -886,7 +900,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       filename_or_obj: str | os.PathLike[Any] | ee.ImageCollection,
       crs: CrsType,
       crs_transform: TransformType,
-      shape_2d: ShapeType, 
+      shape_2d: ShapeType,
       drop_variables: tuple[str, ...] | None = None,
       io_chunks: Any | None = None,
       n_images: int = -1,
@@ -916,7 +930,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         upon opening.
       crs_transform: Transform matrix describing the grid origin and scale
         relative to the CRS.
-      shape_2d: Dimensions of the pixel grid in the form (width, height). 
+      shape_2d: Dimensions of the pixel grid in the form (width, height).
       drop_variables (optional): Variables or bands to drop before opening.
       io_chunks (optional): Specifies the chunking strategy for loading data
         from EE. By default, this automatically calculates optional chunks based
