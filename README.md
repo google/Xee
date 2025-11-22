@@ -1,165 +1,82 @@
+> **⚠️ Breaking Change in v0.1.0**
+>
+> A major refactor was released in v0.1.0, introducing breaking changes to the Xee API. In most cases, existing code written for pre-v0.1.0 versions will require updates to remain compatible.
+>
+> - See the [Migration Guide](docs/migration-guide-v0.1.0.md) for details on updating your code.
+> - If you need more time to migrate, you can pin your environment to the latest pre-v0.1.0 release.
+
 # Xee: Xarray + Google Earth Engine
 
 ![Xee Logo](https://raw.githubusercontent.com/google/Xee/main/docs/xee-logo.png)
 
-_An Xarray extension for Google Earth Engine._
+Xee is an Xarray backend for Google Earth Engine. Open `ee.Image` / `ee.ImageCollection` objects as lazy `xarray.Dataset`s and analyze petabyte‑scale Earth data with the scientific Python stack.
 
 [![image](https://img.shields.io/pypi/v/xee.svg)](https://pypi.python.org/pypi/xee)
 [![image](https://static.pepy.tech/badge/xee)](https://pepy.tech/project/xee)
-[![Conda
-Recipe](https://img.shields.io/badge/recipe-xee-green.svg)](https://github.com/conda-forge/xee-feedstock)
+[![Conda Recipe](https://img.shields.io/badge/recipe-xee-green.svg)](https://github.com/conda-forge/xee-feedstock)
 [![image](https://img.shields.io/conda/vn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
-[![Conda
-Downloads](https://img.shields.io/conda/dn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
+[![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/xee.svg)](https://anaconda.org/conda-forge/xee)
 
-## How to use
-
-Install with pip:
-
-```shell
-pip install --upgrade xee
-```
-
-Install with conda:
-
-```shell
-conda install -c conda-forge xee
-```
-
-Then, authenticate Earth Engine:
-
-```shell
-earthengine authenticate --quiet
-```
-
-Now, in your Python environment, make the following imports:
-
-```python
-import ee
-import xarray
-```
-
-Next, specify your EE-registered cloud project ID and initialize the EE client
-with the high volume API:
-
-```python
-ee.Initialize(
-    project='my-project-id'
-    opt_url='https://earthengine-highvolume.googleapis.com')
-```
-
-Open any Earth Engine ImageCollection by specifying the Xarray engine as `'ee'`:
-
-```python
-ds = xarray.open_dataset('ee://ECMWF/ERA5_LAND/HOURLY', engine='ee')
-```
-
-Open all bands in a specific projection (not the Xee default):
-
-```python
-ds = xarray.open_dataset('ee://ECMWF/ERA5_LAND/HOURLY', engine='ee',
-                         crs='EPSG:4326', scale=0.25)
-```
-
-Open an ImageCollection (maybe, with EE-side filtering or processing):
-
-```python
-ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
-    '1992-10-05', '1993-03-31')
-ds = xarray.open_dataset(ic, engine='ee', crs='EPSG:4326', scale=0.25)
-```
-
-Open an ImageCollection with a specific EE projection or geometry:
-
-```python
-ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
-    '1992-10-05', '1993-03-31')
-leg1 = ee.Geometry.Rectangle(113.33, -43.63, 153.56, -10.66)
-ds = xarray.open_dataset(
-    ic,
-    engine='ee',
-    projection=ic.first().select(0).projection(),
-    geometry=leg1
-)
-```
-
-Open multiple ImageCollections into one `xarray.Dataset`, all with the same
-projection:
-
-```python
-ds = xarray.open_mfdataset(
-    ['ee://ECMWF/ERA5_LAND/HOURLY', 'ee://NASA/GDDP-CMIP6'],
-    engine='ee', crs='EPSG:4326', scale=0.25)
-```
-
-Open a single Image by passing it to an ImageCollection:
-
-```python
-i = ee.ImageCollection(ee.Image('LANDSAT/LC08/C02/T1_TOA/LC08_044034_20140318'))
-ds = xarray.open_dataset(i, engine='ee')
-```
-
-Open any Earth Engine ImageCollection to match an existing transform:
-
-```python
-raster = rioxarray.open_rasterio(...) # assume crs + transform is set
-ds = xr.open_dataset(
-    'ee://ECMWF/ERA5_LAND/HOURLY',
-    engine='ee',
-    geometry=tuple(raster.rio.bounds()), # must be in EPSG:4326
-    projection=ee.Projection(
-        crs=str(raster.rio.crs), transform=raster.rio.transform()[:6]
-    ),
-)
-```
-
-See [examples](https://github.com/google/Xee/tree/main/examples) or
-[docs](https://github.com/google/Xee/tree/main/docs) for more uses and
-integrations.
-
-## Getting help
-
-If you encounter issues using Xee, you can:
-
-1. Open a new or add to an existing [Xee discussion
-   topic](https://github.com/google/Xee/discussions)
-2. Open an [Xee issue](https://github.com/google/Xee/issues). To increase the
-   likelihood of the issue being resolved, use this [template Colab
-   notebook](https://colab.research.google.com/drive/1vAgfAPhKGJd4G9ZUOzciqZ7MbqJjlMLR)
-   to create a reproducible script.
-
-## How to run integration tests
-
-The Xee integration tests only pass on Xee branches (no forks). Please run the
-integration tests locally before sending a PR. To run the tests locally,
-authenticate using `earthengine authenticate` and run the following:
+## Install
 
 ```bash
-python -m unittest xee/ext_integration_test.py
+pip install --upgrade xee
 ```
 
 or
 
 ```bash
-python -m pytest xee/ext_integration_test.py
+conda install -c conda-forge xee
 ```
+
+## Minimal example
+
+```python
+import ee
+import xarray as xr
+from xee import helpers
+
+# Authenticate once (on a persistent machine):
+#   earthengine authenticate
+
+project = 'PROJECT-ID'  # Set your Earth Engine registered Google Cloud project ID
+# Initialize (high‑volume endpoint recommended for reading stored collections)
+ee.Initialize(project=project, opt_url='https://earthengine-highvolume.googleapis.com')
+
+# Open a dataset by matching its native grid
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/MONTHLY_AGGR')
+grid = helpers.extract_grid_params(ic)
+ds = xr.open_dataset(ic, engine='ee', **grid)
+print(ds)
+```
+
+Next steps:
+
+- Quickstart: docs/quickstart.md
+- Concepts (grid params, CRS, orientation): docs/concepts.md
+- User Guide (workflows): docs/user-guide.md
+
+## Features
+
+- Lazy, parallel pixel retrieval through Earth Engine
+- Flexible output grid definition (fixed resolution or fixed shape)
+- CF-friendly dimension order: `[time, y, x]`
+- Plays nicely with Xarray, Dask, and friends
+
+## Community & Support
+
+- Discussions: https://github.com/google/Xee/discussions
+- Issues: https://github.com/google/Xee/issues
+
+## Contributing
+
+See docs/contributing.md and sign the required CLA.
 
 ## License
 
+[Apache 2.0](LICENSE)
+
+`SPDX-License-Identifier: Apache-2.0`
+
 This is not an official Google product.
 
-```
-Copyright 2023 Google LLC
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    https://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-```

@@ -25,8 +25,22 @@ Guidelines](https://opensource.google/conduct/).
 
 ## Contribution process
 
-### Code Reviews
+### Code reviews
 
 All submissions, including submissions by project members, require review. We
 use [GitHub pull requests](https://docs.github.com/articles/about-pull-requests)
 for this purpose.
+
+### Running tests
+
+The Xee integration tests only pass on Xee branches (no forks). Please run the integration tests locally before sending a PR. To run the tests locally, authenticate using `earthengine authenticate` and run one of the following:
+
+```bash
+python -m unittest xee/ext_integration_test.py
+```
+
+or
+
+```bash
+python -m pytest xee/ext_integration_test.py
+```
