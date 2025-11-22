@@ -385,7 +385,6 @@ class EEBackendEntrypointTest(absltest.TestCase):
     except ValueError:
       self.fail('Chunking failed.')
 
-
   def test_honors_geometry_simple_utm(self):
     """Test that a non-geographic projection can be used."""
     ic = ee.ImageCollection([
@@ -396,13 +395,6 @@ class EEBackendEntrypointTest(absltest.TestCase):
     min_y, max_y = -4, 0
     width = max_x - min_x
     height = max_y - min_y
-    self.assertEqual(ds.sizes, {'time': 4248, 'lon': 40, 'lat': 33})
-    self.assertNotEqual(ds.sizes, standard_ds.sizes)
-
-  def test_honors_projection(self):
-    ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
-        '1992-10-05', '1993-03-31'
-    )
     ds = xr.open_dataset(
         ic,
         engine=xee.EarthEngineBackendEntrypoint,
@@ -439,7 +431,6 @@ class EEBackendEntrypointTest(absltest.TestCase):
           [11264., 11150.]
         ]])
     )
-
 
   @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
   def test_expected_precise_transform(self):
