@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
   "xarray[parallel]",
-  "earthengine-api>=0.1.374",
+  "earthengine-api>=1.6.12",
   "pyproj",
   "affine",
   "shapely",
