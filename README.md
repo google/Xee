@@ -32,15 +32,16 @@ conda install -c conda-forge xee
 ## Minimal example
 
 ```python
-import ee, xarray as xr
+import ee
+import xarray as xr
 from xee import helpers
 
 # Authenticate once (on a persistent machine):
 #   earthengine authenticate
 
+project = 'PROJECT-ID'  # Set your Earth Engine registered Google Cloud project ID
 # Initialize (high‑volume endpoint recommended for reading stored collections)
-# Replace with your Earth Engine registered Google Cloud project ID
-ee.Initialize(project='PROJECT-ID', opt_url='https://earthengine-highvolume.googleapis.com')
+ee.Initialize(project=project, opt_url='https://earthengine-highvolume.googleapis.com')
 
 # Open a dataset by matching its native grid
 ic = ee.ImageCollection('ECMWF/ERA5_LAND/MONTHLY_AGGR')
@@ -73,5 +74,9 @@ See docs/contributing.md and sign the required CLA.
 
 ## License
 
-Apache 2.0. See LICENSE. This is not an official Google product.
+[Apache 2.0](LICENSE)
+
+`SPDX-License-Identifier: Apache-2.0`
+
+This is not an official Google product.
 
