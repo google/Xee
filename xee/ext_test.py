@@ -100,8 +100,9 @@ class EEStoreTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       ext._check_request_limit(chunks, dtype_size, xee.REQUEST_BYTE_LIMIT)
 
-  @mock.patch(
-      'xee.ext.EarthEngineStore.get_info',
+  @mock.patch.object(
+      ext.EarthEngineStore,
+      'get_info',
       new_callable=mock.PropertyMock,
   )
   def test_init_with_affine_transform(self, mock_get_info):
@@ -134,8 +135,9 @@ class EEStoreTest(parameterized.TestCase):
     self.assertEqual(store.scale_y, -1.0)
     self.assertEqual(store.scale, 1.0)
 
-  @mock.patch(
-      'xee.ext.EarthEngineStore.get_info',
+  @mock.patch.object(
+      ext.EarthEngineStore,
+      'get_info',
       new_callable=mock.PropertyMock,
   )
   def test_project(self, mock_get_info):
@@ -174,8 +176,9 @@ class EEStoreTest(parameterized.TestCase):
         grid['affineTransform']['translateY'], 90.0 + (20 * -0.5)
     )
 
-  @mock.patch(
-      'xee.ext.EarthEngineStore.get_info',
+  @mock.patch.object(
+      ext.EarthEngineStore,
+      'get_info',
       new_callable=mock.PropertyMock,
   )
   def test_init_with_tuple_transform(self, mock_get_info):
