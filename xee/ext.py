@@ -46,7 +46,7 @@ from xee import types
 import ee
 
 
-assert sys.version_info >= (3, 9)
+assert sys.version_info >= (3, 10)
 try:
   __version__ = importlib.metadata.version('xee') or 'unknown'
 except importlib.metadata.PackageNotFoundError:
@@ -60,7 +60,6 @@ except importlib.metadata.PackageNotFoundError:
 # data as a single chunk.
 Chunks = Union[int, dict[Any, Any], Literal['auto'], None]
 
-# Types for type hints
 CrsType = str
 TransformType = Union[
     tuple[float, float, float, float, float, float], affine.Affine
