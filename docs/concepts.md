@@ -16,6 +16,19 @@ Opening EE data requires specifying an output pixel grid. Xee uses three explici
 | `crs_transform` | Affine transform tuple `(x_scale, x_skew, x_trans, y_skew, y_scale, y_trans)` describing pixel size, rotation/skew, and origin translation in CRS units. |
 | `shape_2d` | `(width, height)` of the output grid in pixels. |
 
+### Understanding `crs_transform`
+
+The tuple follows the [Rasterio/`affine.Affine`](https://affine.readthedocs.io/en/latest/) standard. The coefficients correspond to:
+
+- `a`: Scale X (pixel width)
+- `b`: Shear X (row rotation)
+- `c`: Translation X (x-origin)
+- `d`: Shear Y (column rotation)
+- `e`: Scale Y (pixel height, usually negative)
+- `f`: Translation Y (y-origin)
+
+**Note:** This ordering (a, b, c, d, e, f) differs from the GDAL `GeoTransform` sequence, which is (c, a, b, f, d, e). Ensure you map the translation indices 0 and 3 in GDAL to indices 2 and 5 for Xee.
+
 Instead of constructing these manually, prefer helpers:
 
 - `extract_grid_params(obj)`: Match an `ee.Image` or `ee.ImageCollection` source grid.
@@ -28,7 +41,7 @@ Instead of constructing these manually, prefer helpers:
 
 ## Dimension Ordering
 
-Datasets are returned as `[time, y, x]` (v1.0+) aligning with CF conventions and most geospatial libraries. Prior versions used `[time, x, y]`. If code assumed positional indices, update to name-based access: `ds.sizes['x']`, `ds.sizes['y']`.
+Datasets are returned as `[time, y, x]` aligning with CF conventions and most geospatial libraries.
 
 ## Stored vs Computed Collections
 
@@ -46,11 +59,22 @@ Datasets are returned as `[time, y, x]` (v1.0+) aligning with CF conventions and
 
 ## CRS Units & Transforms
 
-All scale/translation values are expressed in units of `crs`. Degrees for geographic CRSs; meters (or feet) for projected CRSs. Plate Carrée (`EPSG:4326`) has non-uniform ground size — consider a projected CRS for area/length sensitive analysis.
+All scale and translation values in the `crs_transform` are expressed in the units of the specified `crs`.
+
+*   **Projected CRSs** (e.g., `EPSG:3857`, **UTM** zones) use linear units, typically **meters** or feet.
+*   **Geographic CRSs** (e.g., `EPSG:4326`) use angular units, typically **degrees**.
+
+> **Note on Geographic Distortion:**
+> Geographic CRSs (like `EPSG:4326`) define pixels in degrees. Because the ground distance of a degree of longitude shrinks as you move from the equator to the poles, a grid in this CRS will have **non-uniform ground pixel sizes**.
+>
+> *   **Distortion:** A "square" pixel in degrees becomes a narrow rectangle in meters at high latitudes.
+> *   **Analysis Impact:** Euclidean distance and area calculations performed directly on the array (e.g., assuming `1 pixel = X meters`) will be incorrect.
+>
+> If your analysis requires uniform measurement of **distance or area**, consider reprojecting to a projected CRS (meters) suitable for your region of interest.
 
 ## Chunking & Lazy Loading
 
-Data is paged from EE using pixel chunks (bounded by EE's max request size). Xarray+Dask operations trigger parallel pixel fetches, respecting EE quota limits (e.g., ~100 QPS for certain endpoints). See [Performance & Limits](performance.md) for tuning advice.
+Data is paged from EE using pixel chunks (bounded by EE's max request size). Xarray+Dask operations trigger parallel pixel fetches, respecting [EE quota limits](https://developers.google.com/earth-engine/guides/usage). See [Performance & Limits](performance.md) for tuning advice.
 
 ## Error Patterns
 

@@ -17,7 +17,7 @@ Switch endpoints by passing / omitting `opt_url` in `ee.Initialize`.
 
 ## Quotas & Request Parallelism
 
-Earth Engine imposes QPS limits. Large Dask graphs may overrun quotas and cause retries or 429 errors.
+Earth Engine imposes [QPS limits](https://developers.google.com/earth-engine/guides/usage). Large Dask graphs may overrun quotas and cause retries or 429 errors.
 
 Recommendations:
 
