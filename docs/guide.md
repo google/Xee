@@ -117,7 +117,7 @@ processed_collection = (ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')
 grid_params = helpers.fit_geometry(
     geometry=sf_aoi_shapely,
     grid_crs='EPSG:32610',     # Target CRS in meters (UTM Zone 10N)
-    grid_scale=(30, -30)        # Use Landsat's 30m resolution
+    grid_scale=(30, -30)       # Use Landsat's 30m resolution
 )
 
 # Open the fully processed collection
@@ -159,4 +159,4 @@ temp_slice.plot()
 - [Core Concepts](concepts.md)
 - [Performance & Limits](performance.md)
 - [FAQ](faq.md)
-- Examples: see `examples/` directory in the repository
+- Examples: see [examples](https://github.com/google/Xee/tree/main/examples) directory in the repository
