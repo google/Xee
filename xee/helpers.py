@@ -34,13 +34,13 @@ geographic CRSs (e.g. ``EPSG:4326``) this is degrees. For projected CRSs (e.g.
 UTM) this is meters.
 """
 import math
+from typing import TypedDict, Union
 
 import affine
 import ee
 from pyproj import Transformer
 import shapely
 from shapely.ops import transform
-from typing import TypedDict, Union
 
 
 TransformType = tuple[float, float, float, float, float, float]
