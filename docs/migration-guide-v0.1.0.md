@@ -14,7 +14,7 @@ This guide helps you update your code from Xee v0.0.x to v0.1.0. The 0.1 release
 
 ## 1. Geography Specification Changes
 
-### Old API (v0.x)
+### Old API (v0.0.x)
 
 The old API used simple `crs`, `scale`, and `geometry` parameters:
 
@@ -96,7 +96,7 @@ ds = xr.open_dataset(
 
 #### Example 1: Global dataset at fixed scale
 
-**Before (v0.x):**
+**Before (v0.1.0):**
 ```python
 ds = xr.open_dataset(
     'ECMWF/ERA5_LAND/MONTHLY_AGGR',
@@ -128,7 +128,7 @@ ds = xr.open_dataset(
 
 #### Example 2: Regional dataset with EE geometry
 
-**Before (v0.x):**
+**Before (v0.1.0):**
 ```python
 import ee
 
@@ -167,7 +167,7 @@ ds = xr.open_dataset(
 
 #### Example 3: Using source resolution for a custom area
 
-**Before (v0.x):**
+**Before (v0.1.0):**
 ```python
 # You had to manually determine the scale from the dataset
 ds = xr.open_dataset(
@@ -215,7 +215,7 @@ Xee v0.1.0 outputs dimensions in `[time, y, x]` order (matching CF conventions a
 
 #### Plotting
 
-**Before (v0.x):**
+**Before (v0.1.0):**
 ```python
 # Required transpose for correct visualization
 ds['temperature_2m'].isel(time=0).transpose().plot()
@@ -231,7 +231,7 @@ ds['temperature_2m'].isel(time=0).plot()
 
 Many geospatial libraries expect `[time, y, x]` ordering. You may have been using `.transpose()` to accommodate this.
 
-**Before (v0.x):**
+**Before (v0.1.0):**
 ```python
 # Had to transpose for libraries expecting [time, y, x]
 data_array = ds['temperature_2m'].transpose('time', 'y', 'x')
@@ -249,7 +249,7 @@ export_to_geotiff(data_array)
 
 If you have code that explicitly references dimension positions, update it:
 
-**Before (v0.x):**
+**Before (v0.1.0):**
 ```python
 # Dimensions were [time, x, y]
 time_dim, x_dim, y_dim = ds['temperature_2m'].dims
@@ -280,7 +280,7 @@ time_length = ds.sizes['time']
 
 ### Pattern 1: Simple global analysis
 
-**Before:**
+**Before (v0.1.0):**
 ```python
 import ee
 import xarray as xr
@@ -297,7 +297,7 @@ mean_temp = ds['temperature_2m'].mean(dim='time')
 mean_temp.transpose().plot()
 ```
 
-**After:**
+**After (v0.1.0):**
 ```python
 import ee
 import xarray as xr
@@ -323,7 +323,7 @@ mean_temp.plot()  # No transpose needed
 
 ### Pattern 2: Regional analysis with preprocessing
 
-**Before:**
+**Before (v0.1.0):**
 ```python
 import ee
 import xarray as xr
@@ -348,7 +348,7 @@ ds = xr.open_dataset(
 )
 ```
 
-**After:**
+**After (v0.1.0):**
 ```python
 import ee
 import xarray as xr
@@ -384,7 +384,7 @@ ds = xr.open_dataset(collection, engine='ee', **grid_params)
 
 ### Pattern 3: Export workflows
 
-**Before:**
+**Before (v0.1.0):**
 ```python
 import xarray as xr
 
@@ -401,7 +401,7 @@ data = ds['variable'].transpose('time', 'y', 'x')
 data.to_netcdf('output.nc')
 ```
 
-**After:**
+**After (v0.1.0):**
 ```python
 import xarray as xr
 from xee import helpers
@@ -479,7 +479,7 @@ ds = xr.open_dataset(collection, engine='ee', **grid_params)
 
 ### Issue: "Plots are rotated/flipped"
 
-**Problem:** You're still using `.transpose()` from v0.x code
+**Problem:** You're still using `.transpose()` from v0.0.x code
 
 **Solution:** Remove the `.transpose()` call - v0.1.0 outputs in the correct orientation by default
 
@@ -537,7 +537,7 @@ print("Shape:", grid_params['shape_2d'])
 
 ## 7. Additional Resources
 
-- [Main README](https://github.com/google/Xee/tree/main/README.md) - Complete usage guide with examples
+- [Main Guide](guide.md) - Complete usage guide with examples
 - [API Documentation](api.md) - Detailed API reference
 - [Client vs Server Guide](client-vs-server.ipynb) - Examples using v0.1.0 API
 - [GitHub Issues](https://github.com/google/Xee/issues) - Report problems or ask questions
