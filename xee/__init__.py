@@ -30,14 +30,14 @@ from .ext import __version__  # noqa: F401
 from .helpers import fit_geometry, extract_grid_params, set_scale, PixelGridParams  # noqa: F401
 
 __all__ = [
-    # version
+    # Version.
     '__version__',
-    # helper functions
+    # Helper functions.
     'fit_geometry',
     'extract_grid_params',
     'set_scale',
     'PixelGridParams',
-    # selected backend surface (avoid * pollution for autosummary ordering)
+    # Selected backend surface (avoid * pollution for autosummary ordering).
     'EarthEngineBackendEntrypoint',
     'EarthEngineStore',
     'EarthEngineBackendArray',
