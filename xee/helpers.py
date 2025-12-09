@@ -99,6 +99,7 @@ def set_scale(
 
 def fit_geometry(
     geometry: shapely.geometry.base.BaseGeometry,
+    # All following parameters are keyword-only.
     *,
     geometry_crs: str = 'EPSG:4326',
     buffer: float = 0,
