@@ -183,7 +183,7 @@ class EEStoreTest(parameterized.TestCase):
   )
   def test_init_with_tuple_transform(self, mock_get_info):
     """Test that a tuple object can be passed for crs_transform."""
-    # (Setup the mock_get_info.return_value just like in the other test)
+    # Setup the mock_get_info.return_value just like in the other test
     mock_get_info.return_value = {
         'size': 1,
         'props': {},
