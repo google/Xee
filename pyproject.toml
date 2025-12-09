@@ -28,6 +28,7 @@ dependencies = [
   "earthengine-api>=1.6.12",
   "pyproj",
   "affine",
+  "shapely",
 ]
 
 [project.entry-points."xarray.backends"]
@@ -65,6 +66,9 @@ line-length = 80
 preview = true
 pyink-indentation = 2
 pyink-use-majority-quotes = true
+
+[tool.setuptools]
+packages = ["xee"]
 
 [tool.setuptools_scm]
 fallback_version = "9999"

@@ -35,8 +35,6 @@ import warnings
 import affine
 import numpy as np
 import pandas as pd
-import pyproj
-from pyproj.crs import CRS
 import xarray
 from xarray import backends
 from xarray.backends import common
@@ -48,7 +46,7 @@ from xee import types
 import ee
 
 
-assert sys.version_info >= (3, 8)
+assert sys.version_info >= (3, 10)
 try:
   __version__ = importlib.metadata.version('xee') or 'unknown'
 except importlib.metadata.PackageNotFoundError:
@@ -62,6 +60,11 @@ except importlib.metadata.PackageNotFoundError:
 # data as a single chunk.
 Chunks = Union[int, dict[Any, Any], Literal['auto'], None]
 
+CrsType = str
+TransformType = Union[
+    tuple[float, float, float, float, float, float], affine.Affine
+]
+ShapeType = tuple[int, int]
 
 _BUILTIN_DTYPES = {
     'int': np.int32,
@@ -78,6 +81,15 @@ REQUEST_BYTE_LIMIT = 2**20 * 48  # 48 MBs
 # end index of the slice is beyond 10k, display a warning to the user. This
 # value was chosen by trial and error.
 _TO_LIST_WARNING_LIMIT = 10000
+
+EE_AFFINE_TRANSFORM_FIELDS = [
+    'scaleX',
+    'shearX',
+    'translateX',
+    'shearY',
+    'scaleY',
+    'translateY',
+]
 
 
 # Used in ext_test.py.
@@ -123,13 +135,6 @@ class EarthEngineStore(common.AbstractDataStore):
       'm': 10_000,
   }
 
-  DIMENSION_NAMES: dict[str, tuple[str, str]] = {
-      'degree': ('lon', 'lat'),
-      'metre': ('X', 'Y'),
-      'meter': ('X', 'Y'),
-      'm': ('X', 'Y'),
-  }
-
   DEFAULT_MASK_VALUE = np.iinfo(np.int32).max
 
   ATTRS_VALID_TYPES = (
@@ -147,13 +152,12 @@ class EarthEngineStore(common.AbstractDataStore):
   def open(
       cls,
       image_collection: ee.ImageCollection,
+      crs: CrsType,
+      crs_transform: TransformType,
+      shape_2d: ShapeType,
       mode: Literal['r'] = 'r',
       chunk_store: Chunks = None,
       n_images: int = -1,
-      crs: str | None = None,
-      scale: float | None = None,
-      projection: ee.Projection | None = None,
-      geometry: ee.Geometry | tuple[float, float, float, float] | None = None,
       primary_dim_name: str | None = None,
       primary_dim_property: str | None = None,
       mask_value: float | None = None,
@@ -171,12 +175,11 @@ class EarthEngineStore(common.AbstractDataStore):
 
     return cls(
         image_collection,
+        crs=crs,
+        crs_transform=crs_transform,
+        shape_2d=shape_2d,
         chunks=chunk_store,
         n_images=n_images,
-        crs=crs,
-        scale=scale,
-        projection=projection,
-        geometry=geometry,
         primary_dim_name=primary_dim_name,
         primary_dim_property=primary_dim_property,
         mask_value=mask_value,
@@ -191,12 +194,11 @@ class EarthEngineStore(common.AbstractDataStore):
   def __init__(
       self,
       image_collection: ee.ImageCollection,
+      crs: CrsType,
+      crs_transform: TransformType,
+      shape_2d: ShapeType,
       chunks: Chunks = None,
       n_images: int = -1,
-      crs: str | None = None,
-      scale: float | int | None = None,
-      projection: ee.Projection | None = None,
-      geometry: ee.Geometry | tuple[float, float, float, float] | None = None,
       primary_dim_name: str | None = None,
       primary_dim_property: str | None = None,
       mask_value: float | None = None,
@@ -207,6 +209,23 @@ class EarthEngineStore(common.AbstractDataStore):
       getitem_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
   ):
+    # Ensure crs_transform is a tuple and create the affine.Affine object.
+    if isinstance(crs_transform, affine.Affine):
+      self.affine_transform = crs_transform
+      crs_transform = (
+          crs_transform.a,
+          crs_transform.b,
+          crs_transform.c,
+          crs_transform.d,
+          crs_transform.e,
+          crs_transform.f,
+      )
+    elif not isinstance(crs_transform, tuple):
+      raise TypeError(
+          'crs_transform must be an affine.Affine object or a tuple.'
+      )
+    else:
+      self.affine_transform = affine.Affine(*crs_transform)
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
     self.fast_time_slicing = fast_time_slicing
@@ -222,8 +241,10 @@ class EarthEngineStore(common.AbstractDataStore):
     if n_images != -1:
       self.image_collection = image_collection.limit(n_images)
 
-    self.projection = projection
-    self.geometry = geometry
+    self.crs = crs
+    self.crs_transform = crs_transform
+    self.shape_2d = shape_2d
+
     self.primary_dim_name = primary_dim_name or 'time'
     self.primary_dim_property = primary_dim_property or 'system:time_start'
 
@@ -232,36 +253,10 @@ class EarthEngineStore(common.AbstractDataStore):
     #  Metadata should apply to all imgs.
     self._img_info: types.ImageInfo = self.get_info['first']
 
-    proj = self.get_info.get('projection', {})
-
-    self.crs_arg = crs or proj.get('crs', proj.get('wkt', 'EPSG:4326'))
-    self.crs = CRS(self.crs_arg)
-
-    is_crs_geographic = self.crs.is_geographic
-    # Gets the unit i.e. meter, degree etc.
-    self.scale_units = 'degree' if is_crs_geographic else 'meter'
-    # Get the dimensions name based on the CRS (scale units).
-    self.dimension_names = self.DIMENSION_NAMES.get(
-        self.scale_units, ('X', 'Y')
-    )
-    x_dim_name, y_dim_name = self.dimension_names
-    self._props.update(
-        coordinates=f'{self.primary_dim_name} {x_dim_name} {y_dim_name}',
-        crs=self.crs_arg,
-    )
+    self.dimension_names = ('y', 'x')
     self._props = self._make_attrs_valid(self._props)
-    # Scale in the projection's units. Typically, either meters or degrees.
-    # If we use the default CRS i.e. EPSG:3857, the units is in meters.
-    default_scale = self.SCALE_UNITS.get(self.scale_units, 1)
-    if scale is None:
-      scale = default_scale
-    default_transform = affine.Affine.scale(scale, scale)
-
-    transform = affine.Affine(*proj.get('transform', default_transform)[:6])
-    self.scale_x, self.scale_y = transform.a, transform.e
-    self.scale = np.sqrt(np.abs(transform.determinant))
-
-    self.bounds = self._determine_bounds(geometry=geometry)
+    self.scale_x, self.scale_y = crs_transform[0], crs_transform[4]
+    self.scale = np.sqrt(np.abs(self.affine_transform.determinant))
 
     max_dtype = self._max_itemsize()
 
@@ -288,21 +283,6 @@ class EarthEngineStore(common.AbstractDataStore):
         ('props', self.image_collection.toDictionary()),
         ('first', self.image_collection.first()),
     ]
-
-    if isinstance(self.projection, ee.Projection):
-      rpcs.append(('projection', self.projection))
-
-    if isinstance(self.geometry, ee.Geometry):
-      rpcs.append(('bounds', self.geometry.bounds(1, proj=self.projection)))
-    else:
-      rpcs.append(
-          (
-              'bounds',
-              self.image_collection.first()
-              .geometry()
-              .bounds(1, proj=self.projection),
-          )
-      )
 
     # TODO(#29, #30): This RPC call takes the longest time to compute. This
     # requires a full scan of the images in the collection, which happens on the
@@ -391,7 +371,7 @@ class EarthEngineStore(common.AbstractDataStore):
       dict: A dictionary containing 'index', 'width', and 'height' values.
     """
     chunks = {}
-    x_dim_name, y_dim_name = self.dimension_names
+    y_dim_name, x_dim_name = self.dimension_names
     for key, dim_name in [
         ('index', self.primary_dim_name),
         ('width', x_dim_name),
@@ -406,7 +386,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
   def _assign_preferred_chunks(self) -> Chunks:
     chunks = {}
-    x_dim_name, y_dim_name = self.dimension_names
+    y_dim_name, x_dim_name = self.dimension_names
     if self.chunks == -1:
       chunks[self.primary_dim_name] = self.PREFERRED_CHUNKS['index']
       chunks[x_dim_name] = self.PREFERRED_CHUNKS['width']
@@ -416,12 +396,6 @@ class EarthEngineStore(common.AbstractDataStore):
       chunks[x_dim_name] = self.chunks['width']
       chunks[y_dim_name] = self.chunks['height']
     return chunks
-
-  def transform(self, xs: float, ys: float) -> tuple[float, float]:
-    transformer = pyproj.Transformer.from_crs(
-        self.crs.geodetic_crs, self.crs, always_xy=True
-    )
-    return transformer.transform(xs, ys)
 
   def project(self, bbox: types.BBox) -> types.Grid:
     """Translate a bounding box (pixel space) to a grid (projection space).
@@ -437,41 +411,28 @@ class EarthEngineStore(common.AbstractDataStore):
         appropriate region of data to return according to the Array's configured
         projection and scale.
     """
-    x_min, y_min, x_max, y_max = self.bounds
     x_start, y_start, x_end, y_end = bbox
-    width = x_end - x_start
-    height = y_end - y_start
 
-    # Find the actual coordinates of the first or last point of the bounding box
-    # (bbox) based on the positive and negative scale in the actual Earth Engine
-    # (EE) image. Since EE bounding boxes can be flipped (negative scale), we
-    # cannot determine the origin (transform translation) simply by identifying
-    # the min and max extents. Instead, we calculate the translation by
-    # considering the direction of scaling (positive or negative) along both
-    # the x and y axes.
-    translate_x = self.scale_x * x_start + (
-        x_min if self.scale_x > 0 else x_max
-    )
-    translate_y = self.scale_y * y_start + (
-        y_min if self.scale_y > 0 else y_max
+    # Translate the crs_transform to the origin of the bounding box
+    transform_grid_cell = (
+        affine.Affine.translation(
+            xoff=x_start * self.affine_transform.a,
+            yoff=y_start * self.affine_transform.e,
+        )
+        * self.affine_transform
     )
 
     return {
         # The size of the bounding box. The affine transform and project will be
         # applied, so we can think in terms of pixels.
         'dimensions': {
-            'width': width,
-            'height': height,
+            'width': x_end - x_start,
+            'height': y_end - y_start,
         },
-        'affineTransform': {
-            'translateX': translate_x,
-            'translateY': translate_y,
-            # Define the scale for each pixel (e.g. the number of meters between
-            # each value).
-            'scaleX': self.scale_x,
-            'scaleY': self.scale_y,
-        },
-        'crsCode': self.crs_arg,
+        'affineTransform': dict(
+            zip(EE_AFFINE_TRANSFORM_FIELDS, transform_grid_cell)
+        ),
+        'crsCode': self.crs,
     }
 
   def image_to_array(
@@ -534,7 +495,7 @@ class EarthEngineStore(common.AbstractDataStore):
           f'falling back to returned dtype from EE {np.dtype(raw.dtype[0])}'
       )
 
-    data = arr.T
+    data = arr.transpose(2, 0, 1)
     current_mask_value = np.array(self.mask_value, dtype=data.dtype)
     # Sets EE nodata masked value to NaNs.
     data = np.where(data == current_mask_value, np.nan, data)
@@ -577,17 +538,15 @@ class EarthEngineStore(common.AbstractDataStore):
     arr = EarthEngineBackendArray(name, self)
     data = indexing.LazilyIndexedArray(arr)
 
-    x_dim_name, y_dim_name = self.dimension_names
-    dimensions = [self.primary_dim_name, x_dim_name, y_dim_name]
+    y_dim_name, x_dim_name = self.dimension_names
+    dimensions = [self.primary_dim_name, y_dim_name, x_dim_name]
     attrs = self._make_attrs_valid(self._band_attrs(name))
     attrs['crs'] = str(self.crs)
     encoding = {
         'source': attrs['id'],
         'scale_factor': arr.scale,
-        'scale_units': self.scale_units,
         'dtype': data.dtype,
         'preferred_chunks': self.preferred_chunks,
-        'bounds': arr.bounds,
     }
 
     return xarray.Variable(dimensions, data, attrs, encoding)
@@ -614,75 +573,6 @@ class EarthEngineStore(common.AbstractDataStore):
       ]
     return primary_coords
 
-  def _get_tile_from_ee(
-      self, tile_and_band: tuple[tuple[int, int, int], str]
-  ) -> tuple[int, np.ndarray[Any, np.dtype]]:
-    """Get a numpy array from EE for a specific bounding box (a 'tile')."""
-    (tile_index, tile_coords_start, tile_coords_end), band_id = tile_and_band
-    bbox = self.project(
-        (tile_coords_start, 0, tile_coords_end, 1)
-        if band_id == 'x'
-        else (0, tile_coords_start, 1, tile_coords_end)
-    )
-    target_image = ee.Image.pixelCoordinates(ee.Projection(self.crs_arg))
-    return tile_index, self.image_to_array(
-        target_image, grid=bbox, dtype=np.float64, bandIds=[band_id]
-    )
-
-  def _process_coordinate_data(
-      self,
-      tile_count: int,
-      tile_size: int,
-      end_point: int,
-      coordinate_type: str,
-  ) -> np.ndarray:
-    """Process coordinate data using multithreading for longitude or latitude."""
-    data = [
-        (i, tile_size * i, min(tile_size * (i + 1), end_point))
-        for i in range(tile_count)
-    ]
-    tiles = [None] * tile_count
-    with concurrent.futures.ThreadPoolExecutor(**self.executor_kwargs) as pool:
-      for i, arr in pool.map(
-          self._get_tile_from_ee,
-          list(zip(data, itertools.cycle([coordinate_type]))),
-      ):
-        tiles[i] = arr.flatten()
-    return np.concatenate(tiles)
-
-  def _determine_bounds(
-      self,
-      geometry: ee.Geometry | tuple[float, float, float, float] | None = None,
-  ) -> tuple[float, float, float, float]:
-    if geometry is None:
-      try:
-        x_min_0, y_min_0, x_max_0, y_max_0 = self.crs.area_of_use.bounds
-      except AttributeError:
-        # `area_of_use` is probably `None`. Parse the geometry from the first
-        # image instead (calculated in self.get_info())
-        x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
-            self.get_info['bounds']
-        )
-    elif isinstance(geometry, ee.Geometry):
-      x_min_0, y_min_0, x_max_0, y_max_0 = _ee_bounds_to_bounds(
-          self.get_info['bounds']
-      )
-    elif isinstance(geometry, Sequence):
-      if len(geometry) != 4:
-        raise ValueError(
-            'geometry must be a tuple or list of length 4, or a ee.Geometry, '
-            f'but got {geometry!r}'
-        )
-      x_min_0, y_min_0, x_max_0, y_max_0 = geometry
-    else:
-      raise ValueError(
-          'geometry must be a tuple or list of length 4, a ee.Geometry, or'
-          f' None but got {type(geometry)}'
-      )
-    x_min, y_min = self.transform(x_min_0, y_min_0)
-    x_max, y_max = self.transform(x_max_0, y_max_0)
-    return x_min, y_min, x_max, y_max
-
   def get_variables(self) -> utils.Frozen[str, xarray.Variable]:
     vars_ = [(name, self.open_store_variable(name)) for name in self._bands()]
 
@@ -698,26 +588,14 @@ class EarthEngineStore(common.AbstractDataStore):
           f'ImageCollection due to: {e}.'
       )
 
-    if isinstance(self.chunks, dict):
-      # when the value of self.chunks = 'auto' or user-defined.
-      width_chunk = self.chunks['width']
-      height_chunk = self.chunks['height']
-    else:
-      # when the value of self.chunks = -1.
-      width_chunk = v0.shape[1]
-      height_chunk = v0.shape[2]
-
-    lon_total_tile = math.ceil(v0.shape[1] / width_chunk)
-    lon = self._process_coordinate_data(
-        lon_total_tile, width_chunk, v0.shape[1], 'x'
+    x_scale, _, x_translate, _, y_scale, y_translate = self.crs_transform
+    width, height = self.shape_2d
+    width_coord = np.array(
+        [x_translate + x_scale / 2 + ix * x_scale for ix in range(width)]
     )
-    lat_total_tile = math.ceil(v0.shape[2] / height_chunk)
-    lat = self._process_coordinate_data(
-        lat_total_tile, height_chunk, v0.shape[2], 'y'
+    height_coord = np.array(
+        [y_translate + y_scale / 2 + iy * y_scale for iy in range(height)]
     )
-
-    width_coord = np.squeeze(lon)
-    height_coord = np.squeeze(lat)
 
     # Make sure there's at least a single point in each dimension.
     if width_coord.ndim == 0:
@@ -725,15 +603,15 @@ class EarthEngineStore(common.AbstractDataStore):
     if height_coord.ndim == 0:
       height_coord = height_coord[None, ...]
 
-    x_dim_name, y_dim_name = self.dimension_names
+    y_dim_name, x_dim_name = self.dimension_names
 
     coords = [
         (
             self.primary_dim_name,
             xarray.Variable(self.primary_dim_name, primary_coord),
         ),
-        (x_dim_name, xarray.Variable(x_dim_name, width_coord)),
         (y_dim_name, xarray.Variable(y_dim_name, height_coord)),
+        (x_dim_name, xarray.Variable(x_dim_name, width_coord)),
     ]
 
     return utils.FrozenDict(vars_ + coords)
@@ -790,19 +668,16 @@ class EarthEngineBackendArray(backends.BackendArray):
     self.store = ee_store
 
     self.scale = ee_store.scale
-    self.bounds = ee_store.bounds
 
     # It looks like different bands have different dimensions & transforms!
     # Can we get this into consistent dimensions?
     self._info = ee_store._band_attrs(variable_name)
     self.dtype = np.dtype(np.float32)
-    x_min, y_min, x_max, y_max = self.bounds
 
-    # Make sure the size is at least 1x1.
-    x_size = max(1, int(np.round((x_max - x_min) / np.abs(self.store.scale_x))))
-    y_size = max(1, int(np.round((y_max - y_min) / np.abs(self.store.scale_y))))
-
-    self.shape = (ee_store.n_images, x_size, y_size)
+    self.shape = (ee_store.n_images,) + (
+        ee_store.shape_2d[1],
+        ee_store.shape_2d[0],
+    )
     self._apparent_chunks = {k: 1 for k in self.store.PREFERRED_CHUNKS.keys()}
     if isinstance(self.store.chunks, dict):
       self._apparent_chunks = self.store.chunks.copy()
@@ -903,8 +778,8 @@ class EarthEngineBackendArray(backends.BackendArray):
 
     # TODO(#13): honor step increments
     strt, stop, _ = key[0].indices(self.shape[0])
-    wmin, wmax, _ = key[1].indices(self.shape[1])
-    hmin, hmax, _ = key[2].indices(self.shape[2])
+    hmin, hmax, _ = key[1].indices(self.shape[1])
+    wmin, wmax, _ = key[2].indices(self.shape[2])
     bbox = wmin, hmin, wmax, hmax
     i_range = stop - strt
     h_range = hmax - hmin
@@ -939,8 +814,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     # TODO(#10): can this be a np.array of objects?
     shape = (
         math.ceil(i_range / self._apparent_chunks['index']),
-        math.ceil(w_range / self._apparent_chunks['width']),
         math.ceil(h_range / self._apparent_chunks['height']),
+        math.ceil(w_range / self._apparent_chunks['width']),
     )
     tiles = [
         [[None for _ in range(shape[2])] for _ in range(shape[1])]
@@ -984,8 +859,8 @@ class EarthEngineBackendArray(backends.BackendArray):
     wmin, hmin, wmax, hmax = bbox
 
     for i, t0 in enumerate(range(start, stop + 1, tstep)):
-      for j, w0 in enumerate(range(wmin, wmax + 1, wstep)):
-        for k, h0 in enumerate(range(hmin, hmax + 1, hstep)):
+      for j, h0 in enumerate(range(hmin, hmax + 1, hstep)):
+        for k, w0 in enumerate(range(wmin, wmax + 1, wstep)):
           t1 = min(t0 + tstep, stop)
           w1 = min(w0 + wstep, wmax)
           h1 = min(h0 + hstep, hmax)
@@ -1022,6 +897,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
   def open_dataset(
       self,
       filename_or_obj: str | os.PathLike[Any] | ee.ImageCollection,
+      crs: CrsType,
+      crs_transform: TransformType,
+      shape_2d: ShapeType,
       drop_variables: tuple[str, ...] | None = None,
       io_chunks: Any | None = None,
       n_images: int = -1,
@@ -1031,10 +909,6 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       use_cftime: bool | None = None,
       concat_characters: bool = True,
       decode_coords: bool = True,
-      crs: str | None = None,
-      scale: float | int | None = None,
-      projection: ee.Projection | None = None,
-      geometry: ee.Geometry | tuple[float, float, float, float] | None = None,
       primary_dim_name: str | None = None,
       primary_dim_property: str | None = None,
       ee_mask_value: float | None = None,
@@ -1050,6 +924,12 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
     Args:
       filename_or_obj: An asset ID for an ImageCollection, or an
         ee.ImageCollection object.
+      crs: The coordinate reference system (a CRS code or WKT
+        string). This defines the frame of reference to coalesce all variables
+        upon opening.
+      crs_transform: Transform matrix describing the grid origin and scale
+        relative to the CRS.
+      shape_2d: Dimensions of the pixel grid in the form (width, height).
       drop_variables (optional): Variables or bands to drop before opening.
       io_chunks (optional): Specifies the chunking strategy for loading data
         from EE. By default, this automatically calculates optional chunks based
@@ -1084,22 +964,6 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         or individual variables as coordinate variables. - "all": Set variables
         referred to in  ``'grid_mapping'``, ``'bounds'`` and other attributes as
         coordinate variables.
-      crs (optional): The coordinate reference system (a CRS code or WKT
-        string). This defines the frame of reference to coalesce all variables
-        upon opening. By default, data is opened with `EPSG:4326'.
-      scale (optional): The scale in the `crs` or `projection`'s units of
-        measure -- either meters or degrees. This defines the scale that all
-        data is represented in upon opening. By default, the scale is 1° when
-        the CRS is in degrees or 10,000 when in meters.
-      projection (optional): Specify an `ee.Projection` object to define the
-        `scale` and `crs` (or other coordinate reference system) with which to
-        coalesce all variables upon opening. By default, the scale and reference
-        system is set by the the `crs` and `scale` arguments.
-      geometry (optional): Specify an `ee.Geometry` to define the regional
-        bounds when opening the data or a bbox specifying [x_min, y_min, x_max,
-        y_max] in EPSG:4326. When not set, the bounds are defined by
-        the CRS's 'area_of_use` boundaries. If those aren't present, the bounds
-        are derived from the geometry of the first image of the collection.
       primary_dim_name (optional): Override the name of the primary dimension of
         the output Dataset. By default, the name is 'time'.
       primary_dim_property (optional): Override the `ee.Image` property for
@@ -1143,12 +1007,11 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
 
     store = EarthEngineStore.open(
         collection,
+        crs=crs,
+        crs_transform=crs_transform,
+        shape_2d=shape_2d,
         chunk_store=io_chunks,
         n_images=n_images,
-        crs=crs,
-        scale=scale,
-        projection=projection,
-        geometry=geometry,
         primary_dim_name=primary_dim_name,
         primary_dim_property=primary_dim_property,
         mask_value=ee_mask_value,
