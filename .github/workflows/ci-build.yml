@@ -44,7 +44,7 @@ jobs:
       with:
         access_token: ${{ github.token }}
       if: ${{github.ref != 'refs/head/main'}}
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
@@ -53,7 +53,7 @@ jobs:
     - name: Install Xee
       run: |
         pip install -e .[tests]
-    - uses: 'actions/checkout@v4'
+    - uses: 'actions/checkout@v5'
     - id: 'auth'
       name: 'Authenticate to Google Cloud'
       uses: 'google-github-actions/auth@v3'
