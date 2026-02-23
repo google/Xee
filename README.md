@@ -83,6 +83,18 @@ ds = xarray.open_dataset(
 )
 ```
 
+Open an ImageCollection with lazy loading to defer metadata RPCs until data access time:
+
+```python
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
+    '1992-10-05', '1993-03-31')
+ds = xarray.open_dataset(
+    ic,
+    engine='ee',
+    lazy_load=True  # Defers metadata RPCs for faster dataset opening
+)
+```
+
 Open multiple ImageCollections into one `xarray.Dataset`, all with the same
 projection:
 

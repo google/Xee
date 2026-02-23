@@ -163,6 +163,7 @@ class EarthEngineStore(common.AbstractDataStore):
       executor_kwargs: dict[str, Any] | None = None,
       getitem_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
+      lazy_load: bool = False,
   ) -> EarthEngineStore:
     if mode != 'r':
       raise ValueError(
@@ -186,6 +187,7 @@ class EarthEngineStore(common.AbstractDataStore):
         executor_kwargs=executor_kwargs,
         getitem_kwargs=getitem_kwargs,
         fast_time_slicing=fast_time_slicing,
+        lazy_load=lazy_load,
     )
 
   def __init__(
@@ -206,10 +208,12 @@ class EarthEngineStore(common.AbstractDataStore):
       executor_kwargs: dict[str, Any] | None = None,
       getitem_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
+      lazy_load: bool = False,
   ):
     self.ee_init_kwargs = ee_init_kwargs
     self.ee_init_if_necessary = ee_init_if_necessary
     self.fast_time_slicing = fast_time_slicing
+    self.lazy_load = lazy_load
 
     # Initialize executor_kwargs
     if executor_kwargs is None:
@@ -227,12 +231,16 @@ class EarthEngineStore(common.AbstractDataStore):
     self.primary_dim_name = primary_dim_name or 'time'
     self.primary_dim_property = primary_dim_property or 'system:time_start'
 
-    self.n_images = self.get_info['size']
-    self._props = self.get_info['props']
+    # Always need to get size for n_images
+    info = self.get_info()
+    self.n_images = info['size']
+    # These are loaded lazily if lazy_load=True
+    if 'props' in info:
+      self._props = info['props']
     #  Metadata should apply to all imgs.
-    self._img_info: types.ImageInfo = self.get_info['first']
+    self._img_info: types.ImageInfo = info['first']
 
-    proj = self.get_info.get('projection', {})
+    proj = info.get('projection', {})
 
     self.crs_arg = crs or proj.get('crs', proj.get('wkt', 'EPSG:4326'))
     self.crs = CRS(self.crs_arg)
@@ -279,60 +287,119 @@ class EarthEngineStore(common.AbstractDataStore):
     else:
       self.mask_value = mask_value
 
-  @functools.cached_property
-  def get_info(self) -> dict[str, Any]:
-    """Make all getInfo() calls to EE at once."""
+  def get_info(self, lazy_load=None) -> dict[str, Any]:
+    """Make all getInfo() calls to EE at once.
+    
+    Args:
+      lazy_load: If True, only performs essential metadata calls and defers
+        other calls until data access time. If None, uses the instance's lazy_load value.
+        
+    Returns:
+      A dictionary containing metadata information from Earth Engine.
+    """
+    if lazy_load is None:
+      lazy_load = self.lazy_load
+      
+    # Initialize cache if needed
+    if not hasattr(self, '_info_cache'):
+      self._info_cache = {}
 
-    rpcs = [
-        ('size', self.image_collection.size()),
-        ('props', self.image_collection.toDictionary()),
-        ('first', self.image_collection.first()),
-    ]
-
-    if isinstance(self.projection, ee.Projection):
-      rpcs.append(('projection', self.projection))
-
-    if isinstance(self.geometry, ee.Geometry):
-      rpcs.append(('bounds', self.geometry.bounds(1, proj=self.projection)))
-    else:
-      rpcs.append(
-          (
-              'bounds',
-              self.image_collection.first()
-              .geometry()
-              .bounds(1, proj=self.projection),
+    # Define required metadata keys for lazy and full loading
+    ESSENTIAL_KEYS = {'size', 'first', 'bounds'}
+    COMPLETE_KEYS = ESSENTIAL_KEYS | {'props', 'properties', 'projection'}
+    
+    # Perform minimal RPCs if lazy loading is enabled
+    if lazy_load:
+      # Check if we have all essential keys
+      if not ESSENTIAL_KEYS.issubset(self._info_cache.keys()):
+        rpcs = [
+            ('size', self.image_collection.size()),
+            ('first', self.image_collection.first()),
+        ]
+        
+        if isinstance(self.projection, ee.Projection):
+          rpcs.append(('projection', self.projection))
+        
+        if isinstance(self.geometry, ee.Geometry):
+          rpcs.append(('bounds', self.geometry.bounds(1, proj=self.projection)))
+        else:
+          rpcs.append(
+              (
+                  'bounds',
+                  self.image_collection.first()
+                  .geometry()
+                  .bounds(1, proj=self.projection),
+              )
           )
-      )
+          
+        info = ee.List([rpc for _, rpc in rpcs]).getInfo()
+        self._info_cache.update(dict(zip((name for name, _ in rpcs), info)))
+      
+      return self._info_cache
+    
+    # Full metadata loading if not lazy
+    if not COMPLETE_KEYS.issubset(self._info_cache.keys()):
+      rpcs = [
+          ('size', self.image_collection.size()),
+          ('props', self.image_collection.toDictionary()),
+          ('first', self.image_collection.first()),
+      ]
 
-    # TODO(#29, #30): This RPC call takes the longest time to compute. This
-    # requires a full scan of the images in the collection, which happens on the
-    # EE backend. This is essential because we want the primary dimension of the
-    # opened dataset to be something relevant to the data, like time (start
-    # time) as opposed to a random index number.
-    #
-    # One optimization that could prove really fruitful: read the first and last
-    # (few) values of the primary dim (read: time) and interpolate the rest
-    # client-side. Ideally, this would live behind a xarray-backend-specific
-    # feature flag, since it's not guaranteed that data is this consistent.
-    columns = ['system:id', self.primary_dim_property]
-    rpcs.append(
-        (
-            'properties',
+      if isinstance(self.projection, ee.Projection):
+        rpcs.append(('projection', self.projection))
+
+      if isinstance(self.geometry, ee.Geometry):
+        rpcs.append(('bounds', self.geometry.bounds(1, proj=self.projection)))
+      else:
+        rpcs.append(
             (
-                self.image_collection.reduceColumns(
-                    ee.Reducer.toList().repeat(len(columns)), columns
-                ).get('list')
-            ),
+                'bounds',
+                self.image_collection.first()
+                .geometry()
+                .bounds(1, proj=self.projection),
+            )
         )
-    )
 
-    info = ee.List([rpc for _, rpc in rpcs]).getInfo()
+      # Add properties using the extracted helper function
+      rpcs.append(('properties', self._fetch_collection_properties()))
 
-    return dict(zip((name for name, _ in rpcs), info))
+      # For all non-property RPCs, execute them as a batch
+      non_property_rpcs = [rpc for name, rpc in rpcs if name != 'properties']
+      if non_property_rpcs:
+        info = ee.List(non_property_rpcs).getInfo()
+        non_property_names = [name for name, _ in rpcs if name != 'properties']
+        self._info_cache.update(dict(zip(non_property_names, info)))
+      
+      # Add the properties we already fetched
+      for name, value in rpcs:
+        if name == 'properties':
+          self._info_cache[name] = value
+      
+    return self._info_cache
 
+  def _fetch_collection_properties(self) -> list:
+    """Fetch collection properties using reduceColumns.
+    
+    This is a helper function to get image properties for both lazy and eager loading.
+    
+    Returns:
+      A list of image properties from Earth Engine.
+    """
+    columns = ['system:id', self.primary_dim_property]
+    properties = (
+        self.image_collection.reduceColumns(
+            ee.Reducer.toList().repeat(len(columns)), columns
+        ).get('list')
+    ).getInfo()
+    return properties
+    
   @property
   def image_collection_properties(self) -> tuple[list[str], list[str]]:
-    system_ids, primary_coord = self.get_info['properties']
+    if self.lazy_load and 'properties' not in self._info_cache:
+      # Fetch properties on-demand if lazy loading is enabled
+      self._info_cache['properties'] = self._fetch_collection_properties()
+      
+    system_ids, primary_coord = self.get_info()['properties']
     return (system_ids, primary_coord)
 
   @property
@@ -1044,6 +1111,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       executor_kwargs: dict[str, Any] | None = None,
       getitem_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
+      lazy_load: bool = False,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
 
@@ -1126,6 +1194,9 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         makes slicing an ImageCollection across time faster. This optimization
         loads EE images in a slice by ID, so any modifications to images in a
         computed ImageCollection will not be reflected.
+      lazy_load (optional): If True, defers metadata RPCs to data access time,
+        making opening datasets faster. Similar to xr.open_zarr(..., chunks=None)
+        behavior. Defaults to False.
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
     """
@@ -1158,6 +1229,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         executor_kwargs=executor_kwargs,
         getitem_kwargs=getitem_kwargs,
         fast_time_slicing=fast_time_slicing,
+        lazy_load=lazy_load,
     )
 
     store_entrypoint = backends_store.StoreBackendEntrypoint()
