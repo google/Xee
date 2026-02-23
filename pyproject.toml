@@ -45,7 +45,7 @@ tests = [
 dataflow = [
   "absl-py",
   "apache-beam[gcp]",
-  "gcsfs<=2026.1.0",
+  "gcsfs<=2026.2.0",
   "xarray-beam",
 ]
 examples = [
