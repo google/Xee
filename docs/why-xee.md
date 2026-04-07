@@ -74,10 +74,11 @@ Differences:
   [rechunking](https://xarray-beam.readthedocs.io/en/latest/rechunking.html) and
   projecting is a common routine performed up front on Zarr when data does not
   quite fit the problem at hand. Earth Engine provides a more flexible interface
-  than this. Since datasets are pyramided (either at [ingestion](https://developers.google.com/earth-engine/help_collection_criteria) or server-side), users are free to request the
-  resolution and projection of the data during dataset open. Similarly, while
-  Earth Engine's internal dataset does fit an internal chunking scheme, chunking
-  schemes are a lot more fungibile.
+  than this. Since datasets are pyramided (either at ingestion or server-side),
+  users are free to request the resolution and projection of the data
+  during dataset open. Similarly, while Earth Engine's internal dataset
+  does fit an internal chunking scheme, chunking schemes are a lot more
+  fungibile.
 
 We hope that this comparison provides the user of a set of useful precedents
 for working with cloud-based datasets.

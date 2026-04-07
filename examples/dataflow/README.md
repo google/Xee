@@ -65,7 +65,7 @@ This example will output data to a Cloud Storage bucket so one needs to be creat
 for the pipeline. To do so run the following command:
 
 ```shell
-gsutil mb -l $REGION gs://xee-out-${PROJECT}
+gcloud storage buckets create gs://xee-out-${PROJECT} --location=$REGION
 ```
 
 Cloud bucket names need to be globally unique so this uses the Cloud Project Number (also globally unique) in the name.
