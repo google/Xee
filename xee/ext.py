@@ -588,7 +588,10 @@ class EarthEngineStore(common.AbstractDataStore):
           f'ImageCollection due to: {e}.'
       )
 
-    x_scale, _, x_translate, _, y_scale, y_translate = self.crs_transform
+    x_scale = self.affine_transform.a
+    y_scale = self.affine_transform.e
+    x_translate = self.affine_transform.c
+    y_translate = self.affine_transform.f
     width, height = self.shape_2d
     width_coord = np.array(
         [x_translate + x_scale / 2 + ix * x_scale for ix in range(width)]

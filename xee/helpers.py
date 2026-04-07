@@ -87,6 +87,7 @@ def set_scale(
   Raises:
     TypeError: If ``scaling`` is not a length-2 tuple.
   """
+  crs_transform = list(crs_transform)
   if isinstance(scaling, tuple) and len(scaling) == 2:
     x_scale, y_scale = scaling
     crs_transform[0] = x_scale
