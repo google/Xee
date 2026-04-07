@@ -54,7 +54,7 @@ Next steps:
 
 - Quickstart: docs/quickstart.md
 - Concepts (grid params, CRS, orientation): docs/concepts.md
-- User Guide (workflows): docs/user-guide.md
+- User Guide (workflows): docs/guide.md
 
 ## Features
 

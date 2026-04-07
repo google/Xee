@@ -13,7 +13,7 @@ Visit **Read the Docs**: https://xee.readthedocs.io/en/latest/
 
 ## About this folder
 
-This `docs/` folder contains the source files used to build the documentation site with Sphinx and MyST. 
+This `docs/` folder contains the source files used to build the documentation site with Sphinx and MyST.
 
 If you're browsing on GitHub:
 - Start from [`index.md`](index.md) for the documentation landing page

@@ -5,14 +5,14 @@
 
 .. autoclass:: EarthEngineStore
 
-   
+
    .. automethod:: __init__
 
-   
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~EarthEngineStore.__init__
       ~EarthEngineStore.close
       ~EarthEngineStore.get_attrs
@@ -26,15 +26,15 @@
       ~EarthEngineStore.open
       ~EarthEngineStore.open_store_variable
       ~EarthEngineStore.project
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
       ~EarthEngineStore.ATTRS_VALID_TYPES
       ~EarthEngineStore.DEFAULT_MASK_VALUE
       ~EarthEngineStore.GETITEM_KWARGS
@@ -43,5 +43,3 @@
       ~EarthEngineStore.get_info
       ~EarthEngineStore.image_collection_properties
       ~EarthEngineStore.image_ids
-   
-   
