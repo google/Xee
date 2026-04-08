@@ -2,7 +2,7 @@
 >
 > A major refactor was released in v0.1.0, introducing breaking changes to the Xee API. In most cases, existing code written for pre-v0.1.0 versions will require updates to remain compatible.
 >
-> - See the [Migration Guide](docs/migration-guide-v0.1.0.md) for details on updating your code.
+> - See the [Migration Guide](https://github.com/google/Xee/blob/main/docs/migration-guide-v0.1.0.md) for details on updating your code.
 > - If you need more time to migrate, you can pin your environment to the latest pre-v0.1.0 release.
 >
 > **During the v0.1.0 prerelease window:** `pip install xee` and `conda install xee` may still install the previous stable line.
@@ -71,9 +71,9 @@ print(ds)
 
 Next steps:
 
-- Quickstart: docs/quickstart.md
-- Concepts (grid params, CRS, orientation): docs/concepts.md
-- User Guide (workflows): docs/guide.md
+- [Quickstart](https://github.com/google/Xee/blob/main/docs/quickstart.md)
+- [Concepts (grid params, CRS, orientation)](https://github.com/google/Xee/blob/main/docs/concepts.md)
+- [User Guide (workflows)](https://github.com/google/Xee/blob/main/docs/guide.md)
 
 ## Features
 
@@ -84,16 +84,16 @@ Next steps:
 
 ## Community & Support
 
-- Discussions: https://github.com/google/Xee/discussions
-- Issues: https://github.com/google/Xee/issues
+- [Discussions](https://github.com/google/Xee/discussions)
+- [Issues](https://github.com/google/Xee/issues)
 
 ## Contributing
 
-See docs/contributing.md and sign the required CLA.
+See [Contributing](https://github.com/google/Xee/blob/main/docs/contributing.md) and sign the required CLA.
 
 ## License
 
-[Apache 2.0](LICENSE)
+[Apache 2.0](https://github.com/google/Xee/blob/main/LICENSE)
 
 `SPDX-License-Identifier: Apache-2.0`
 
