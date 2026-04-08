@@ -58,6 +58,7 @@ exclude_patterns = [
     'Thumbs.db',
     '.DS_Store',
     'README.md',
+    'releasing.md',
 ]
 
 intersphinx_mapping = {
