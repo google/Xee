@@ -4,6 +4,9 @@
 >
 > - See the [Migration Guide](docs/migration-guide-v0.1.0.md) for details on updating your code.
 > - If you need more time to migrate, you can pin your environment to the latest pre-v0.1.0 release.
+>
+> **During the v0.1.0 prerelease window:** `pip install xee` and `conda install xee` may still install the previous stable line.
+> To use the refactored API documented here, install a prerelease with `pip install --upgrade --pre xee` or pin an RC such as `pip install xee==0.1.0rc1`.
 
 # Xee: Xarray + Google Earth Engine
 
@@ -19,6 +22,20 @@ Xee is an Xarray backend for Google Earth Engine. Open `ee.Image` / `ee.ImageCol
 
 ## Install
 
+For the refactored v0.1.0 API documented below (prerelease period):
+
+```bash
+pip install --upgrade --pre xee
+```
+
+or pin a specific release candidate:
+
+```bash
+pip install xee==0.1.0rc1
+```
+
+For the current stable line (pre-v0.1.0 API):
+
 ```bash
 pip install --upgrade xee
 ```
@@ -28,6 +45,8 @@ or
 ```bash
 conda install -c conda-forge xee
 ```
+
+Note: conda-forge may lag PyPI during prerelease testing. Use pip for the latest RC builds.
 
 ## Minimal example
 

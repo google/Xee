@@ -2,17 +2,41 @@
 
 Install Xee with pip or conda. Use virtual environments (`venv`, conda envs) to avoid dependency conflicts.
 
-Install with pip:
+```{admonition} Temporary note for v0.1.0 prerelease
+:class: warning
+
+This documentation describes the refactored v0.1.0 API. During the prerelease period, default install commands may still resolve to the previous stable line.
+```
+
+## Install the v0.1.0 prerelease (refactored API)
+
+Use pip prerelease resolution:
+
+```shell
+pip install --upgrade --pre xee
+```
+
+Or pin a specific release candidate:
+
+```shell
+pip install xee==0.1.0rc1
+```
+
+## Install current stable (pre-v0.1.0 API)
+
+Install from pip:
 
 ```shell
 pip install --upgrade xee
 ```
 
-Install with conda:
+Install from conda-forge:
 
 ```shell
 conda install -c conda-forge xee
 ```
+
+Note: conda-forge may lag PyPI during prerelease testing. Use pip for the latest RCs.
 
 ## Earth Engine setup
 

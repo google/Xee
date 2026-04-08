@@ -8,7 +8,21 @@ Get up and running with Xee in a few minutes.
 
 ## 1. Install
 
-Use pip (or conda):
+This quickstart uses the refactored v0.1.0 API.
+
+Install prerelease from pip:
+
+```bash
+pip install --upgrade --pre xee
+```
+
+or pin a specific RC:
+
+```bash
+pip install xee==0.1.0rc1
+```
+
+If you need the current stable line (pre-v0.1.0 API), use:
 
 ```bash
 pip install --upgrade xee
@@ -17,6 +31,8 @@ pip install --upgrade xee
 ```bash
 conda install -c conda-forge xee
 ```
+
+Note: conda-forge may lag PyPI during prerelease testing.
 
 Optional (plotting): `pip install matplotlib`.
 
