@@ -13,6 +13,37 @@ Use `grid_shape` when a fixed pixel width/height is required (e.g., ML model inp
 ## I get 429 quota errors. What do I do?
 Reduce parallelism (fewer Dask workers), narrow the AOI or time range, combine server-side operations before opening, or switch to the standard endpoint for computed collections.
 
+Xee also exposes retry controls for both pixel fetches and metadata `getInfo()`
+calls. For example:
+
+```python
+import xarray as xr
+
+ds = xr.open_dataset(
+	'ee://ECMWF/ERA5_LAND/MONTHLY_AGGR',
+	engine='ee',
+	crs='EPSG:4326',
+	crs_transform=(0.25, 0, -180, 0, -0.25, 90),
+	shape_2d=(1440, 720),
+	getitem_kwargs={
+		'max_retries': 8,
+		'initial_delay': 500,
+	},
+	getinfo_kwargs={
+		'max_retries': 8,
+		'initial_delay': 1000,
+	},
+)
+```
+
+Defaults are:
+
+- `getitem_kwargs`: `max_retries=6`, `initial_delay=500` ms
+- `getinfo_kwargs`: `max_retries=6`, `initial_delay=1000` ms
+
+`helpers.extract_grid_params(...)` also supports `getinfo_kwargs` if metadata
+calls need tuning under quota pressure.
+
 ## Can I open a computed `ee.ImageCollection`?
 Yes. Build the collection with filtering / mapping functions, then pass the resulting collection object directly to `xr.open_dataset(..., engine='ee')` with grid parameters.
 

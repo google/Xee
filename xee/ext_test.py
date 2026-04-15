@@ -221,6 +221,79 @@ class EEStoreTest(parameterized.TestCase):
           shape_2d=(360, 180),
       )
 
+  @mock.patch.object(
+      ext.EarthEngineStore,
+      'get_info',
+      new_callable=mock.PropertyMock,
+  )
+  def test_getinfo_kwargs_defaults_and_overrides(self, mock_get_info):
+    mock_get_info.return_value = {
+        'size': 1,
+        'props': {},
+        'first': {
+            'bands': [
+                {
+                    'id': 'b1',
+                    'data_type': {'type': 'PixelType', 'precision': 'float'},
+                }
+            ]
+        },
+    }
+
+    default_store = xee.EarthEngineStore(
+        image_collection=mock.MagicMock(),
+        crs='EPSG:4326',
+        crs_transform=(1.0, 0.0, -180.0, 0.0, -1.0, 90.0),
+        shape_2d=(360, 180),
+    )
+    self.assertEqual(default_store.getinfo_kwargs['initial_delay'], 1000)
+    self.assertEqual(default_store.getinfo_kwargs['max_retries'], 6)
+
+    configured_store = xee.EarthEngineStore(
+        image_collection=mock.MagicMock(),
+        crs='EPSG:4326',
+        crs_transform=(1.0, 0.0, -180.0, 0.0, -1.0, 90.0),
+        shape_2d=(360, 180),
+        getinfo_kwargs={'max_retries': 9},
+    )
+    self.assertEqual(configured_store.getinfo_kwargs['initial_delay'], 1000)
+    self.assertEqual(configured_store.getinfo_kwargs['max_retries'], 9)
+
+  @mock.patch.object(ext.retries, 'robust_call')
+  @mock.patch.object(ext.ee, 'List')
+  @mock.patch.object(ext.ee, 'Reducer')
+  def test_get_info_uses_retry_settings(
+      self, mock_reducer, mock_ee_list, mock_robust_call
+  ):
+    store = object.__new__(xee.EarthEngineStore)
+    store.image_collection = mock.MagicMock()
+    store.primary_dim_property = 'system:time_start'
+    store.getinfo_kwargs = {'max_retries': 9, 'initial_delay': 1200}
+    mock_reducer.toList.return_value.repeat.return_value = mock.MagicMock()
+
+    mock_ee_list.return_value.getInfo.return_value = [
+        1,
+        {},
+        {
+            'bands': [
+                {
+                    'id': 'b1',
+                    'data_type': {'type': 'PixelType', 'precision': 'float'},
+                }
+            ]
+        },
+        (['id-1'], [123456]),
+    ]
+    mock_robust_call.return_value = mock_ee_list.return_value.getInfo.return_value
+
+    info = store.get_info
+
+    kwargs = mock_robust_call.call_args.kwargs
+    self.assertEqual(kwargs['catch'], ext.ee.ee_exception.EEException)
+    self.assertEqual(kwargs['max_retries'], 9)
+    self.assertEqual(kwargs['initial_delay'], 1200)
+    self.assertEqual(info['size'], 1)
+
 
 class ParseEEInitKwargsTest(absltest.TestCase):
 
@@ -383,6 +456,58 @@ class GridHelpersTest(absltest.TestCase):
     # y_scale = -1.001 / 10 = -0.1001, rounded to -0.1
     self.assertAlmostEqual(grid_dict['crs_transform'][0], 0.1)
     self.assertAlmostEqual(grid_dict['crs_transform'][4], -0.1)
+
+  @mock.patch.object(ext.retries, 'robust_call')
+  def test_geometry_to_bounds_uses_retry_settings(self, mock_robust_call):
+    mock_robust_call.return_value = {
+        'coordinates': [[[1.0, 2.0], [3.0, 2.0], [3.0, 5.0], [1.0, 5.0]]]
+    }
+    geom = mock.MagicMock()
+
+    bounds = ext.geometry_to_bounds(
+        geom,
+        getinfo_kwargs={'max_retries': 8, 'initial_delay': 1400},
+    )
+
+    kwargs = mock_robust_call.call_args.kwargs
+    self.assertEqual(kwargs['catch'], ext.ee.ee_exception.EEException)
+    self.assertEqual(kwargs['max_retries'], 8)
+    self.assertEqual(kwargs['initial_delay'], 1400)
+    self.assertEqual(bounds, (1.0, 2.0, 3.0, 5.0))
+
+  @mock.patch.object(helpers.retries, 'robust_call')
+  def test_extract_grid_params_uses_retry_settings(self, mock_robust_call):
+    class FakeImage:
+      pass
+
+    class FakeImageCollection:
+      pass
+
+    image = FakeImage()
+    mock_robust_call.return_value = {
+        'bands': [
+            {
+                'crs': 'EPSG:4326',
+                'crs_transform': [1.0, 0.0, 2.0, 0.0, -1.0, 3.0],
+                'dimensions': [4, 5],
+            }
+        ]
+    }
+
+    with mock.patch.object(helpers.ee, 'Image', FakeImage), mock.patch.object(
+        helpers.ee, 'ImageCollection', FakeImageCollection
+    ):
+      params = helpers.extract_grid_params(
+          image,
+          getinfo_kwargs={'max_retries': 7, 'initial_delay': 1300},
+      )
+
+    kwargs = mock_robust_call.call_args.kwargs
+    self.assertEqual(kwargs['catch'], helpers.ee.ee_exception.EEException)
+    self.assertEqual(kwargs['max_retries'], 7)
+    self.assertEqual(kwargs['initial_delay'], 1300)
+    self.assertEqual(params['crs'], 'EPSG:4326')
+    self.assertEqual(params['shape_2d'], (4, 5))
 
 
 if __name__ == '__main__':
