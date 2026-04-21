@@ -29,4 +29,27 @@ To align with CF conventions (`[time, y, x]`) and reduce the need for transposes
 Your AOI may fall outside the dataset extent or the CRS mismatch caused an unexpected reprojection. Try matching source grid first to confirm availability.
 
 ## Do I need shapely geometries?
-Helpers accept shapely for convenience. If you already have an EE geometry, you can convert it or use bounding box approaches. Shapely makes reprojection and area reasoning simpler client-side.
+Helpers accept shapely for convenience. If you already have an EE geometry, you can convert it to shapely with `shapely.geometry.shape(ee_geom.getInfo())`. Shapely makes reprojection and area reasoning simpler client-side.
+
+## `ds.to_netcdf()` fails with `ValueError: could not safely cast array from int64 to int32`
+Xee time coordinates are stored as `int64` (nanoseconds since epoch). The `scipy` netCDF writer only supports netCDF3, which is limited to `int32`, so the write fails when `scipy` is the only available backend.
+
+Xarray selects backends in order: `netcdf4 → h5netcdf → scipy`. If neither `netcdf4` nor `h5netcdf` is installed, `scipy` is used and the error occurs.
+
+**Fix:** Install `netcdf4` or `h5netcdf`. Xarray will then prefer them automatically:
+
+```bash
+pip install netCDF4
+# or
+pip install h5netcdf
+```
+
+If both are installed and you want to be explicit about which one is used:
+
+```python
+ds.to_netcdf("out.nc", engine="netcdf4")
+# or
+ds.to_netcdf("out.nc", engine="h5netcdf")
+```
+
+Alternatively, use `.to_zarr()` instead — Zarr supports `int64` natively and requires no additional packages.
