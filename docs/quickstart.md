@@ -8,31 +8,15 @@ Get up and running with Xee in a few minutes.
 
 ## 1. Install
 
-This quickstart uses the refactored v0.1.0 API.
+This quickstart uses the refactored v0.1.0 API. For canonical installation
+options (prerelease, stable, conda, and upgrade guidance), see
+[Installation](installation.md).
 
-Install prerelease from pip:
+Fast path (latest v0.1.0 prerelease from pip):
 
 ```bash
 pip install --upgrade --pre xee
 ```
-
-or pin a specific RC:
-
-```bash
-pip install xee==0.1.0rc1
-```
-
-If you need the current stable line (pre-v0.1.0 API), use:
-
-```bash
-pip install --upgrade xee
-```
-
-```bash
-conda install -c conda-forge xee
-```
-
-Note: conda-forge may lag PyPI during prerelease testing.
 
 Optional (plotting): `pip install matplotlib`.
 
@@ -53,7 +37,7 @@ import ee
 ee.Authenticate()
 ```
 
-Initialize (high‑volume endpoint recommended for reading stored ImageCollections):
+Initialize (high-volume endpoint recommended for reading stored collections):
 
 ```python
 import ee
@@ -63,7 +47,7 @@ ee.Initialize(
 )
 ```
 
-For computed collections (server-side expressions) you can omit `opt_url` to use the standard endpoint which benefits from caching.
+For computed collections (server-side expressions), omit `opt_url` to use the standard endpoint, which benefits from caching during iterative development.
 
 ## 3. Open your first dataset
 
@@ -75,6 +59,31 @@ ic = ee.ImageCollection('ECMWF/ERA5_LAND/MONTHLY_AGGR')
 grid = helpers.extract_grid_params(ic)  # match source projection & resolution
 ds = xr.open_dataset(ic, engine='ee', **grid)
 print(ds)
+```
+
+```{admonition} Choosing a grid strategy quickly
+:class: tip
+
+- Exploratory analysis: use `helpers.extract_grid_params(...)`.
+- Fixed output shape (for model inputs): use `helpers.fit_geometry(..., grid_shape=...)`.
+- Fixed physical resolution: use `helpers.fit_geometry(..., grid_scale=...)`.
+- Manual `crs` / `crs_transform` / `shape_2d`: advanced alignment workflows only.
+```
+
+```{admonition} Dataset ID input forms
+:class: note
+
+Xee accepts both plain Earth Engine asset IDs (for example,
+`ECMWF/ERA5_LAND/MONTHLY_AGGR`) and URI forms (for example,
+`ee://ECMWF/ERA5_LAND/MONTHLY_AGGR`).
+```
+
+```{admonition} Where do these parameters come from?
+:class: tip
+
+`xr.open_dataset(..., engine='ee')` is the primary user entrypoint for Xee.
+For the complete, canonical parameter reference (including defaults and backend
+behavior), see [Open Dataset Reference](open_dataset.md).
 ```
 
 Plot the first time slice (matplotlib required):
@@ -103,6 +112,8 @@ ds['temperature_2m'].isel(time=0).plot()
 5. Use Xarray normally (select, compute, visualize, export)
 
 ## 6. Example: custom AOI at fixed size
+
+AOI means area of interest.
 
 ```python
 import shapely

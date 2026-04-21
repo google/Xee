@@ -31,6 +31,7 @@ The tuple follows the [Rasterio/`affine.Affine`](https://affine.readthedocs.io/e
 
 Instead of constructing these manually, prefer helpers:
 
+- AOI means area of interest.
 - `extract_grid_params(obj)`: Match an `ee.Image` or `ee.ImageCollection` source grid.
 - `fit_geometry(geometry, grid_crs, grid_scale=(x, y))`: Define pixel size (resolution) over an AOI.
 - `fit_geometry(geometry, grid_crs, grid_shape=(w, h))`: Define output array dimensions, letting resolution float.
@@ -45,7 +46,7 @@ Datasets are returned as `[time, y, x]` aligning with CF conventions and most ge
 
 ## Stored vs Computed Collections
 
-- Stored: unmodified `ee.ImageCollection('ID')` — use high‑volume endpoint for throughput.
+- Stored: unmodified `ee.ImageCollection('ID')` — use high-volume endpoint for throughput.
 - Computed: collections after `.map()`, `.select()`, filtering, band math — standard endpoint sometimes more efficient due to caching.
 
 ## Choosing a Grid Strategy

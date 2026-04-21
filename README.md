@@ -1,12 +1,9 @@
 > **⚠️ Breaking Change in v0.1.0**
 >
-> A major refactor was released in v0.1.0, introducing breaking changes to the Xee API. In most cases, existing code written for pre-v0.1.0 versions will require updates to remain compatible.
+> v0.1.0 includes a major refactor with breaking API changes.
 >
-> - See the [Migration Guide](https://github.com/google/Xee/blob/main/docs/migration-guide-v0.1.0.md) for details on updating your code.
-> - If you need more time to migrate, you can pin your environment to the latest pre-v0.1.0 release.
->
-> **During the v0.1.0 prerelease window:** `pip install xee` and `conda install xee` may still install the previous stable line.
-> To use the refactored API documented here, install a prerelease with `pip install --upgrade --pre xee` or pin an RC such as `pip install xee==0.1.0rc1`.
+> - Migration steps: [docs/migration-guide-v0.1.0.md](docs/migration-guide-v0.1.0.md)
+> - Canonical install options (prerelease vs stable): [docs/installation.md](docs/installation.md)
 
 # Xee: Xarray + Google Earth Engine
 
@@ -22,31 +19,14 @@ Xee is an Xarray backend for Google Earth Engine. Open `ee.Image` / `ee.ImageCol
 
 ## Install
 
-For the refactored v0.1.0 API documented below (prerelease period):
+For the latest v0.1.0 prerelease:
 
 ```bash
 pip install --upgrade --pre xee
 ```
 
-or pin a specific release candidate:
-
-```bash
-pip install xee==0.1.0rc1
-```
-
-For the current stable line (pre-v0.1.0 API):
-
-```bash
-pip install --upgrade xee
-```
-
-or
-
-```bash
-conda install -c conda-forge xee
-```
-
-Note: conda-forge may lag PyPI during prerelease testing. Use pip for the latest RC builds.
+For all installation paths (including stable line and conda), see
+[docs/installation.md](docs/installation.md).
 
 ## Minimal example
 
@@ -59,7 +39,7 @@ from xee import helpers
 #   earthengine authenticate
 
 project = 'PROJECT-ID'  # Set your Earth Engine registered Google Cloud project ID
-# Initialize (high‑volume endpoint recommended for reading stored collections)
+# Initialize (high-volume endpoint recommended for reading stored collections)
 ee.Initialize(project=project, opt_url='https://earthengine-highvolume.googleapis.com')
 
 # Open a dataset by matching its native grid
@@ -71,9 +51,9 @@ print(ds)
 
 Next steps:
 
-- [Quickstart](https://github.com/google/Xee/blob/main/docs/quickstart.md)
-- [Concepts (grid params, CRS, orientation)](https://github.com/google/Xee/blob/main/docs/concepts.md)
-- [User Guide (workflows)](https://github.com/google/Xee/blob/main/docs/guide.md)
+- [Quickstart](docs/quickstart.md)
+- [Concepts (grid params, CRS, orientation)](docs/concepts.md)
+- [User Guide (workflows)](docs/guide.md)
 
 ## Features
 

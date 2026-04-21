@@ -6,11 +6,13 @@ title: Performance & Limits
 
 Guidance for working efficiently within Earth Engine and Xee constraints.
 
+AOI means area of interest.
+
 ## Endpoints
 
 | Endpoint | Use case | Notes |
 |----------|----------|-------|
-| High‑volume | Reading stored ImageCollections | Higher throughput, intended for bulk pixel access. |
+| High-volume | Reading stored ImageCollections | Higher throughput, intended for bulk pixel access. |
 | Standard | Computed collections / iterative dev | Caching can accelerate repeated computations. |
 
 Switch endpoints by passing / omitting `opt_url` in `ee.Initialize`.
