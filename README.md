@@ -89,7 +89,7 @@ Next steps:
 
 ## Contributing
 
-See [Contributing](https://github.com/google/Xee/blob/main/docs/contributing.md) and sign the required CLA.
+See [Contributing](https://github.com/google/Xee/blob/main/docs/contributing.md) and sign the required CLA. For local development, we recommend the Pixi environments defined in this repository for reproducible test and docs runs.
 
 ## License
 
