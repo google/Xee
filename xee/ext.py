@@ -168,6 +168,35 @@ class EarthEngineStore(common.AbstractDataStore):
       getitem_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
   ) -> EarthEngineStore:
+    """Create an EarthEngineStore for a normalized ImageCollection input.
+
+    This method is used internally by the Xarray backend entrypoint. Most users
+    should call ``xarray.open_dataset(..., engine='ee')`` instead of calling
+    this API directly.
+
+    Args:
+      image_collection: Normalized EE ImageCollection to read from.
+      crs: Output coordinate reference system.
+      crs_transform: Output geotransform in the selected CRS.
+      shape_2d: Output pixel grid shape as ``(width, height)``.
+      mode: Access mode. Only ``'r'`` is supported.
+      chunk_store: Request chunk configuration propagated to store chunks.
+      n_images: Maximum number of images to include; ``-1`` includes all.
+      primary_dim_name: Primary dimension name in the resulting dataset.
+      primary_dim_property: EE image property used for primary coordinate
+        values.
+      mask_value: Sentinel value used for mask/nodata conversion.
+      request_byte_limit: Maximum bytes to request per EE call.
+      ee_init_kwargs: Optional kwargs for ``ee.Initialize`` when auto init is
+        enabled.
+      ee_init_if_necessary: Whether to attempt EE auto-initialization.
+      executor_kwargs: Optional ThreadPoolExecutor kwargs for parallel fetches.
+      getitem_kwargs: Optional retry/backoff overrides for robust item fetches.
+      fast_time_slicing: Enable faster ID-based time slicing path.
+
+    Returns:
+      A configured ``EarthEngineStore`` instance.
+    """
     if mode != 'r':
       raise ValueError(
           f'mode {mode!r} is invalid: data can only be read from Earth Engine.'
@@ -926,7 +955,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
 
     Args:
       filename_or_obj: An asset ID for an ImageCollection, or an
-        ee.ImageCollection object.
+        ``ee.ImageCollection`` object.
       crs: The coordinate reference system (a CRS code or WKT
         string). This defines the frame of reference to coalesce all variables
         upon opening.
@@ -936,20 +965,20 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       drop_variables (optional): Variables or bands to drop before opening.
       io_chunks (optional): Specifies the chunking strategy for loading data
         from EE. By default, this automatically calculates optional chunks based
-        on the `request_byte_limit`.
+        on ``request_byte_limit``.
       n_images (optional): The max number of EE images in the collection to
         open. Useful when there are a large number of images in the collection
         since calculating collection size can be slow. -1 indicates that all
         images should be included.
-      mask_and_scale (optional): Lazily scale (using scale_factor and
-        add_offset) and mask (using _FillValue).
-      decode_times (optional): Decode cf times (e.g., integers since "hours
-        since 2000-01-01") to np.datetime64.
+      mask_and_scale (optional): Lazily scale (using ``scale_factor`` and
+        ``add_offset``) and mask (using ``_FillValue``).
+      decode_times (optional): Decode CF times (e.g., integers since ``"hours
+        since 2000-01-01"``) to ``np.datetime64``.
       decode_timedelta (optional): If True, decode variables and coordinates
         with time units in {"days", "hours", "minutes", "seconds",
         "milliseconds", "microseconds"} into timedelta objects. If False, leave
-        them encoded as numbers. If None (default), assume the same value of
-        decode_time.
+        them encoded as numbers. If ``None`` (default), assume the same value
+        of ``decode_times``.
       use_cftime (optional): Only relevant if encoded dates come from a standard
         calendar (e.g. "gregorian", "proleptic_gregorian", "standard", or not
         specified).  If None (default), attempt to decode times to
@@ -960,35 +989,36 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         decode times to ``np.datetime64[ns]`` objects; if this is not possible
         raise an error.
       concat_characters (optional): Should character arrays be concatenated to
-        strings, for example: ["h", "e", "l", "l", "o"] -> "hello"
-      decode_coords (optional): bool or {"coordinates", "all"}, Controls which
-        variables are set as coordinate variables: - "coordinates" or True: Set
-        variables referred to in the ``'coordinates'`` attribute of the datasets
-        or individual variables as coordinate variables. - "all": Set variables
-        referred to in  ``'grid_mapping'``, ``'bounds'`` and other attributes as
-        coordinate variables.
+        strings, for example: ``["h", "e", "l", "l", "o"] -> "hello"``.
+      decode_coords (optional): ``bool`` or ``{"coordinates", "all"}``. Controls
+        which variables are set as coordinate variables. Use
+        ``"coordinates"`` (or ``True``) to set variables referenced by the
+        ``'coordinates'`` attribute of datasets or individual variables as
+        coordinate variables. Use ``"all"`` to additionally set variables
+        referenced by ``'grid_mapping'``, ``'bounds'``, and related attributes
+        as coordinate variables.
       primary_dim_name (optional): Override the name of the primary dimension of
-        the output Dataset. By default, the name is 'time'.
-      primary_dim_property (optional): Override the `ee.Image` property for
+        the output Dataset. By default, the name is ``'time'``.
+      primary_dim_property (optional): Override the ``ee.Image`` property for
         which to derive the values of the primary dimension. By default, this is
-        'system:time_start'.
+        ``'system:time_start'``.
       ee_mask_value (optional): Value to mask to EE nodata values. By default,
-        this is 'np.iinfo(np.int32).max' i.e. 2147483647.
-      request_byte_limit: the max allowed bytes to request at a time from Earth
-        Engine. By default, it is 48MBs.
+        this is ``np.iinfo(np.int32).max`` (i.e., ``2147483647``).
+      request_byte_limit: The max allowed bytes to request at a time from Earth
+        Engine. By default, it is ``48 * 1024 * 1024`` (48 MB).
       ee_init_if_necessary: boolean flag to set if auto initialize for Earth
-        Engine should be attempted. Set to True if using distributed compute
+        Engine should be attempted. Set to ``True`` if using distributed compute
         frameworks.
       ee_init_kwargs: keywords to pass to Earth Engine Initialize when
         attempting to auto init for remote workers.
       executor_kwargs (optional): A dictionary of keyword arguments to pass to
-        the ThreadPoolExecutor that handles the parallel computation of pixels
-        i.e. {'max_workers': 2}.
+        the ``ThreadPoolExecutor`` that handles the parallel computation of
+        pixels, for example ``{'max_workers': 2}``.
       getitem_kwargs (optional): Exponential backoff kwargs passed into the
-        xarray function to index the array (`robust_getitem`).
-        - 'max_retries', the maximum number of retry attempts. Defaults to 6.
-        - 'initial_delay', the initial delay in milliseconds before the first
-          retry. Defaults to 500.
+        xarray function used to index the array (``robust_getitem``). Supported
+        keys include ``'max_retries'`` (maximum retry attempts, default 6) and
+        ``'initial_delay'`` (initial delay in milliseconds before the first
+        retry, default 500).
       fast_time_slicing (optional): Whether to perform an optimization that
         makes slicing an ImageCollection across time faster. This optimization
         loads EE images in a slice by ID, so any modifications to images in a

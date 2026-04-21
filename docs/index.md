@@ -21,6 +21,7 @@ quickstart
 installation
 concepts
 guide
+open_dataset
 client-vs-server
 performance
 api

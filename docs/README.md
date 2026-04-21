@@ -2,10 +2,10 @@
 
 > **⚠️ Breaking Change in v0.1.0**
 >
-> A major refactor was released in v0.1.0, introducing breaking changes to the Xee API. In most cases, existing code written for pre-v0.1.0 versions will require updates to remain compatible.
+> v0.1.0 includes breaking API changes.
 >
-> - See the [Migration Guide](migration-guide-v0.1.0.md) for details on updating your code.
-> - If you need more time to migrate, you can pin your environment to the latest pre-v0.1.0 release.
+> - Migration steps: [migration-guide-v0.1.0.md](migration-guide-v0.1.0.md)
+> - Install options (prerelease vs stable): [installation.md](installation.md)
 
 ## For nicely rendered documentation
 

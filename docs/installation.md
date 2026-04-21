@@ -106,7 +106,7 @@ top of your script, include one of the following expressions with the `project`
 argument modified to match the Google Cloud project ID enabled and registered
 for Earth Engine use.
 
-#### High-volume endpoint (bulk stored data)
+#### High-volume endpoint (stored collections)
 
 If you are requesting stored data (supplying a collection ID or passing an
 unmodified `ee.ImageCollection()` object to `xarray.open_dataset`), connect to
@@ -120,7 +120,7 @@ ee.Initialize(
 )
 ```
 
-#### Standard endpoint (computed / cached)
+#### Standard endpoint (computed collections / iterative development)
 
 If you are requesting computed data (applying expressions to the data), consider
 connecting to the [standard
@@ -131,3 +131,5 @@ something about the request.
 ```python
  ee.Initialize(project='your-project-id')
 ```
+
+For more tuning guidance, see [Performance & Limits](performance.md).

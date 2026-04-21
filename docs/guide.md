@@ -2,6 +2,14 @@
 
 This guide collects practical workflows. For underlying theory see [Core Concepts](concepts.md). For a minimal setup see the [Quickstart](quickstart.md).
 
+```{admonition} Where do these parameters come from?
+:class: tip
+
+All examples in this guide ultimately call `xr.open_dataset(..., engine='ee')`.
+Use [Open Dataset Reference](open_dataset.md) for the complete parameter list,
+defaults, and runtime behavior.
+```
+
 ## Match Source Grid
 
 Use `helpers.extract_grid_params` to mirror the dataset's native projection & resolution.
@@ -15,7 +23,7 @@ grid_params = helpers.extract_grid_params(ic)
 ds = xr.open_dataset(ic, engine='ee', **grid_params)
 ```
 
-## Fit Area to a Shape
+## Fit Area of Interest (AOI) to a Shape
 
 Derive a grid that covers an AOI with a fixed pixel count (resolution floats).
 
@@ -33,7 +41,7 @@ grid_params = helpers.fit_geometry(
 ds = xr.open_dataset('ee://ECMWF/ERA5_LAND/MONTHLY_AGGR', engine='ee', **grid_params)
 ```
 
-## Fit Area to a Scale (Resolution)
+## Fit Area of Interest (AOI) to a Scale (Resolution)
 
 Fix physical pixel size; grid dimensions derived from AOI extent.
 
@@ -159,4 +167,5 @@ temp_slice.plot()
 - [Core Concepts](concepts.md)
 - [Performance & Limits](performance.md)
 - [FAQ](faq.md)
-- Examples: see [examples](https://github.com/google/Xee/tree/main/examples) directory in the repository
+- Repository examples (legacy pre-v0.1.0, update in progress):
+    <https://github.com/google/Xee/tree/main/examples>
