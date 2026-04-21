@@ -16,14 +16,18 @@
 
 # Print Python environment info for easier debugging on ReadTheDocs
 
+import importlib.util
 import subprocess
 import sys
 import xee  # verify this works
 
 print('python exec:', sys.executable)
 print('sys.path:', sys.path)
-print('pip environment:')
-subprocess.run([sys.executable, '-m', 'pip', 'list'])  # pylint: disable=subprocess-run-check
+if importlib.util.find_spec('pip') is not None:
+    print('pip environment:')
+    subprocess.run([sys.executable, '-m', 'pip', 'list'])  # pylint: disable=subprocess-run-check
+else:
+    print('pip environment: unavailable')
 
 print(f'xee: {xee.__file__}')
 
