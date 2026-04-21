@@ -72,3 +72,18 @@ packages = ["xee"]
 
 [tool.setuptools_scm]
 fallback_version = "9999"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+
+[tool.pixi.pypi-dependencies]
+xee = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dataflow = { features = ["dataflow"], solve-group = "default" }
+examples = { features = ["examples", "dataflow"], solve-group = "default" }
+tests = { features = ["tests"], solve-group = "default" }
+
+[tool.pixi.tasks]

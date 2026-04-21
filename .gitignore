@@ -131,3 +131,5 @@ cython_debug/
 
 # pixi environments
 .pixi
+.pixi/*
+!.pixi/config.toml
