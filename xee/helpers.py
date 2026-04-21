@@ -41,11 +41,17 @@ import ee
 from pyproj import Transformer
 import shapely
 from shapely.ops import transform
+from xee import retries
 
 
 TransformType = tuple[float, float, float, float, float, float]
 ShapeType = tuple[int, int]
 ScalingType = tuple[float, float]
+
+GETINFO_KWARGS: dict[str, int] = {
+  'max_retries': 6,
+  'initial_delay': 1000,
+}
 
 
 class PixelGridParams(TypedDict):
@@ -189,6 +195,7 @@ def fit_geometry(
 
 def extract_grid_params(
     ee_obj: Union[ee.Image, ee.ImageCollection],
+    getinfo_kwargs: dict[str, int] | None = None,
 ) -> PixelGridParams:
   """Return native pixel grid parameters for an EE Image or ImageCollection.
 
@@ -198,6 +205,9 @@ def extract_grid_params(
 
   Args:
     ee_obj: ``ee.Image`` or ``ee.ImageCollection`` instance.
+    getinfo_kwargs: Exponential backoff kwargs used for Earth Engine
+      ``getInfo()`` retries. Supported keys are ``max_retries`` and
+      ``initial_delay`` (milliseconds).
 
   Returns:
     ``PixelGridParams`` mapping the native CRS, transform, and dimensions.
@@ -215,7 +225,13 @@ def extract_grid_params(
         f'Expected ee.Image or ee.ImageCollection, got {type(ee_obj)}'
     )
 
-  first_band_info = img_obj.select(0).getInfo()['bands'][0]
+  getinfo_kwargs = {**GETINFO_KWARGS, **(getinfo_kwargs or {})}
+  info = retries.robust_call(
+      lambda: img_obj.select(0).getInfo(),
+      catch=ee.ee_exception.EEException,
+      **getinfo_kwargs,
+  )
+  first_band_info = info['bands'][0]
 
   return dict(
       crs=first_band_info['crs'],

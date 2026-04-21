@@ -41,6 +41,7 @@ from xarray.backends import common
 from xarray.backends import store as backends_store
 from xarray.core import indexing
 from xarray.core import utils
+from xee import retries
 from xee import types
 
 import ee
@@ -128,6 +129,11 @@ class EarthEngineStore(common.AbstractDataStore):
       'initial_delay': 500,
   }
 
+  GETINFO_KWARGS: dict[str, int] = {
+      'max_retries': 6,
+      'initial_delay': 1000,
+  }
+
   SCALE_UNITS: dict[str, int] = {
       'degree': 1,
       'metre': 10_000,
@@ -166,6 +172,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_if_necessary: bool = False,
       executor_kwargs: dict[str, Any] | None = None,
       getitem_kwargs: dict[str, int] | None = None,
+      getinfo_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
   ) -> EarthEngineStore:
     if mode != 'r':
@@ -188,6 +195,7 @@ class EarthEngineStore(common.AbstractDataStore):
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
         getitem_kwargs=getitem_kwargs,
+        getinfo_kwargs=getinfo_kwargs,
         fast_time_slicing=fast_time_slicing,
     )
 
@@ -207,6 +215,7 @@ class EarthEngineStore(common.AbstractDataStore):
       ee_init_if_necessary: bool = False,
       executor_kwargs: dict[str, Any] | None = None,
       getitem_kwargs: dict[str, int] | None = None,
+      getinfo_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
   ):
     # Ensure crs_transform is a tuple and create the affine.Affine object.
@@ -236,6 +245,7 @@ class EarthEngineStore(common.AbstractDataStore):
     self.executor_kwargs = executor_kwargs
 
     self.getitem_kwargs = {**self.GETITEM_KWARGS, **(getitem_kwargs or {})}
+    self.getinfo_kwargs = {**self.GETINFO_KWARGS, **(getinfo_kwargs or {})}
 
     self.image_collection = image_collection
     if n_images != -1:
@@ -306,7 +316,11 @@ class EarthEngineStore(common.AbstractDataStore):
         )
     )
 
-    info = ee.List([rpc for _, rpc in rpcs]).getInfo()
+    info = retries.robust_call(
+        lambda: ee.List([rpc for _, rpc in rpcs]).getInfo(),
+        catch=ee.ee_exception.EEException,
+        **self.getinfo_kwargs,
+    )
 
     return dict(zip((name for name, _ in rpcs), info))
 
@@ -657,9 +671,20 @@ def _ee_bounds_to_bounds(bounds: dict[str, Any]) -> types.Bounds:
   return x_min, y_min, x_max, y_max
 
 
-def geometry_to_bounds(geom: ee.Geometry) -> types.Bounds:
+def geometry_to_bounds(
+    geom: ee.Geometry,
+    getinfo_kwargs: dict[str, int] | None = None,
+) -> types.Bounds:
   """Finds the CRS bounds from a ee.Geometry polygon."""
-  bounds = geom.bounds().getInfo()
+  getinfo_kwargs = {
+      **EarthEngineStore.GETINFO_KWARGS,
+      **(getinfo_kwargs or {}),
+  }
+  bounds = retries.robust_call(
+      lambda: geom.bounds().getInfo(),
+      catch=ee.ee_exception.EEException,
+      **getinfo_kwargs,
+  )
   return _ee_bounds_to_bounds(bounds)
 
 
@@ -920,6 +945,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       ee_init_kwargs: dict[str, Any] | None = None,
       executor_kwargs: dict[str, Any] | None = None,
       getitem_kwargs: dict[str, int] | None = None,
+      getinfo_kwargs: dict[str, int] | None = None,
       fast_time_slicing: bool = False,
   ) -> xarray.Dataset:  # type: ignore
     """Open an Earth Engine ImageCollection as an Xarray Dataset.
@@ -989,6 +1015,11 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         - 'max_retries', the maximum number of retry attempts. Defaults to 6.
         - 'initial_delay', the initial delay in milliseconds before the first
           retry. Defaults to 500.
+      getinfo_kwargs (optional): Exponential backoff kwargs applied to
+        Earth Engine `getInfo()` calls used by Xee metadata workflows.
+        - 'max_retries', the maximum number of retry attempts. Defaults to 6.
+        - 'initial_delay', the initial delay in milliseconds before the first
+          retry. Defaults to 1000.
       fast_time_slicing (optional): Whether to perform an optimization that
         makes slicing an ImageCollection across time faster. This optimization
         loads EE images in a slice by ID, so any modifications to images in a
@@ -1023,6 +1054,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         ee_init_if_necessary=ee_init_if_necessary,
         executor_kwargs=executor_kwargs,
         getitem_kwargs=getitem_kwargs,
+        getinfo_kwargs=getinfo_kwargs,
         fast_time_slicing=fast_time_slicing,
     )
 

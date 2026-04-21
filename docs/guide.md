@@ -154,6 +154,40 @@ temp_slice = ds['temperature_2m'].isel(time=0)
 temp_slice.plot()
 ```
 
+## Configure Retries
+
+Xee supports configurable retries for two paths:
+
+- Pixel reads via `getitem_kwargs`
+- Metadata `getInfo()` calls via `getinfo_kwargs`
+
+```python
+import ee
+import xarray as xr
+from xee import helpers
+
+ic = ee.ImageCollection('ECMWF/ERA5_LAND/MONTHLY_AGGR')
+
+# Optional: tune helper metadata fetch retries.
+grid_params = helpers.extract_grid_params(
+    ic,
+    getinfo_kwargs={'max_retries': 8, 'initial_delay': 1000},
+)
+
+ds = xr.open_dataset(
+    ic,
+    engine='ee',
+    **grid_params,
+    getitem_kwargs={'max_retries': 8, 'initial_delay': 500},
+    getinfo_kwargs={'max_retries': 8, 'initial_delay': 1000},
+)
+```
+
+Defaults:
+
+- `getitem_kwargs`: `max_retries=6`, `initial_delay=500` ms
+- `getinfo_kwargs`: `max_retries=6`, `initial_delay=1000` ms
+
 ## Further Resources
 
 - [Core Concepts](concepts.md)

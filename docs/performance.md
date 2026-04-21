@@ -26,6 +26,42 @@ Recommendations:
 3. Consolidate operations server-side (EE `.map`, `.select`, band math) before opening in Xee.
 4. Cache intermediate results in memory rather than re-opening repeatedly.
 
+## Retry Tuning
+
+Xee uses exponential backoff with jitter for:
+
+- Pixel requests (`getitem_kwargs`) used during array reads.
+- Metadata `getInfo()` requests (`getinfo_kwargs`) used during dataset setup and
+	helper metadata fetches.
+
+Defaults:
+
+- `getitem_kwargs`: `max_retries=6`, `initial_delay=500` ms
+- `getinfo_kwargs`: `max_retries=6`, `initial_delay=1000` ms
+
+`getinfo_kwargs` starts with a longer default delay to reduce setup-time retry bursts against EE metadata endpoints.
+
+You can tune these in `xr.open_dataset(...)`:
+
+```python
+ds = xr.open_dataset(
+		collection,
+		engine='ee',
+		crs='EPSG:4326',
+		crs_transform=(0.25, 0, -180, 0, -0.25, 90),
+		shape_2d=(1440, 720),
+		getitem_kwargs={'max_retries': 8, 'initial_delay': 500},
+		getinfo_kwargs={'max_retries': 8, 'initial_delay': 1000},
+)
+```
+
+Rule of thumb:
+
+1. If failures happen during dataset open / metadata fetch, tune
+	 `getinfo_kwargs` first.
+2. If failures happen during chunk reads / compute, tune `getitem_kwargs` first.
+3. Reduce Dask concurrency before increasing retries too aggressively.
+
 ## Chunk Size Considerations
 
 EE responses have an upper size limit (tens of MB). Xee's backend picks reasonable pixel window sizes automatically. If you see many small requests, consider choosing a coarser grid or limiting variable selection to needed bands.

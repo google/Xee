@@ -105,6 +105,14 @@ class EEBackendArrayTest(absltest.TestCase):
         n_images=64,
         getitem_kwargs={'max_retries': 9},
     )
+    self.getinfo_tuned_store = xee.EarthEngineStore(
+      ee.ImageCollection('LANDSAT/LC08/C02/T1').filterDate(
+        '2017-01-01', '2017-01-03'
+      ),
+      n_images=64,
+      getinfo_kwargs={'max_retries': 9, 'initial_delay': 1200},
+      **_TEST_GRID_PARAMS,
+    )
     self.all_img_store = xee.EarthEngineStore(
         ee.ImageCollection('LANDSAT/LC08/C02/T1').filterDate(
             '2017-01-01', '2017-01-03'
@@ -297,6 +305,15 @@ class EEBackendArrayTest(absltest.TestCase):
     arr2 = xee.EarthEngineBackendArray('spi2y', self.conus_store)
     self.assertEqual(arr2.store.getitem_kwargs['initial_delay'], 500)
     self.assertEqual(arr2.store.getitem_kwargs['max_retries'], 9)
+
+  def test_getinfo_kwargs(self):
+    arr = xee.EarthEngineBackendArray('B4', self.getinfo_tuned_store)
+    self.assertEqual(arr.store.getinfo_kwargs['initial_delay'], 1200)
+    self.assertEqual(arr.store.getinfo_kwargs['max_retries'], 9)
+
+    arr1 = xee.EarthEngineBackendArray('longitude', self.lnglat_store)
+    self.assertEqual(arr1.store.getinfo_kwargs['initial_delay'], 1000)
+    self.assertEqual(arr1.store.getinfo_kwargs['max_retries'], 6)
 
 
 class EEBackendEntrypointTest(absltest.TestCase):
@@ -628,6 +645,15 @@ class GridHelpersTest(absltest.TestCase):
   def test_extract_grid_params_from_image(self):
     img = ee.Image('LANDSAT/LT05/C02/T1_TOA/LT05_031034_20110619')
     grid_params = helpers.extract_grid_params(img)
+    self.assertEqual(grid_params['shape_2d'], (7881, 6981))
+    self.assertEqual(grid_params['crs'], 'EPSG:32613')
+    np.allclose(grid_params['crs_transform'], [30, 0, 643185, 0, -30, 4255815])
+
+  def test_extract_grid_params_from_image_with_getinfo_kwargs(self):
+    img = ee.Image('LANDSAT/LT05/C02/T1_TOA/LT05_031034_20110619')
+    grid_params = helpers.extract_grid_params(
+        img, getinfo_kwargs={'max_retries': 8, 'initial_delay': 1100}
+    )
     self.assertEqual(grid_params['shape_2d'], (7881, 6981))
     self.assertEqual(grid_params['crs'], 'EPSG:32613')
     np.allclose(grid_params['crs_transform'], [30, 0, 643185, 0, -30, 4255815])
