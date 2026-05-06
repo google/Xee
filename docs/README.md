@@ -1,11 +1,10 @@
 # Xee Documentation (source files)
 
-> **⚠️ Breaking Change in v0.1.0**
+> **Breaking Change in v0.1.0+**
 >
-> v0.1.0 includes breaking API changes.
+> Xee v0.1.0 introduced a refactored API with breaking changes relative to the 0.0.x series. The documentation in this folder reflects the v0.1.0+ API.
 >
-> - Migration steps: [migration-guide-v0.1.0.md](migration-guide-v0.1.0.md)
-> - Install options (prerelease vs stable): [installation.md](installation.md)
+> If you are upgrading from 0.0.x, see [migration-guide-v0.1.0.md](migration-guide-v0.1.0.md).
 
 ## For nicely rendered documentation
 

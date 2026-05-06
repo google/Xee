@@ -8,17 +8,11 @@ Get up and running with Xee in a few minutes.
 
 ## 1. Install
 
-This quickstart uses the refactored v0.1.0 API. For canonical installation
-options (prerelease, stable, conda, and upgrade guidance), see
-[Installation](installation.md).
-
-Fast path (latest v0.1.0 prerelease from pip):
-
 ```bash
-pip install --upgrade --pre xee
+pip install --upgrade xee
 ```
 
-Optional (plotting): `pip install matplotlib`.
+Optional (plotting): `pip install matplotlib`. For full installation options, see [Installation](installation.md).
 
 ## 2. Earth Engine access
 
