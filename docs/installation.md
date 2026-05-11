@@ -23,15 +23,11 @@ conda install -c conda-forge xee
 
 Before each stable release, Xee publishes one or more release candidates (e.g. `v0.1.1rc1`) to PyPI. If you want to test upcoming changes before the stable release:
 
-```shell
-pip install --upgrade --pre xee
-```
+`pip install --upgrade --pre xee`
 
 Or pin a specific release candidate:
 
-```shell
-pip install xee==0.1.1rc1
-```
+`pip install xee==0.1.1rc1`
 
 Prerelease builds are not published to Conda-Forge.
 ```

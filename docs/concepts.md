@@ -31,9 +31,8 @@ The tuple follows the [Rasterio/`affine.Affine`](https://affine.readthedocs.io/e
 
 Instead of constructing these manually, prefer helpers:
 
-- AOI means area of interest.
 - `extract_grid_params(obj)`: Match an `ee.Image` or `ee.ImageCollection` source grid.
-- `fit_geometry(geometry, grid_crs, grid_scale=(x, y))`: Define pixel size (resolution) over an AOI.
+- `fit_geometry(geometry, grid_crs, grid_scale=(x, y))`: Define pixel size (resolution) over an area of interest.
 - `fit_geometry(geometry, grid_crs, grid_shape=(w, h))`: Define output array dimensions, letting resolution float.
 
 ### Y Scale Sign & Orientation
