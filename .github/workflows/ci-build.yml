@@ -24,6 +24,39 @@ on:
   workflow_dispatch:
 
 jobs:
+  validate-metadata:
+    name: "validate package metadata"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.11"
+    - name: Validate optional dependency relationships
+      run: |
+        python - <<'PY'
+        import tomllib
+        from pathlib import Path
+
+        pyproject = Path("pyproject.toml")
+        data = tomllib.loads(pyproject.read_text())
+        optional = data["project"]["optional-dependencies"]
+
+        dataflow = set(optional.get("dataflow", []))
+        examples = set(optional.get("examples", []))
+
+        missing = sorted(dataflow - examples)
+        if missing:
+          print("The [examples] extra must include all [dataflow] dependencies.")
+          print("Missing from examples:")
+          for dep in missing:
+            print(f"- {dep}")
+          raise SystemExit(1)
+
+        print("Optional dependency check passed: dataflow is a subset of examples.")
+        PY
+
   build:
     name: "python ${{ matrix.python-version }} tests"
     runs-on: ubuntu-latest
