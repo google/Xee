@@ -49,8 +49,14 @@ dataflow = [
   "gcsfs<=2026.3.0",
   "xarray-beam",
 ]
+# Keep examples equivalent to dataflow, but avoid self-referential extras
+# ("xee[dataflow]") which can confuse dependency resolvers.
 examples = [
-  "xee[dataflow]",
+  "absl-py",
+  "apache-beam[gcp]",
+  "gcsfs<=2026.3.0",
+  "matplotlib",
+  "xarray-beam",
 ]
 
 [project.urls]

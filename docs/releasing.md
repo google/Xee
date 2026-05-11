@@ -59,3 +59,13 @@ Use this to finalize a tested release branch.
 - Avoid creating stable releases directly from `main`; use the release branch path.
 - If a stable release was published by mistake, coordinate with maintainers before
   deleting tags or editing release records.
+
+## Dependency extras guardrails
+
+- `dataflow` is intended for production export workflows.
+- `examples` may include `dataflow` dependencies plus any additional packages used
+   by user-facing examples.
+- Keep `examples` explicit (do not use self-referential extras like
+   `xee[dataflow]` inside `project.optional-dependencies`).
+- CI enforces that every dependency in `dataflow` is also present in `examples`
+   (subset check in `.github/workflows/ci-build.yml`).
