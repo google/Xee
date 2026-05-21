@@ -2,14 +2,18 @@
 >
 > v0.1.0 includes a major refactor with breaking API changes.
 >
-> - Migration steps: [docs/migration-guide-v0.1.0.md](docs/migration-guide-v0.1.0.md)
-> - Canonical install options (prerelease vs stable): [docs/installation.md](docs/installation.md)
+> -   Migration steps:
+>     [docs/migration-guide-v0.1.0.md](docs/migration-guide-v0.1.0.md)
+> -   Canonical install options (prerelease vs stable):
+>     [docs/installation.md](docs/installation.md)
 
 # Xee: Xarray + Google Earth Engine
 
 ![Xee Logo](https://raw.githubusercontent.com/google/Xee/main/docs/xee-logo.png)
 
-Xee is an Xarray backend for Google Earth Engine. Open `ee.Image` / `ee.ImageCollection` objects as lazy `xarray.Dataset`s and analyze petabyte‑scale Earth data with the scientific Python stack.
+Xee is an Xarray backend for Google Earth Engine. Open `ee.Image` /
+`ee.ImageCollection` objects as lazy `xarray.Dataset`s and analyze
+petabyte-scale Earth data with the scientific Python stack.
 
 [![image](https://img.shields.io/pypi/v/xee.svg)](https://pypi.python.org/pypi/xee)
 [![image](https://static.pepy.tech/badge/xee)](https://pepy.tech/project/xee)
@@ -51,25 +55,27 @@ print(ds)
 
 Next steps:
 
-- [Quickstart](docs/quickstart.md)
-- [Concepts (grid params, CRS, orientation)](docs/concepts.md)
-- [User Guide (workflows)](docs/guide.md)
+-   [Quickstart](docs/quickstart.md)
+-   [Concepts (grid params, CRS, orientation)](docs/concepts.md)
+-   [User Guide (workflows)](docs/guide.md)
 
 ## Features
 
-- Lazy, parallel pixel retrieval through Earth Engine
-- Flexible output grid definition (fixed resolution or fixed shape)
-- CF-friendly dimension order: `[time, y, x]`
-- Plays nicely with Xarray, Dask, and friends
+-   Lazy, parallel pixel retrieval through Earth Engine
+-   Flexible output grid definition (fixed resolution or fixed shape)
+-   CF-friendly dimension order: `[time, y, x]`
+-   Plays nicely with Xarray, Dask, and friends
 
 ## Community & Support
 
-- [Discussions](https://github.com/google/Xee/discussions)
-- [Issues](https://github.com/google/Xee/issues)
+-   [Discussions](https://github.com/google/Xee/discussions)
+-   [Issues](https://github.com/google/Xee/issues)
 
 ## Contributing
 
-See [Contributing](https://github.com/google/Xee/blob/main/docs/contributing.md) and sign the required CLA. For local development, we recommend the Pixi environments defined in this repository for reproducible test and docs runs.
+See [Contributing](https://github.com/google/Xee/blob/main/docs/contributing.md)
+and sign the required CLA. For local development, we recommend the Pixi
+environments defined in this repository for reproducible test and docs runs.
 
 ## License
 
@@ -78,4 +84,3 @@ See [Contributing](https://github.com/google/Xee/blob/main/docs/contributing.md)
 `SPDX-License-Identifier: Apache-2.0`
 
 This is not an official Google product.
-

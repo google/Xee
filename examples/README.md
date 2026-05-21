@@ -4,8 +4,8 @@ Xee integrations & use cases.
 
 ## Export Earth Engine ImageCollections to Zarr with [Xarray-Beam](https://github.com/google/xarray-beam)
 
-The following demonstrates how to export ~20 TiBs of NASA IMERG data to Zarr
-(in about ~25 LOC) with Xarray-Beam and GCP's Dataflow Runner. At the time of
+The following demonstrates how to export ~20 TiBs of NASA IMERG data to Zarr (in
+about ~25 LOC) with Xarray-Beam and GCP's Dataflow Runner. At the time of
 writing, we were able to export the data in about ~3 hours (using Google's
 internal Beam runner).
 

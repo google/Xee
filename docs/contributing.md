@@ -20,8 +20,8 @@ sign a new one.
 
 ### Review our Community Guidelines
 
-This project follows [Google's Open Source Community
-Guidelines](https://opensource.google/conduct/).
+This project follows
+[Google's Open Source Community Guidelines](https://opensource.google/conduct/).
 
 ## Contribution process
 
@@ -61,7 +61,9 @@ build with warnings treated as errors.
 
 ### Running tests
 
-The Xee integration tests only pass on Xee branches (no forks). Please run the integration tests locally before sending a PR. To run the tests locally, authenticate using `earthengine authenticate` and run one of the following:
+The Xee integration tests only pass on Xee branches (no forks). Please run the
+integration tests locally before sending a PR. To run the tests locally,
+authenticate using `earthengine authenticate` and run one of the following:
 
 ```bash
 pixi run -e tests python -m unittest xee/ext_integration_test.py
