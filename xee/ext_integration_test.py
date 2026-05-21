@@ -17,6 +17,7 @@ import json
 import os
 import pathlib
 import tempfile
+import time
 
 from absl.testing import absltest
 from google.auth import identity_pool
@@ -556,6 +557,46 @@ class EEBackendEntrypointTest(absltest.TestCase):
     fast_slicing = xr.open_dataset(**params, fast_time_slicing=True)
     fast_slicing_data = getattr(fast_slicing[dict(time=0)], band).as_numpy()
     self.assertTrue(np.all(fast_slicing_data > 0))
+    
+  def test_lazy_loading(self):
+    """Test that lazy loading defers metadata RPCs until data access time."""
+    ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
+        '1992-10-05', '1992-10-06')  # Using a smaller date range for the test
+        
+    # Open dataset with lazy loading
+    start_time = time.perf_counter()
+    lazy_ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+        lazy_load=True,
+    )
+    lazy_open_time = time.perf_counter() - start_time
+    
+    # Open dataset without lazy loading
+    start_time = time.perf_counter()
+    regular_ds = xr.open_dataset(
+        ic,
+        engine=xee.EarthEngineBackendEntrypoint,
+        lazy_load=False,
+    )
+    regular_open_time = time.perf_counter() - start_time
+    
+    # Verify that lazy opening is faster than regular opening
+    self.assertLess(lazy_open_time, regular_open_time, 
+                    f"Lazy loading ({lazy_open_time:.2f}s) should be faster than regular loading ({regular_open_time:.2f}s)")
+    
+    # Verify that both datasets have the same structure
+    self.assertEqual(lazy_ds.dims, regular_ds.dims)
+    self.assertEqual(list(lazy_ds.data_vars), list(regular_ds.data_vars))
+    
+    # Access data and verify it's the same
+    var_name = list(lazy_ds.data_vars)[0]
+    lazy_data = lazy_ds[var_name].isel(time=0).values
+    regular_data = regular_ds[var_name].isel(time=0).values
+    
+    # Both should have same shape and data should not be all zeros or NaNs
+    self.assertEqual(lazy_data.shape, regular_data.shape)
+    self.assertTrue(np.allclose(lazy_data, regular_data, equal_nan=True))
 
   @absltest.skipIf(_SKIP_RASTERIO_TESTS, 'rioxarray module not loaded')
   def test_write_projected_dataset_to_raster(self):
