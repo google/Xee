@@ -1,22 +1,35 @@
 # Installation
 
-Install Xee and its dependencies using `pip` or conda-like package managers. To
-help minimize system disruption and package conflicts, it's recommended to use
-virtual environments like Python's
-[`venv`](https://docs.python.org/3/library/venv.html) with `pip` or [conda's
-integrated environment management
-system](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).
+Install Xee with pip or conda. Use virtual environments (`venv`, conda envs) to avoid dependency conflicts.
 
-Install with `pip`:
+Xee v0.1.0 introduced a refactored API with breaking changes relative to the 0.0.x series. This page documents the v0.1.0+ install and usage path. If you are upgrading from 0.0.x, review the [Migration Guide](migration-guide-v0.1.0.md).
+
+## Install
+
+Install from pip:
 
 ```shell
 pip install --upgrade xee
 ```
 
-Install with conda:
+Install from conda-forge:
 
 ```shell
 conda install -c conda-forge xee
+```
+
+```{admonition} Prerelease versions
+:class: note
+
+Before each stable release, Xee publishes one or more release candidates (e.g. `v0.1.1rc1`) to PyPI. If you want to test upcoming changes before the stable release:
+
+`pip install --upgrade --pre xee`
+
+Or pin a specific release candidate:
+
+`pip install xee==0.1.1rc1`
+
+Prerelease builds are not published to Conda-Forge.
 ```
 
 ## Earth Engine setup
@@ -26,21 +39,20 @@ Engine](https://developers.google.com/earth-engine/guides) for data. To use
 Earth Engine, you'll need to create and register a Google Cloud project,
 authenticate with Google, and initialize the service.
 
-If you already have a Cloud project registered for Earth Engine and are familiar
-with Earth Engine authentication and initialization, you can skip this section.
+If you already have a registered Earth Engine Cloud project and know the auth/initialize steps, skip to the [Quickstart](quickstart.md).
 
 **Note**: the authentication and initialization steps described in the following
 sections cover the majority of common system configurations and access methods,
 if you're having trouble, refer to the Earth Engine [Authentication and
 Initialization guide](https://developers.google.com/earth-engine/guides/auth).
 
-### Create and register a Cloud project
+### 1. Create and register a Cloud project
 
 Follow instructions in the [Earth Engine Access
 guide](https://developers.google.com/earth-engine/guides/access#get_access_to_earth_engine
 ) to create and register a Google Cloud project.
 
-### Authentication
+### 2. Authentication
 
 Google needs to know who is accessing Earth Engine to determine what services
 are available and what permissions are granted. The goal of authentication is to
@@ -48,7 +60,7 @@ establish credentials that can be used during initialization. There are several
 ways to verify your identity and create credentials, depending on your working
 environment:
 
-#### Persistent environment
+#### Persistent environment (one-time)
 
 If you're working from a system with a persistent environment, such as a local
 computer or on-premises server, you can authenticate using the [Earth Engine
@@ -64,7 +76,7 @@ credentials are stored locally (`~/.config/earthengine/credentials`), allowing
 them to be used in subsequent initialization to the Earth Engine service. This
 is typically a one-time step.
 
-#### Temporary environment
+#### Ephemeral environment (each session)
 
 If you're working from a system like [Google Colab](https://colab.google/) that
 provides a temporary environment recycled after use, you'll need to authenticate
@@ -80,7 +92,7 @@ mode](https://developers.google.com/earth-engine/guides/auth#authentication_deta
 and guides you through steps to generate authentication credentials. Be sure to
 rerun the authentication process each time the environment is reset.
 
-### Initialization
+### 3. Initialization
 
 Initialization checks user authentication credentials, sets the Cloud project to
 use for requests, and connects the client to Earth Engine's services. At the
@@ -88,7 +100,7 @@ top of your script, include one of the following expressions with the `project`
 argument modified to match the Google Cloud project ID enabled and registered
 for Earth Engine use.
 
-#### High-volume endpoint
+#### High-volume endpoint (stored collections)
 
 If you are requesting stored data (supplying a collection ID or passing an
 unmodified `ee.ImageCollection()` object to `xarray.open_dataset`), connect to
@@ -102,7 +114,7 @@ ee.Initialize(
 )
 ```
 
-#### Standard endpoint
+#### Standard endpoint (computed collections / iterative development)
 
 If you are requesting computed data (applying expressions to the data), consider
 connecting to the [standard
@@ -113,3 +125,5 @@ something about the request.
 ```python
  ee.Initialize(project='your-project-id')
 ```
+
+For more tuning guidance, see [Performance & Limits](performance.md).

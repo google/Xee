@@ -1,0 +1,121 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: Release-stable
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 0.1.0)'
+        required: true
+        type: string
+      publish_immediately:
+        description: 'Publish release immediately (otherwise created as draft)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.REPO_WRITE_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Compute version and branch names
+        id: compute
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          RELEASE_BRANCH="v${VERSION}-release"
+          TAG_NAME="v${VERSION}"
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "release_branch=${RELEASE_BRANCH}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+          echo "Version: ${VERSION}"
+          echo "Expected release branch: ${RELEASE_BRANCH}"
+          echo "Tag: ${TAG_NAME}"
+
+      - name: Checkout release branch
+        run: |
+          if git fetch origin ${{ steps.compute.outputs.release_branch }}; then
+            git checkout ${{ steps.compute.outputs.release_branch }}
+            echo "Checked out release branch: ${{ steps.compute.outputs.release_branch }}"
+          else
+            echo "ERROR: Release branch ${{ steps.compute.outputs.release_branch }} does not exist."
+            echo "Please create a prerelease first using the Release-prerelease workflow."
+            exit 1
+          fi
+
+      - name: Create and push tag
+        run: |
+          git tag -a "${{ steps.compute.outputs.tag_name }}" \
+            -m "Release ${{ steps.compute.outputs.version }}"
+          git push origin "${{ steps.compute.outputs.tag_name }}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.REPO_WRITE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          LAST_RELEASE=$(gh release list \
+            --exclude-pre-releases --limit 1 \
+            --json tagName --jq '.[0].tagName')
+
+          if [ "${{ github.event.inputs.publish_immediately }}" == "true" ]; then
+            DRAFT_FLAG=""
+          else
+            DRAFT_FLAG="--draft"
+          fi
+
+          if [ -z "$LAST_RELEASE" ]; then
+            echo "No previous stable release found; generating notes from all commits."
+            gh release create "${{ steps.compute.outputs.tag_name }}" \
+              --title "${{ steps.compute.outputs.tag_name }}" \
+              --latest \
+              $DRAFT_FLAG \
+              --generate-notes
+          else
+            echo "Generating changelog from ${LAST_RELEASE} to ${{ steps.compute.outputs.tag_name }}."
+            gh release create "${{ steps.compute.outputs.tag_name }}" \
+              --title "${{ steps.compute.outputs.tag_name }}" \
+              --latest \
+              $DRAFT_FLAG \
+              --generate-notes \
+              --notes-start-tag "${LAST_RELEASE}"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Release Created Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.compute.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: ${{ steps.compute.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.compute.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
