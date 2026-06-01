@@ -384,6 +384,64 @@ class GridHelpersTest(absltest.TestCase):
     self.assertAlmostEqual(grid_dict['crs_transform'][0], 0.1)
     self.assertAlmostEqual(grid_dict['crs_transform'][4], -0.1)
 
+  def test_fit_geometry_accepts_ee_like_geometry(self):
+    """Test that an Earth Engine-like geometry is auto-converted via getInfo()."""
+
+    class _FakeEEGeometry:
+      """Minimal ee.Geometry stand-in exposing getInfo()."""
+
+      def __init__(self, geojson):
+        self._geojson = geojson
+
+      def getInfo(self):
+        return self._geojson
+
+    ee_like_geometry = _FakeEEGeometry(
+        {
+            'type': 'Polygon',
+            'coordinates': [[[10.1, 10.1], [10.1, 10.9], [11.9, 10.1]]],
+        }
+    )
+
+    grid_dict = helpers.fit_geometry(
+        geometry=ee_like_geometry,
+        grid_crs='EPSG:4326',
+        grid_scale=(0.5, -0.5),
+    )
+
+    self.assertEqual(
+        grid_dict['crs_transform'], (0.5, 0.0, 10.0, 0.0, -0.5, 11.0)
+    )
+    self.assertEqual(grid_dict['shape_2d'], (4, 2))
+
+  def test_fit_geometry_ee_like_invalid_payload_raises(self):
+    """Test that an Earth Engine-like geometry with an invalid payload raises TypeError."""
+
+    class _FakeEEGeometry:
+
+      def getInfo(self):
+        return {'type': 'not a geojson geometry'}
+
+    with self.assertRaisesRegex(
+        TypeError, r'shapely\.geometry\.shape\(ee_geom\.getInfo\(\)\)'
+    ):
+      helpers.fit_geometry(
+          geometry=_FakeEEGeometry(),
+          grid_crs='EPSG:4326',
+          grid_scale=(0.5, -0.5),
+      )
+
+  def test_fit_geometry_unsupported_type_raises(self):
+    """Test that an unrelated input type raises a clear TypeError with guidance."""
+    with self.assertRaisesRegex(
+        TypeError, r'shapely\.geometry\.shape\(ee_geom\.getInfo\(\)\)'
+    ):
+      helpers.fit_geometry(
+          geometry=42,
+          grid_crs='EPSG:4326',
+          grid_scale=(0.5, -0.5),
+      )
+
 
 if __name__ == '__main__':
   absltest.main()
