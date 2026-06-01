@@ -98,9 +98,61 @@ def set_scale(
   affine_transform = affine.Affine(*crs_transform)
   return list(affine_transform)[:6]
 
+def _coerce_to_shapely_geometry(
+    geometry: Union[shapely.geometry.base.BaseGeometry, ee.Geometry],
+) -> shapely.geometry.base.BaseGeometry:
+    """Normalize a supported geometry input to a shapely geometry.
+
+    Shapely geometries are returned unchanged. Earth Engine-like geometries are
+    automatically detected and converted. Any other input raises a ``TypeError``
+    that names the expected type and includes the explicit conversion snippet.
+
+    Args:
+      geometry: A shapely geometry or an Earth Engine-like geometry exposing
+        ``getInfo``.
+
+    Returns:
+      An equivalent shapely geometry.
+
+    Raises:
+      TypeError: If ``geometry`` is neither a shapely geometry nor convertible
+        from an Earth Engine-like geometry.
+    """
+    if isinstance(geometry, shapely.geometry.base.BaseGeometry):
+      return geometry
+
+    get_info = getattr(geometry, "getInfo", None)
+
+    if callable(get_info):
+      # NOTE(abi): ``getInfo`` runs outside the try clock so that genuine EE
+      #            runtime errors propagate unchanged.
+      geojson = get_info()
+
+      try:
+        return shapely.geometry.shape(geojson)
+      except (
+          AttributeError,
+          KeyError,
+          TypeError,
+          ValueError,
+          shapely.errors.GeometryTypeError,
+      ) as e:
+          raise TypeError(
+              "Could not convert the Earth Engine-like geometry to a shapely "
+              "geometry. Convert it explicitly before calling fit_geometry:\n"
+              "    shapely.geometry.shape(ee_geom.getInfo())"
+          ) from e
+
+    raise TypeError(
+        "fit_geometry expected a shapely geometry, but got "
+        f"{type(geometry).__name__!r}. If this is an Earth Engine geometry, "
+        "convert it with:\n"
+        "    shapely.geometry.shape(ee_geom.getInfo())"
+    )
+
 
 def fit_geometry(
-    geometry: shapely.geometry.base.BaseGeometry,
+    geometry: Union[shapely.geometry.base.BaseGeometry, ee.Geometry],
     # All following parameters are keyword-only.
     *,
     geometry_crs: str = 'EPSG:4326',
@@ -119,7 +171,8 @@ def fit_geometry(
 
   Args:
     geometry: Shapely geometry defining the area of interest (in
-      ``geometry_crs`` units).
+      ``geometry_crs`` units). An Earth Engine-like geometry exposing
+      ``getInfo`` is also accepted and converted automatically.
     geometry_crs: CRS of the input geometry (default WGS84).
     buffer: Optional positive distance in CRS units to expand the geometry.
     grid_crs: Target CRS for the output grid.
@@ -141,6 +194,8 @@ def fit_geometry(
     raise ValueError(
         "Exactly one of 'grid_scale' or 'grid_shape' must be specified."
     )
+
+  geometry = _coerce_to_shapely_geometry(geometry)
 
   transformer = Transformer.from_crs(
       crs_from=geometry_crs, crs_to=grid_crs, always_xy=True
