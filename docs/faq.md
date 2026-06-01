@@ -29,7 +29,7 @@ To align with CF conventions (`[time, y, x]`) and reduce the need for transposes
 Your AOI may fall outside the dataset extent or the CRS mismatch caused an unexpected reprojection. Try matching source grid first to confirm availability.
 
 ## Do I need shapely geometries?
-Helpers accept shapely for convenience. If you already have an EE geometry, you can convert it to shapely with `shapely.geometry.shape(ee_geom.getInfo())`. Shapely makes reprojection and area reasoning simpler client-side.
+Helpers accept shapely for convenience, as it makes reprojection and area reasoning simpler client-side. However, `fit_geometry` also accepts an Earth Engine geometry (e.g. `ee.Geometry`) directly and converts it for you via `shapely.geometry.shape(ee_geom.getInfo())`. That said, if you do need a shapely geometry elsewhere, you may want to handle this conversion explicitly.
 
 ## `ds.to_netcdf()` fails with `ValueError: could not safely cast array from int64 to int32`
 Xee time coordinates are stored as `int64` (nanoseconds since epoch). The `scipy` netCDF writer only supports netCDF3, which is limited to `int32`, so the write fails when `scipy` is the only available backend.
