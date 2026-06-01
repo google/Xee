@@ -57,6 +57,40 @@ grid_params = helpers.fit_geometry(
 ds = xr.open_dataset('ee://ECMWF/ERA5_LAND/MONTHLY_AGGR', engine='ee', **grid_params)
 ```
 
+## Using an Earth Engine Geometry as the AOI
+
+`fit_geometry` accepts an `ee.Geometry` directly. It is auto-converted to shapely via `shapely.geometry.shape(geometry.getInfo())`, so you can stay in an Earth Engine-native workflow without converting by hand.
+
+```python
+import ee
+import xarray as xr
+from xee import helpers
+
+aoi_ee = ee.Geometry.Rectangle([113.33, -43.63, 153.56, -10.66])
+grid_params = helpers.fit_geometry(
+    geometry=aoi_ee,
+    grid_crs='EPSG:4326',
+    grid_shape=(256, 256),
+)
+
+ds = xr.open_dataset('ee://ECMWF/ERA5_LAND/MONTHLY_AGGR', engine='ee', **grid_params)
+```
+
+If you prefer to convert explicitly or need the shapely geometry elsewhere, the equivalent end-to-end conversion is as follows:
+
+```python
+import shapely
+
+aoi_shapely = shapely.geometry.shape(aoi_ee.getInfo())
+grid_params = helpers.fit_geometry(
+    geometry=aoi_shapely,
+    grid_crs='EPSG:4326',
+    grid_shape=(256, 256),
+)
+```
+
+Non-geometry inputs (or geometries that can't be converted) raise a `TypeError` that includes the above conversion snippet.
+
 ## Custom Region at Source Resolution
 
 Fit an AOI but keep original pixel size.
