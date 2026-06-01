@@ -123,6 +123,12 @@ grid = helpers.fit_geometry(
 ds = xr.open_dataset('ee://ECMWF/ERA5_LAND/MONTHLY_AGGR', engine='ee', **grid)
 ```
 
+```{admonition} Already have an Earth Engine geometry?
+:class: tip
+
+`helpers.fit_geometry` accepts an `ee.Geometry` directly. See the [User Guide](guide.md) for an end-to-end example.
+```
+
 ## 7. Having trouble?
 
 See the [FAQ](faq.md) and open a [discussion](https://github.com/google/Xee/discussions) if needed.
