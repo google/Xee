@@ -59,7 +59,7 @@ ds = xr.open_dataset('ee://ECMWF/ERA5_LAND/MONTHLY_AGGR', engine='ee', **grid_pa
 
 ## Using an Earth Engine Geometry as the AOI
 
-`fit_geometry` accepts an `ee.Geometry` directly. It is auto-converted to shapely via `shapely.geometry.shape(geometry.getInfo())`, so you can stay in an Earth Engine-native workflow without converting by hand.
+`fit_geometry` accepts `ee.Geometry` directly and auto-converts it to shapely via `shapely.geometry.shape(geometry.getInfo())`.
 
 ```python
 import ee
@@ -76,7 +76,22 @@ grid_params = helpers.fit_geometry(
 ds = xr.open_dataset('ee://ECMWF/ERA5_LAND/MONTHLY_AGGR', engine='ee', **grid_params)
 ```
 
-If you prefer to convert explicitly or need the shapely geometry elsewhere, the equivalent end-to-end conversion is as follows:
+**Important:** If you have an `ee.Feature` or other `ee.ComputedObject`, extract the geometry first:
+
+```python
+aoi_feature = ee.Feature(...)
+# Correct - Extracting the geometry
+grid_params = helpers.fit_geometry(
+    geometry=aoi_feature.geometry(),
+    grid_crs='EPSG:4326',
+    grid_shape=(256, 256),
+)
+
+# Incorrect - Passing the feature directly
+grid_params = helpers.fit_geometry(geometry=aoi_feature, ...)
+```
+
+If you prefer to convert to shapely explicitly or need the shapely geometry elsewhere:
 
 ```python
 import shapely
