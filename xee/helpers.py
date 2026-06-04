@@ -99,8 +99,57 @@ def set_scale(
   return list(affine_transform)[:6]
 
 
+def _coerce_to_shapely_geometry(
+    geometry: Union[shapely.geometry.base.BaseGeometry, ee.Geometry],
+) -> shapely.geometry.base.BaseGeometry:
+  """Normalize a supported geometry input to a shapely geometry.
+
+  Shapely geometries are returned unchanged. ee.Geometry inputs are
+  automatically converted. Any other input raises a ``TypeError``
+  that names the expected type and includes the explicit conversion snippet.
+
+  Args:
+    geometry: A shapely geometry or an ee.Geometry instance.
+
+  Returns:
+    An equivalent shapely geometry.
+
+  Raises:
+    TypeError: If ``geometry`` is neither a shapely geometry nor an ee.Geometry.
+  """
+  if isinstance(geometry, shapely.geometry.base.BaseGeometry):
+    return geometry
+
+  if isinstance(geometry, ee.Geometry):
+    # NOTE: ``getInfo`` runs outside the try block so that genuine EE
+    #       runtime errors propagate unchanged.
+    geojson = geometry.getInfo()
+
+    try:
+      return shapely.geometry.shape(geojson)
+    except (
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        shapely.errors.GeometryTypeError,
+    ) as e:
+      raise TypeError(
+          "Could not convert the ee.Geometry to a shapely geometry. "
+          "Convert it explicitly before calling fit_geometry:\n"
+          "    shapely.geometry.shape(ee_geom.getInfo())"
+      ) from e
+
+  raise TypeError(
+      "fit_geometry expected a shapely geometry or ee.Geometry, but got "
+      f"{type(geometry).__name__!r}. If using an ee.Feature or other "
+      "ee.ComputedObject, convert it explicitly with:\n"
+      "    shapely.geometry.shape(ee_geom.getInfo())"
+  )
+
+
 def fit_geometry(
-    geometry: shapely.geometry.base.BaseGeometry,
+    geometry: Union[shapely.geometry.base.BaseGeometry, ee.Geometry],
     # All following parameters are keyword-only.
     *,
     geometry_crs: str = 'EPSG:4326',
@@ -118,8 +167,8 @@ def fit_geometry(
   provided the scale is inferred uniformly over the geometry's bounding box.
 
   Args:
-    geometry: Shapely geometry defining the area of interest (in
-      ``geometry_crs`` units).
+    geometry: Shapely geometry or ee.Geometry defining the area of interest (in
+      ``geometry_crs`` units). An ee.Geometry is converted automatically.
     geometry_crs: CRS of the input geometry (default WGS84).
     buffer: Optional positive distance in CRS units to expand the geometry.
     grid_crs: Target CRS for the output grid.
@@ -141,6 +190,8 @@ def fit_geometry(
     raise ValueError(
         "Exactly one of 'grid_scale' or 'grid_shape' must be specified."
     )
+
+  geometry = _coerce_to_shapely_geometry(geometry)
 
   transformer = Transformer.from_crs(
       crs_from=geometry_crs, crs_to=grid_crs, always_xy=True
