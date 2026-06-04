@@ -27,7 +27,10 @@ most workflows only need the helpers and the xarray interface.
 
 from .ext import *  # noqa: F401,F403  (backend classes)
 from .ext import __version__  # noqa: F401
-from .helpers import fit_geometry, extract_grid_params, set_scale, PixelGridParams  # noqa: F401
+from .helpers import extract_grid_params  # noqa: F401
+from .helpers import fit_geometry  # noqa: F401
+from .helpers import PixelGridParams  # noqa: F401
+from .helpers import set_scale  # noqa: F401
 
 __all__ = [
     # Version.

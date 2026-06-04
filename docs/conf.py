@@ -24,10 +24,10 @@ import xee  # verify this works
 print('python exec:', sys.executable)
 print('sys.path:', sys.path)
 if importlib.util.find_spec('pip') is not None:
-    print('pip environment:')
-    subprocess.run([sys.executable, '-m', 'pip', 'list'])  # pylint: disable=subprocess-run-check
+  print('pip environment:')
+  subprocess.run([sys.executable, '-m', 'pip', 'list'])  # pylint: disable=subprocess-run-check
 else:
-    print('pip environment: unavailable')
+  print('pip environment: unavailable')
 
 print(f'xee: {xee.__file__}')
 

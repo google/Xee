@@ -1,11 +1,11 @@
 """Xee Unit Tests."""
 
+from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
-import numpy as np
 import affine
+import numpy as np
 import shapely
-from unittest import mock
 import xee
 from xee import ext
 from xee import helpers

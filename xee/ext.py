@@ -45,7 +45,6 @@ from xee import types
 
 import ee
 
-
 assert sys.version_info >= (3, 10)
 try:
   __version__ = importlib.metadata.version('xee') or 'unknown'
@@ -956,9 +955,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
     Args:
       filename_or_obj: An asset ID for an ImageCollection, or an
         ``ee.ImageCollection`` object.
-      crs: The coordinate reference system (a CRS code or WKT
-        string). This defines the frame of reference to coalesce all variables
-        upon opening.
+      crs: The coordinate reference system (a CRS code or WKT string). This
+        defines the frame of reference to coalesce all variables upon opening.
       crs_transform: Transform matrix describing the grid origin and scale
         relative to the CRS.
       shape_2d: Dimensions of the pixel grid in the form (width, height).
@@ -977,8 +975,8 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       decode_timedelta (optional): If True, decode variables and coordinates
         with time units in {"days", "hours", "minutes", "seconds",
         "milliseconds", "microseconds"} into timedelta objects. If False, leave
-        them encoded as numbers. If ``None`` (default), assume the same value
-        of ``decode_times``.
+        them encoded as numbers. If ``None`` (default), assume the same value of
+        ``decode_times``.
       use_cftime (optional): Only relevant if encoded dates come from a standard
         calendar (e.g. "gregorian", "proleptic_gregorian", "standard", or not
         specified).  If None (default), attempt to decode times to
@@ -991,12 +989,12 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       concat_characters (optional): Should character arrays be concatenated to
         strings, for example: ``["h", "e", "l", "l", "o"] -> "hello"``.
       decode_coords (optional): ``bool`` or ``{"coordinates", "all"}``. Controls
-        which variables are set as coordinate variables. Use
-        ``"coordinates"`` (or ``True``) to set variables referenced by the
-        ``'coordinates'`` attribute of datasets or individual variables as
-        coordinate variables. Use ``"all"`` to additionally set variables
-        referenced by ``'grid_mapping'``, ``'bounds'``, and related attributes
-        as coordinate variables.
+        which variables are set as coordinate variables. Use ``"coordinates"``
+        (or ``True``) to set variables referenced by the ``'coordinates'``
+        attribute of datasets or individual variables as coordinate variables.
+        Use ``"all"`` to additionally set variables referenced by
+        ``'grid_mapping'``, ``'bounds'``, and related attributes as coordinate
+        variables.
       primary_dim_name (optional): Override the name of the primary dimension of
         the output Dataset. By default, the name is ``'time'``.
       primary_dim_property (optional): Override the ``ee.Image`` property for
@@ -1023,6 +1021,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
         makes slicing an ImageCollection across time faster. This optimization
         loads EE images in a slice by ID, so any modifications to images in a
         computed ImageCollection will not be reflected.
+
     Returns:
       An xarray.Dataset that streams in remote data from Earth Engine.
     """

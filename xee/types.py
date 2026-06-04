@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Type definitions for Earth Engine concepts (and others)."""
+
 from typing import TypedDict, Union
 
 TileIndex = tuple[int, int, int]
