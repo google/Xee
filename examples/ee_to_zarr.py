@@ -19,14 +19,13 @@ import logging
 from absl import app
 from absl import flags
 import apache_beam as beam
+import shapely
 import xarray as xr
 import xarray_beam as xbeam
 import xee
 from xee import helpers
-import shapely
 
 import ee
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

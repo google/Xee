@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 r"""Integration tests for the Google Earth Engine backend for Xarray."""
+
 import json
 import os
 import pathlib
