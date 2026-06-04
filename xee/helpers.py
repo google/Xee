@@ -98,57 +98,54 @@ def set_scale(
   affine_transform = affine.Affine(*crs_transform)
   return list(affine_transform)[:6]
 
+
 def _coerce_to_shapely_geometry(
     geometry: Union[shapely.geometry.base.BaseGeometry, ee.Geometry],
 ) -> shapely.geometry.base.BaseGeometry:
-    """Normalize a supported geometry input to a shapely geometry.
+  """Normalize a supported geometry input to a shapely geometry.
 
-    Shapely geometries are returned unchanged. Earth Engine-like geometries are
-    automatically detected and converted. Any other input raises a ``TypeError``
-    that names the expected type and includes the explicit conversion snippet.
+  Shapely geometries are returned unchanged. ee.Geometry inputs are
+  automatically converted. Any other input raises a ``TypeError``
+  that names the expected type and includes the explicit conversion snippet.
 
-    Args:
-      geometry: A shapely geometry or an Earth Engine-like geometry exposing
-        ``getInfo``.
+  Args:
+    geometry: A shapely geometry or an ee.Geometry instance.
 
-    Returns:
-      An equivalent shapely geometry.
+  Returns:
+    An equivalent shapely geometry.
 
-    Raises:
-      TypeError: If ``geometry`` is neither a shapely geometry nor convertible
-        from an Earth Engine-like geometry.
-    """
-    if isinstance(geometry, shapely.geometry.base.BaseGeometry):
-      return geometry
+  Raises:
+    TypeError: If ``geometry`` is neither a shapely geometry nor an ee.Geometry.
+  """
+  if isinstance(geometry, shapely.geometry.base.BaseGeometry):
+    return geometry
 
-    get_info = getattr(geometry, "getInfo", None)
+  if isinstance(geometry, ee.Geometry):
+    # NOTE: ``getInfo`` runs outside the try block so that genuine EE
+    #       runtime errors propagate unchanged.
+    geojson = geometry.getInfo()
 
-    if callable(get_info):
-      # NOTE(abi): ``getInfo`` runs outside the try clock so that genuine EE
-      #            runtime errors propagate unchanged.
-      geojson = get_info()
+    try:
+      return shapely.geometry.shape(geojson)
+    except (
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        shapely.errors.GeometryTypeError,
+    ) as e:
+      raise TypeError(
+          "Could not convert the ee.Geometry to a shapely geometry. "
+          "Convert it explicitly before calling fit_geometry:\n"
+          "    shapely.geometry.shape(ee_geom.getInfo())"
+      ) from e
 
-      try:
-        return shapely.geometry.shape(geojson)
-      except (
-          AttributeError,
-          KeyError,
-          TypeError,
-          ValueError,
-          shapely.errors.GeometryTypeError,
-      ) as e:
-          raise TypeError(
-              "Could not convert the Earth Engine-like geometry to a shapely "
-              "geometry. Convert it explicitly before calling fit_geometry:\n"
-              "    shapely.geometry.shape(ee_geom.getInfo())"
-          ) from e
-
-    raise TypeError(
-        "fit_geometry expected a shapely geometry, but got "
-        f"{type(geometry).__name__!r}. If this is an Earth Engine geometry, "
-        "convert it with:\n"
-        "    shapely.geometry.shape(ee_geom.getInfo())"
-    )
+  raise TypeError(
+      "fit_geometry expected a shapely geometry or ee.Geometry, but got "
+      f"{type(geometry).__name__!r}. If using an ee.Feature or other "
+      "ee.ComputedObject, convert it explicitly with:\n"
+      "    shapely.geometry.shape(ee_geom.getInfo())"
+  )
 
 
 def fit_geometry(
@@ -170,9 +167,8 @@ def fit_geometry(
   provided the scale is inferred uniformly over the geometry's bounding box.
 
   Args:
-    geometry: Shapely geometry defining the area of interest (in
-      ``geometry_crs`` units). An Earth Engine-like geometry exposing
-      ``getInfo`` is also accepted and converted automatically.
+    geometry: Shapely geometry or ee.Geometry defining the area of interest (in
+      ``geometry_crs`` units). An ee.Geometry is converted automatically.
     geometry_crs: CRS of the input geometry (default WGS84).
     buffer: Optional positive distance in CRS units to expand the geometry.
     grid_crs: Target CRS for the output grid.
