@@ -59,6 +59,8 @@ def _read_identity_pool_creds() -> identity_pool.Credentials:
 
 
 def init_ee_for_tests():
+  """Initializes Earth Engine for tests."""
+
   init_params = {
       'opt_url': ee.data.HIGH_VOLUME_API_BASE_URL,
   }
