@@ -31,7 +31,7 @@ import xee
 import ee
 
 
-REPEAT = 10
+REPEAT = 5
 LOOPS = 1
 PROFILE = False
 
@@ -47,12 +47,17 @@ _GRID_PARAMS = {
     'shape_2d': (1440, 720),
 }
 
+_OPEN_KWARGS = {
+    'engine': xee.EarthEngineBackendEntrypoint,
+    'n_images': 64,  # Limit metadata scan to 64 images to prevent RPC timeouts.
+    **_GRID_PARAMS,
+}
+
 
 def open_dataset() -> None:
   _ = xarray.open_dataset(
       'NASA/GPM_L3/IMERG_V06',
-      engine=xee.EarthEngineBackendEntrypoint,
-      **_GRID_PARAMS,
+      **_OPEN_KWARGS,
   )
 
 
@@ -60,8 +65,7 @@ def open_and_chunk() -> None:
   ds = xarray.open_dataset(
       'NASA/GPM_L3/IMERG_V06',
       chunks={'index': 24, 'width': 512, 'height': 512},
-      engine=xee.EarthEngineBackendEntrypoint,
-      **_GRID_PARAMS,
+      **_OPEN_KWARGS,
   )
   ds.chunk()
 
@@ -71,8 +75,7 @@ def open_and_write() -> None:
     ds = xarray.open_dataset(
         'NASA/GPM_L3/IMERG_V06',
         chunks={'time': 24, 'lon': 1440, 'lat': 720},
-        engine=xee.EarthEngineBackendEntrypoint,
-        **_GRID_PARAMS,
+        **_OPEN_KWARGS,
     )
     ds = ds.isel(time=slice(0, 24))
     ds.to_zarr(os.path.join(tmpdir, 'imerg.zarr'))
