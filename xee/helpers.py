@@ -88,11 +88,11 @@ def set_scale(
   Raises:
     TypeError: If ``scaling`` is not a length-2 tuple.
   """
-  crs_transform = list(crs_transform)
+  crs_transform = list(crs_transform)  # pyrefly: ignore[bad-assignment]
   if isinstance(scaling, tuple) and len(scaling) == 2:
     x_scale, y_scale = scaling
-    crs_transform[0] = x_scale
-    crs_transform[4] = y_scale
+    crs_transform[0] = x_scale  # pyrefly: ignore[unsupported-operation]
+    crs_transform[4] = y_scale  # pyrefly: ignore[unsupported-operation]
   else:
     raise TypeError(f'Expected a tuple of length 2 for scaling, got {scaling}')
   affine_transform = affine.Affine(*crs_transform)
@@ -166,7 +166,7 @@ def fit_geometry(
         math.ceil(y_max / abs(y_scale)) - math.floor(y_min / abs(y_scale))
     )
   else:  # grid_shape is not None
-    x_shape, y_shape = grid_shape
+    x_shape, y_shape = grid_shape  # pyrefly: ignore[not-iterable]
     x_scale = (x_max - x_min) / x_shape
     y_scale = -(y_max - y_min) / y_shape
 
