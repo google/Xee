@@ -295,7 +295,7 @@ class EarthEngineStore(common.AbstractDataStore):
     if chunks == -1:
       self.chunks = -1
     elif chunks is not None and chunks != 'auto':
-      self.chunks = self._assign_index_chunks(chunks)
+      self.chunks = self._assign_index_chunks(chunks)  # pyrefly: ignore[bad-argument-type]
 
     self.preferred_chunks = self._assign_preferred_chunks()
     if mask_value is None:
@@ -337,7 +337,7 @@ class EarthEngineStore(common.AbstractDataStore):
 
     info = ee.List([rpc for _, rpc in rpcs]).getInfo()
 
-    return dict(zip((name for name, _ in rpcs), info))
+    return dict(zip((name for name, _ in rpcs), info))  # pyrefly: ignore[bad-argument-type]
 
   @property
   def image_collection_properties(self) -> tuple[list[str], list[str]]:
@@ -421,9 +421,9 @@ class EarthEngineStore(common.AbstractDataStore):
       chunks[x_dim_name] = self.PREFERRED_CHUNKS['width']
       chunks[y_dim_name] = self.PREFERRED_CHUNKS['height']
     else:
-      chunks[self.primary_dim_name] = self.chunks['index']
-      chunks[x_dim_name] = self.chunks['width']
-      chunks[y_dim_name] = self.chunks['height']
+      chunks[self.primary_dim_name] = self.chunks['index']  # pyrefly: ignore[bad-index]
+      chunks[x_dim_name] = self.chunks['width']  # pyrefly: ignore[bad-index]
+      chunks[y_dim_name] = self.chunks['height']  # pyrefly: ignore[bad-index]
     return chunks
 
   def project(self, bbox: types.BBox) -> types.Grid:
@@ -689,7 +689,7 @@ def _ee_bounds_to_bounds(bounds: dict[str, Any]) -> types.Bounds:
 def geometry_to_bounds(geom: ee.Geometry) -> types.Bounds:
   """Finds the CRS bounds from a ee.Geometry polygon."""
   bounds = geom.bounds().getInfo()
-  return _ee_bounds_to_bounds(bounds)
+  return _ee_bounds_to_bounds(bounds)  # pyrefly: ignore[bad-argument-type]
 
 
 class EarthEngineBackendArray(backends.BackendArray):
@@ -862,7 +862,7 @@ class EarthEngineBackendArray(backends.BackendArray):
       ):
         tiles[i][j][k] = arr
 
-    out = np.block(tiles)
+    out = np.block(tiles)  # pyrefly: ignore[no-matching-overload]
 
     if squeeze_axes:
       out = np.squeeze(out, squeeze_axes)
@@ -912,7 +912,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
       )
     return f'{parsed.netloc}{parsed.path}'
 
-  def guess_can_open(
+  def guess_can_open(  # pyrefly: ignore[bad-override]
       self, filename_or_obj: str | os.PathLike[Any] | ee.ImageCollection
   ) -> bool:  # type: ignore
     """Returns True if the candidate is a valid ImageCollection."""
@@ -926,7 +926,7 @@ class EarthEngineBackendEntrypoint(backends.BackendEntrypoint):
     except ee.EEException:
       return False
 
-  def open_dataset(
+  def open_dataset(  # pyrefly: ignore[bad-override]
       self,
       filename_or_obj: str | os.PathLike[Any] | ee.ImageCollection,
       crs: CrsType,
