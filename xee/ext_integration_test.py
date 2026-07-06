@@ -111,6 +111,7 @@ class EEBackendArrayTest(absltest.TestCase):
         ee.ImageCollection('LANDSAT/LC08/C02/T1').filterDate(
             '2017-01-01', '2017-01-03'
         ),
+        n_images=64,
         **_TEST_GRID_PARAMS,
     )
 
@@ -379,6 +380,7 @@ class EEBackendEntrypointTest(absltest.TestCase):
     ds = xr.open_dataset(
         'NASA/GPM_L3/IMERG_V07',
         engine=xee.EarthEngineBackendEntrypoint,
+        n_images=10,
         **_TEST_GRID_PARAMS,
     ).isel(time=slice(0, 1))
 
@@ -660,19 +662,20 @@ class ReadmeCodeTest(absltest.TestCase):
   def test_extract_projection_from_image(self):
 
     ic = ee.ImageCollection('ECMWF/ERA5_LAND/HOURLY').filterDate(
-        '1992-10-05', '1993-03-31'
+        '1992-10-05', '1992-10-06'
     )
     grid_params = helpers.extract_grid_params(ic)
 
     # Open any Earth Engine ImageCollection by specifying the Xarray engine as 'ee':
     ds = xr.open_dataset(
-        'ee://ECMWF/ERA5_LAND/HOURLY', engine='ee', **grid_params
+        'ee://ECMWF/ERA5_LAND/HOURLY', engine='ee', n_images=24, **grid_params
     )
 
     # Open all bands in a specific projection:
     ds = xr.open_dataset(
         'ee://ECMWF/ERA5_LAND/HOURLY',
         engine='ee',
+        n_images=24,
         crs='EPSG:32610',
         crs_transform=(
             30,
