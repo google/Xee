@@ -45,7 +45,7 @@ tests = [
 dataflow = [
   "absl-py",
   "apache-beam[gcp]",
-  "gcsfs<=2026.5.0",
+  "gcsfs<=2026.7.0",
   "xarray-beam",
 ]
 # Keep examples equivalent to dataflow, but avoid self-referential extras
@@ -53,7 +53,7 @@ dataflow = [
 examples = [
   "absl-py",
   "apache-beam[gcp]",
-  "gcsfs<=2026.5.0",
+  "gcsfs<=2026.7.0",
   "matplotlib",
   "xarray-beam",
 ]
