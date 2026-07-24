@@ -60,5 +60,4 @@ jobs:
         pip install -e .[tests]
     - name: Lint with pyink
       run: |
-        echo "Lint check temporarily disabled"
-        # pyink --check .
+        pyink --check .
