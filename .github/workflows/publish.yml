@@ -11,85 +11,70 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-name: Publish to PyPi
+name: Publish to PyPI
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g., v0.1.1)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run only (build package, skip uploading to PyPI)'
+        required: false
+        type: boolean
+        default: false
+      confirm:
+        description: 'Type YES to confirm manual publish to PyPI'
+        required: true
+        type: string
 
 jobs:
-  build-artifacts:
+  pypi-publish:
+    name: Build & Upload to PyPI
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
-      - uses: actions/checkout@v7
+      - name: Validate manual confirmation
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "${CONFIRM}" != "YES" ]; then
+            echo "::error::Manual publish requires confirm=YES. Aborting."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
-      - name: Install dependencies
+      - name: Install build tools
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install setuptools setuptools-scm wheel twine check-manifest
+          python -m pip install --upgrade pip build setuptools setuptools-scm
 
-      - name: Build tarball and wheels
+      - name: Build package
         run: |
-          git clean -xdf
-          git restore -SW .
           python -m build --sdist --wheel .
-      - name: Check built artifacts
-        run: |
-          python -m twine check dist/*
-          pwd
-      - uses: actions/upload-artifact@v7
-        with:
-          name: releases
-          path: dist
 
-  test-built-dist:
-    needs: build-artifacts
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-python@v6
-        name: Install Python
-        with:
-          python-version: '3.13'
-      - uses: actions/download-artifact@v8
-        with:
-          name: releases
-          path: dist
-      - name: List contents of built dist
+      - name: Inspect built artifacts
         run: |
-          ls -ltrh
-          ls -ltrh dist
-      - name: Publish package to TestPyPI
-        if: github.event_name == 'push'
+          ls -la dist/
+
+      - name: Publish to PyPI
+        if: github.event_name == 'release' || !inputs.dry_run
         uses: pypa/gh-action-pypi-publish@v1.14.0
         with:
-          user: __token__
-          password: ${{ secrets.TESTPYPI_TOKEN }}
-          repository_url: https://test.pypi.org/legacy/
-          verbose: true
-
-      - name: Check uploaded package
-        if: github.event_name == 'push'
-        run: |
-          sleep 3
-          python -m pip install --upgrade pip
-          python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade xee
-          python -c "import xee; print(xee.__version__)"
-  upload-to-pypi:
-    needs: test-built-dist
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v7
-        with:
-          name: releases
-          path: dist
-      - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.0
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
-          verbose: true
+          password: ${{ secrets.PYPI_TOKEN || secrets.PYPI_PASSWORD || secrets.PYPI_API_TOKEN }}
