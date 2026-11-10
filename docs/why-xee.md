@@ -76,7 +76,7 @@ Differences:
 -   **Quota vs No Quota**: Since Earth Engine is API based, there are quota
     restrictions that limit IO, namely a 100 QPS limit on data requests. Readers
     all need to be authenticated and tied to a GCP project quota. Zarr, on the
-    other hand, has a lower level access pattern. Reading is delegating to basic
+    other hand, has a lower level access pattern. Reading is delegated to basic
     permissions on cloud buckets.
 -   **On the fly vs up-front data shaping**: In Zarr, the representation of data
     at rest fundamentally influences performance at query time. For this reason,
@@ -87,7 +87,7 @@ Differences:
     server-side), users are free to request the resolution and projection of the
     data during dataset open. Similarly, while Earth Engine's internal dataset
     does fit an internal chunking scheme, chunking schemes are a lot more
-    fungibile.
+    fungible.
 
-We hope that this comparison provides the user of a set of useful precedents for
+We hope that this comparison provides the user with a set of useful precedents for
 working with cloud-based datasets.
