@@ -4,6 +4,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import affine
+import ee
 import shapely
 from unittest import mock
 import xee
@@ -383,6 +384,50 @@ class GridHelpersTest(absltest.TestCase):
     # y_scale = -1.001 / 10 = -0.1001, rounded to -0.1
     self.assertAlmostEqual(grid_dict['crs_transform'][0], 0.1)
     self.assertAlmostEqual(grid_dict['crs_transform'][4], -0.1)
+
+  def test_fit_geometry_accepts_ee_geometry(self):
+    """Test that an ee.Geometry is auto-converted via getInfo()."""
+
+    ee_geometry = mock.MagicMock(spec=ee.Geometry)
+    ee_geometry.getInfo.return_value = {
+        'type': 'Polygon',
+        'coordinates': [[[10.1, 10.1], [10.1, 10.9], [11.9, 10.1]]],
+    }
+
+    grid_dict = helpers.fit_geometry(
+        geometry=ee_geometry,
+        grid_crs='EPSG:4326',
+        grid_scale=(0.5, -0.5),
+    )
+
+    self.assertEqual(
+        grid_dict['crs_transform'], (0.5, 0.0, 10.0, 0.0, -0.5, 11.0)
+    )
+    self.assertEqual(grid_dict['shape_2d'], (4, 2))
+
+  def test_fit_geometry_ee_geometry_invalid_payload_raises(self):
+    """Test that an ee.Geometry with an invalid payload raises TypeError."""
+
+    ee_geometry = mock.MagicMock(spec=ee.Geometry)
+    ee_geometry.getInfo.return_value = {'type': 'not a geojson geometry'}
+
+    with self.assertRaisesRegex(
+        TypeError, r'shapely\.geometry\.shape\(ee_geom\.getInfo\(\)\)'
+    ):
+      helpers.fit_geometry(
+          geometry=ee_geometry,
+          grid_crs='EPSG:4326',
+          grid_scale=(0.5, -0.5),
+      )
+
+  def test_fit_geometry_unsupported_type_raises(self):
+    """Test that an unrelated input type raises a clear TypeError with guidance."""
+    with self.assertRaisesRegex(TypeError, r'shapely geometry or ee\.Geometry'):
+      helpers.fit_geometry(
+          geometry=42,
+          grid_crs='EPSG:4326',
+          grid_scale=(0.5, -0.5),
+      )
 
 
 if __name__ == '__main__':
