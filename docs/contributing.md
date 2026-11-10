@@ -59,6 +59,30 @@ pixi run -e docs docs-check
 `docs-build` builds the HTML docs, while `docs-check` runs a stricter Sphinx
 build with warnings treated as errors.
 
+### Code style & formatting
+
+We use `pyink` to format Python code, enforcing a 2-space indentation style to
+match Google standards. To automate this and ensure your changes pass CI lint
+checks:
+
+1.  **Install pre-commit** (if not already installed):
+    ```bash
+    pip install pre-commit
+    ```
+2.  **Install the git hooks** in the repository:
+    ```bash
+    pre-commit install
+    ```
+
+Once installed, `pyink` will automatically run on and format any files you
+modify whenever you run `git commit`.
+
+If you prefer to run it manually without committing, you can use:
+```bash
+pixi run -e tests pyink --check .
+```
+(Or specify individual files to check instead of `.`).
+
 ### Running tests
 
 The Xee integration tests only pass on Xee branches (no forks). Please run the
